@@ -6,7 +6,7 @@ import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/store/authStore';
 
 const API_BASE_URL = import.meta.env.PROD
-  ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1')
+  ? (import.meta.env.VITE_API_BASE_URL || '/api/v1')
   : '/api/v1';
 
 function isTokenExpired(token: string): boolean {

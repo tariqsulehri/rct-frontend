@@ -3,10 +3,9 @@ import { useAuthStore } from '@/store/authStore';
 import { router } from '@/routes';
 import { queryClient } from '@/lib/queryClient';
 
-// In dev, use relative path so requests go through the Vite proxy (same-origin, no CORS).
-// In production, VITE_API_BASE_URL should be set to the real API URL.
+// Use a relative path so browser requests go through the public nginx proxy.
 const API_BASE_URL = import.meta.env.PROD
-  ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1')
+  ? (import.meta.env.VITE_API_BASE_URL || '/api/v1')
   : '/api/v1';
 
 export const apiClient: AxiosInstance = axios.create({
