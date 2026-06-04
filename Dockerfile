@@ -1,11 +1,12 @@
 # ── Stage 1: build the React app ─────────────────────────────────────────────
-FROM cgr.dev/chainguard/node:20-dev AS builder
+FROM node:24-alpine AS builder
 WORKDIR /build
 
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-COPY tsconfig.json vite.config.ts tailwind.config.ts postcss.config.js* ./
+COPY tsconfig.json tsconfig.node.json vite.config.ts tailwind.config.ts postcss.config.js* ./
+COPY index.html ./
 COPY src ./src
 COPY public ./public
 
@@ -16,7 +17,7 @@ ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 # ── Stage 2: zero-CVE nginx to serve the built SPA ───────────────────────────
-FROM cgr.dev/chainguard/nginx:1.27 AS runner
+FROM nginx:1.27-alpine AS runner
 
 COPY --from=builder /build/dist /usr/share/nginx/html
 COPY nginx.conf                 /etc/nginx/conf.d/default.conf
