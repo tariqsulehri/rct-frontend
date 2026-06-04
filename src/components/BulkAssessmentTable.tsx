@@ -1,0 +1,999 @@
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Stars } from '@/components/ui/Stars';
+import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, ShieldCheck, Info } from 'lucide-react';
+import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
+import {
+  useSkillsHierarchy,
+  useEmployeeAssessments,
+  useDuplicateAssessmentCheck,
+  useCreateAssessment,
+  useUpdateAssessment,
+  useDeleteAssessment,
+  useApproveAssessment,
+  SkillHierarchy,
+} from '@/hooks/useAssessment';
+
+interface Props {
+  employeeId: string;   // emp_code e.g. "1818"
+  employeeName?: string;
+  readOnlyLevel?: boolean;   // true for engineers: level shown but not editable
+  canApprove?: boolean;      // true for managers/admins: shows Approve button on pending rows
+  onSuccess?: () => void;
+  onClose?: () => void;
+}
+
+type AssessmentLevel = 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Awareness' | 'Unset';
+
+interface BulkRow {
+  id: string;
+  existingAssessmentId?: number;
+  isNew?: boolean;
+  status: 'approved' | 'pending';
+  domainId: number | null;
+  competencyId: number | null;
+  technologyId: number | null;
+  type: 'Primary' | 'Secondary' | 'Tertiary';
+  projects: number;
+  level: AssessmentLevel;
+  scorePreview?: number;
+  isDuplicate?: boolean;
+  error?: string;
+}
+
+interface SearchableOption {
+  value: string;
+  label: string;
+}
+
+type SortKey = 'domain' | 'competency' | 'technology' | 'type' | 'projects';
+type SortOrder = 'asc' | 'desc';
+
+const LEVEL_OPTIONS: AssessmentLevel[] = ['Unset', 'Expert', 'Advanced', 'Proficient', 'Foundational', 'Awareness'];
+
+const LEVEL_COLORS: Record<AssessmentLevel, string> = {
+  Unset:       'rgb(var(--text-3))',
+  Expert:      'rgb(var(--success))',
+  Advanced:    '#22d3ee',
+  Proficient:  'rgb(var(--warning))',
+  Foundational:'#f97316',
+  Awareness:   '#a855f7',
+};
+
+const LEVEL_LABELS: Record<AssessmentLevel, string> = {
+  Unset:       '— Unset',
+  Expert:      'Expert',
+  Advanced:    'Advanced',
+  Proficient:  'Proficient',
+  Foundational:'Foundational',
+  Awareness:   'Awareness',
+};
+
+const TYPE_OPTIONS = [
+  { value: 'Primary', label: 'Primary - main skill' },
+  { value: 'Secondary', label: 'Secondary - supporting skill' },
+  { value: 'Tertiary', label: 'Tertiary - related skill' },
+] as const;
+
+const PROJECT_OPTIONS = [
+  { value: '0', label: '0 - no project yet' },
+  { value: '1', label: '1 - used in 1 project' },
+  { value: '2', label: '2 - used in 2 projects' },
+  { value: '3', label: '3+ - used in 3 or more projects' },
+] as const;
+
+const InfoTip: React.FC<{ text: string }> = ({ text }) => (
+  <button
+    type="button"
+    className="btn-ghost w-6 h-6 p-0 rounded-lg inline-flex items-center justify-center shrink-0"
+    title={text}
+    aria-label={text}
+    onClick={(event) => event.stopPropagation()}
+  >
+    <Info size={13} />
+  </button>
+);
+
+const SearchableSelect: React.FC<{
+  value: string;
+  options: SearchableOption[];
+  placeholder?: string;
+  disabled?: boolean;
+  invalid?: boolean;
+  defaultOpen?: boolean;
+  className?: string;
+  onChange: (value: string) => void;
+}> = ({ value, options, placeholder = 'Search...', disabled, invalid, defaultOpen = false, className, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const selected = useMemo(() => options.find((o) => o.value === value), [options, value]);
+  const filteredOptions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, query]);
+
+  // Calculate fixed viewport position so the dropdown escapes overflow:hidden/auto containers
+  const calcPosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setDropdownStyle({
+      position: 'fixed' as const,
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    });
+  }, []);
+
+  const handleToggle = useCallback(() => {
+    if (disabled) return;
+    if (!open) calcPosition();
+    setOpen((prev) => !prev);
+  }, [disabled, open, calcPosition]);
+
+  // defaultOpen: calculate position on mount then open
+  useEffect(() => {
+    if (defaultOpen && !disabled) {
+      calcPosition();
+      setOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Close when clicking outside both the trigger and the portal dropdown
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        !triggerRef.current?.contains(e.target as Node) &&
+        !dropdownRef.current?.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // Close on any scroll or resize to avoid stale positioning
+  useEffect(() => {
+    if (!open) return;
+    const handler = () => setOpen(false);
+    window.addEventListener('scroll', handler, true);
+    window.addEventListener('resize', handler);
+    return () => {
+      window.removeEventListener('scroll', handler, true);
+      window.removeEventListener('resize', handler);
+    };
+  }, [open]);
+
+  // Clear search when closed
+  useEffect(() => {
+    if (!open) setQuery('');
+  }, [open]);
+
+  return (
+    <div className={className}>
+      <button
+        ref={triggerRef}
+        type="button"
+        disabled={disabled}
+        title={selected?.label}
+        onClick={handleToggle}
+        className="w-full text-xs px-2 py-1 rounded-md border flex items-center justify-between gap-2"
+        style={{
+          backgroundColor: 'rgb(var(--surface))',
+          borderColor: invalid ? 'rgb(var(--danger))' : 'rgb(var(--border))',
+          color: 'rgb(var(--text-1))',
+          opacity: disabled ? 0.5 : 1,
+        }}
+      >
+        <span className="truncate text-left">{selected?.label || '—'}</span>
+        <ChevronDown size={12} style={{ color: 'rgb(var(--text-3))' }} />
+      </button>
+
+      {open && !disabled && createPortal(
+        <div
+          ref={dropdownRef}
+          className="rounded-md border shadow-elevated"
+          style={{
+            ...dropdownStyle,
+            backgroundColor: 'rgb(var(--surface))',
+            borderColor: 'rgb(var(--border))',
+          }}
+        >
+          <div className="p-1.5 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={placeholder}
+              className="w-full text-xs px-2 py-1 rounded-md border"
+              style={{
+                backgroundColor: 'rgb(var(--surface-2))',
+                borderColor: 'rgb(var(--border))',
+                color: 'rgb(var(--text-1))',
+              }}
+            />
+          </div>
+          <div className="max-h-44 overflow-y-auto p-1">
+            {filteredOptions.length === 0 ? (
+              <div className="px-2 py-1.5 text-xs" style={{ color: 'rgb(var(--text-3))' }}>
+                No matches found
+              </div>
+            ) : (
+              filteredOptions.map((option) => (
+                <button
+                  key={`${option.value}-${option.label}`}
+                  type="button"
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  className="w-full text-left text-xs px-2 py-1.5 rounded-md"
+                  style={{
+                    backgroundColor: option.value === value ? 'rgb(var(--accent-soft))' : 'transparent',
+                    color: option.value === value ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-1))',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (option.value !== value) e.currentTarget.style.backgroundColor = 'rgb(var(--surface-2))';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (option.value !== value) e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+};
+
+function createEmptyRow(): BulkRow {
+  return {
+    id: crypto.randomUUID(),
+    isNew: true,
+    status: 'pending',      // new rows start pending until saved by manager
+    domainId: null,
+    competencyId: null,
+    technologyId: null,
+    type: 'Primary',
+    projects: 1,
+    level: 'Unset',
+  };
+}
+
+function getDuplicateKey(employeeId: string, row: BulkRow) {
+  if (!row.domainId || !row.competencyId || !row.technologyId) return null;
+  return `${employeeId}:${row.domainId}:${row.competencyId}:${row.technologyId}`;
+}
+
+function buildTechnologyLocationMap(hierarchy: SkillHierarchy[]) {
+  const map = new Map<number, { domainId: number; competencyId: number }>();
+
+  for (const domain of hierarchy) {
+    for (const competency of domain.competencies) {
+      for (const technology of competency.technologies) {
+        map.set(technology.id, {
+          domainId: domain.domainId,
+          competencyId: competency.competencyId,
+        });
+      }
+    }
+  }
+
+  return map;
+}
+
+export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName, readOnlyLevel = false, canApprove = false, onSuccess, onClose }) => {
+  const { data: hierarchy = [], isLoading: hierarchyLoading } = useSkillsHierarchy();
+  const {
+    data: existingAssessments = [],
+    isLoading: existingAssessmentsLoading,
+  } = useEmployeeAssessments(employeeId);
+  const { checkDuplicate } = useDuplicateAssessmentCheck(employeeId);
+  const createAssessment = useCreateAssessment();
+  const updateAssessment = useUpdateAssessment();
+  const deleteAssessment = useDeleteAssessment();
+  const approveAssessment = useApproveAssessment();
+  const loadedEmployeeRef = useRef<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
+
+  const [rows, setRows] = useState<BulkRow[]>([createEmptyRow()]);
+
+  const [search, setSearch] = useState('');
+  // Sort state is purely cosmetic (header indicators). Actual order lives in `rows`.
+  const [activeSortKey, setActiveSortKey] = useState<SortKey | null>('domain');
+  const [activeSortOrder, setActiveSortOrder] = useState<SortOrder>('asc');
+  const [editingRowIds, setEditingRowIds] = useState<Set<string>>(new Set());
+  const [approvingRowIds, setApprovingRowIds] = useState<Set<string>>(new Set());
+  const [savingRowIds, setSavingRowIds] = useState<Set<string>>(new Set());
+
+  const techLocationMap = useMemo(() => buildTechnologyLocationMap(hierarchy), [hierarchy]);
+
+  useEffect(() => {
+    loadedEmployeeRef.current = null;
+    setRows([createEmptyRow()]);
+    setEditingRowIds(new Set());
+    setApprovingRowIds(new Set());
+    setSavingRowIds(new Set());
+    setActiveSortKey('domain');
+    setActiveSortOrder('asc');
+  }, [employeeId]);
+
+  useEffect(() => {
+    if (hierarchyLoading || existingAssessmentsLoading) return;
+    if (loadedEmployeeRef.current === employeeId) return;
+
+    loadedEmployeeRef.current = employeeId;
+
+    if (!existingAssessments.length) {
+      setRows([createEmptyRow()]);
+      return;
+    }
+
+    const populatedRows: BulkRow[] = existingAssessments.map((assessment) => {
+      const mapped = techLocationMap.get(assessment.technology_id);
+
+      return {
+        id: crypto.randomUUID(),
+        existingAssessmentId: assessment.id,
+        isNew: false,
+        status: (assessment.status as 'approved' | 'pending') ?? 'approved',
+        domainId: mapped?.domainId ?? null,
+        competencyId: mapped?.competencyId ?? null,
+        technologyId: assessment.technology_id,
+        type: assessment.type,
+        projects: assessment.projects,
+        level: (assessment.level as AssessmentLevel) ?? 'Beginner',
+        error: mapped ? undefined : 'Technology no longer exists in skill catalog.',
+      };
+    });
+
+    // Default sort: Skill Area → Skill → Technology (alphabetically)
+    populatedRows.sort((a, b) => {
+      const resolve = (row: BulkRow) => {
+        const domain = hierarchy.find((d) => d.domainId === row.domainId);
+        const competency = domain?.competencies.find((c) => c.competencyId === row.competencyId);
+        return {
+          domainName: domain?.domainName ?? '',
+          competencyName: competency?.competencyName ?? '',
+          techName: competency?.technologies.find((t) => t.id === row.technologyId)?.name ?? '',
+        };
+      };
+      const an = resolve(a);
+      const bn = resolve(b);
+      return (
+        an.domainName.localeCompare(bn.domainName) ||
+        an.competencyName.localeCompare(bn.competencyName) ||
+        an.techName.localeCompare(bn.techName)
+      );
+    });
+
+    // New empty row at top, existing assessments below
+    setRows([createEmptyRow(), ...populatedRows]);
+  }, [
+    hierarchyLoading,
+    existingAssessmentsLoading,
+    employeeId,
+    existingAssessments,
+    techLocationMap,
+  ]);
+
+  const getDomainForRow = useCallback((domainId: number | null) => {
+    if (domainId === null) return null;
+    return hierarchy.find((d) => d.domainId === domainId);
+  }, [hierarchy]);
+
+  const getCompetenciesForDomain = useCallback((domainId: number | null) => {
+    if (domainId === null) return [];
+    const domain = hierarchy.find((d) => d.domainId === domainId);
+    return domain?.competencies || [];
+  }, [hierarchy]);
+
+  const getTechnologiesForCompetency = useCallback((domainId: number | null, competencyId: number | null) => {
+    if (domainId === null || competencyId === null) return [];
+    const domain = hierarchy.find((d) => d.domainId === domainId);
+    const competency = domain?.competencies.find((c) => c.competencyId === competencyId);
+    return competency?.technologies || [];
+  }, [hierarchy]);
+
+  const updateRow = useCallback((rowId: string, field: keyof BulkRow, value: any) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+
+        const updated = { ...r, [field]: value };
+
+        if (field === 'domainId' && value !== r.domainId) {
+          updated.competencyId = null;
+          updated.technologyId = null;
+          updated.existingAssessmentId = undefined;
+        }
+        if (field === 'competencyId' && value !== r.competencyId) {
+          updated.technologyId = null;
+          updated.existingAssessmentId = undefined;
+        }
+
+        if (field === 'technologyId' && value !== null) {
+          if (value !== r.technologyId) {
+            updated.existingAssessmentId = undefined;
+          }
+        }
+
+        if (field === 'technologyId' && value === null) {
+          updated.existingAssessmentId = undefined;
+        }
+
+        updated.error = undefined;
+
+        return updated;
+      })
+    );
+  }, [getTechnologiesForCompetency]);
+
+  const isRowEditable = useCallback((row: BulkRow) => {
+    return row.isNew === true || editingRowIds.has(row.id) || approvingRowIds.has(row.id);
+  }, [editingRowIds, approvingRowIds]);
+
+const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
+    const errors: string[] = [];
+
+    if (!row.domainId) errors.push('Skill Area');
+    if (!row.competencyId) errors.push('Skill');
+    if (!row.technologyId) errors.push('Technology');
+
+    const enriched = { ...row };
+
+    if (errors.length === 0) {
+      const duplicateKey = getDuplicateKey(employeeId, row);
+      const duplicateRow = rows.find((candidate) =>
+        candidate.id !== row.id &&
+        getDuplicateKey(employeeId, candidate) === duplicateKey
+      );
+      const duplicate = checkDuplicate(row.domainId!, row.competencyId!, row.technologyId!);
+
+      if (isRowEditable(row) && duplicateRow) {
+        errors.push('Duplicate: this resource already has the same Skill Area, Skill, and Technology.');
+      }
+
+      if (
+        isRowEditable(row) &&
+        duplicate.isDuplicate &&
+        duplicate.existingAssessmentId !== undefined &&
+        duplicate.existingAssessmentId !== row.existingAssessmentId
+      ) {
+        enriched.isDuplicate = true;
+        enriched.existingAssessmentId = duplicate.existingAssessmentId;
+        errors.push('Duplicate: this resource already has the same Skill Area, Skill, and Technology.');
+      }
+
+      enriched.scorePreview = computeAssessmentScorePreview(row.type, row.projects, row.level);
+    }
+
+    if (errors.length > 0) {
+      enriched.error = errors.some((error) => error.startsWith('Duplicate:'))
+        ? errors.find((error) => error.startsWith('Duplicate:'))
+        : 'Missing: ' + errors.join(', ');
+    }
+
+    return enriched;
+  }, [checkDuplicate, employeeId, isRowEditable, rows]);
+
+  const addRow = useCallback(() => {
+    // Prepend so new row stays at the top, never jumps
+    setRows((prev) => [createEmptyRow(), ...prev]);
+  }, []);
+
+  const setRowError = useCallback((rowId: string, error: string | undefined) => {
+    setRows((prev) => prev.map((r) => r.id === rowId ? { ...r, error } : r));
+  }, []);
+
+  // ✓ click — validate then save that single row immediately
+  const handleSaveRow = useCallback(async (rowId: string) => {
+    const row = rows.find((r) => r.id === rowId);
+    if (!row) return;
+
+    const isApproving = approvingRowIds.has(rowId);
+
+    // Validate
+    const enriched = validateAndEnrichRow(row);
+    if (enriched.error) {
+      setRowError(rowId, enriched.error);
+      return;
+    }
+
+    setRowError(rowId, undefined);
+    setSavingRowIds((prev) => new Set(prev).add(rowId));
+
+    try {
+      if (isApproving && row.existingAssessmentId) {
+        // Manager approving a pending assessment — set status=approved + level
+        const saved = await approveAssessment.mutateAsync({
+          id: row.existingAssessmentId,
+          data: { type: row.type, projects: row.projects, level: row.level },
+        });
+        setRows((prev) => prev.map((r) =>
+          r.id === rowId ? { ...r, status: 'approved', level: saved.level as AssessmentLevel } : r
+        ));
+        setApprovingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
+      } else if (row.existingAssessmentId) {
+        // Regular update
+        await updateAssessment.mutateAsync({
+          id: row.existingAssessmentId,
+          data: { type: row.type, projects: row.projects, level: row.level },
+        });
+        setEditingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
+      } else {
+        // Create new assessment
+        const saved = await createAssessment.mutateAsync({
+          employee_id: employeeId,
+          technology_id: row.technologyId!,
+          type: row.type,
+          projects: row.projects,
+          level: row.level,
+        });
+        setRows((prev) => prev.map((r) =>
+          r.id === rowId
+            ? { ...r, isNew: false, status: saved.status as 'approved' | 'pending', existingAssessmentId: saved.id, error: undefined }
+            : r
+        ));
+      }
+      onSuccess?.();
+    } catch (err: any) {
+      setRowError(rowId, err.response?.data?.message || 'Save failed. Try again.');
+    } finally {
+      setSavingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
+    }
+  }, [rows, approvingRowIds, validateAndEnrichRow, approveAssessment, updateAssessment, createAssessment, employeeId, onSuccess]);
+
+  const deleteRow = useCallback(async (rowId: string) => {
+    const row = rows.find((r) => r.id === rowId);
+    if (!row) return;
+
+    if (row.existingAssessmentId) {
+      const confirmed = await confirm({
+        title: 'Delete Assessment',
+        message: 'This will permanently delete the assessment from the database. Continue?',
+        confirmLabel: 'Delete',
+        variant: 'danger',
+      });
+      if (!confirmed) return;
+      try {
+        await deleteAssessment.mutateAsync(row.existingAssessmentId);
+      } catch {
+        setRowError(rowId, 'Delete failed. Try again.');
+        return;
+      }
+    }
+
+    setEditingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
+    setApprovingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
+    setSavingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
+    setRows((prev) => prev.filter((r) => r.id !== rowId));
+  }, [rows, deleteAssessment, confirm, setRowError]);
+
+  // displayRows = rows in their stable insertion order, search-filtered only.
+  // No reactive sorting — order only changes when the user explicitly clicks a header.
+  const displayRows = useMemo(() => {
+    if (!search.trim()) return rows;
+    const q = search.toLowerCase();
+    return rows.filter((r) => {
+      const domain = getDomainForRow(r.domainId)?.domainName || '';
+      const comp = getCompetenciesForDomain(r.domainId).find((c) => c.competencyId === r.competencyId)?.competencyName || '';
+      const tech = getTechnologiesForCompetency(r.domainId, r.competencyId).find((t) => t.id === r.technologyId)?.name || '';
+      return (
+        domain.toLowerCase().includes(q) ||
+        comp.toLowerCase().includes(q) ||
+        tech.toLowerCase().includes(q)
+      );
+    });
+  }, [rows, search, getDomainForRow, getCompetenciesForDomain, getTechnologiesForCompetency]);
+
+  const toggleSort = useCallback((key: SortKey) => {
+    const nextOrder = activeSortKey === key && activeSortOrder === 'asc' ? 'desc' : 'asc';
+    setActiveSortKey(key);
+    setActiveSortOrder(nextOrder);
+
+    // Resolve the text label for each sort key (always sorts by name, never by ID)
+    const getLabel = (row: BulkRow, field: SortKey): string => {
+      switch (field) {
+        case 'domain': {
+          return hierarchy.find((d) => d.domainId === row.domainId)?.domainName ?? '';
+        }
+        case 'competency': {
+          const domain = hierarchy.find((d) => d.domainId === row.domainId);
+          return domain?.competencies.find((c) => c.competencyId === row.competencyId)?.competencyName ?? '';
+        }
+        case 'technology': {
+          const domain = hierarchy.find((d) => d.domainId === row.domainId);
+          const comp = domain?.competencies.find((c) => c.competencyId === row.competencyId);
+          return comp?.technologies.find((t) => t.id === row.technologyId)?.name ?? '';
+        }
+        case 'type': return row.type;
+        case 'projects': return String(row.projects);
+      }
+    };
+
+    setRows((prev) => {
+      const newRows = [...prev];
+      newRows.sort((a, b) => {
+        // Unsaved new rows always stay at top
+        if (a.isNew && !b.isNew) return -1;
+        if (!a.isNew && b.isNew) return 1;
+
+        // Primary: the clicked column (respects asc/desc)
+        const primaryCmp = getLabel(a, key).localeCompare(getLabel(b, key));
+        if (primaryCmp !== 0) return nextOrder === 'asc' ? primaryCmp : -primaryCmp;
+
+        // Secondary tiebreakers: always domain → competency → technology (ascending)
+        // so related items stay grouped together regardless of primary sort
+        const tiebreakers: SortKey[] = ['domain', 'competency', 'technology'];
+        for (const tb of tiebreakers) {
+          if (tb === key) continue; // already the primary — skip
+          const cmp = getLabel(a, tb).localeCompare(getLabel(b, tb));
+          if (cmp !== 0) return cmp;
+        }
+
+        return 0;
+      });
+      return newRows;
+    });
+  }, [activeSortKey, activeSortOrder, hierarchy]);
+
+
+  const SortIcon = ({ isActive, order }: { isActive: boolean; order: SortOrder }) => {
+    if (!isActive) return <span style={{ color: 'rgb(var(--text-3))' }}>⇅</span>;
+    return order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
+  };
+
+  const TableHeader = ({ label, sortKey: sk, help }: { label: string; sortKey: SortKey; help?: string }) => (
+    <th
+      onClick={() => toggleSort(sk)}
+      className="px-2.5 py-2 text-left text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap cursor-pointer"
+      style={{
+        color: 'rgb(var(--text-2))',
+        backgroundColor: 'rgb(var(--surface-2))',
+        position: 'sticky',
+        top: 0,
+        zIndex: 30,
+        borderBottom: '1px solid rgb(var(--border))',
+        userSelect: 'none',
+      }}
+    >
+      <div className="flex items-center gap-1.5">
+        {label}
+        {help && <InfoTip text={help} />}
+        <SortIcon isActive={activeSortKey === sk} order={activeSortOrder} />
+      </div>
+    </th>
+  );
+
+  const PlainHeader = ({ label, help }: { label: string; help?: string }) => (
+    <th className="px-2.5 py-2 text-left text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-2))', position: 'sticky', top: 0, zIndex: 20, backgroundColor: 'rgb(var(--surface-2))' }}>
+      <div className="flex items-center gap-1.5">
+        {label}
+        {help && <InfoTip text={help} />}
+      </div>
+    </th>
+  );
+
+  const isInitializing = hierarchyLoading || existingAssessmentsLoading;
+  const savedCount = rows.filter((r) => !r.isNew && r.status === 'approved').length;
+  const pendingCount = rows.filter((r) => !r.isNew && r.status === 'pending').length;
+  const unsavedCount = rows.filter((r) => r.isNew).length;
+
+  return (
+    <>
+    {confirmDialog}
+    <div className="h-full flex flex-col gap-3 pt-1 animate-slide-up">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-bold leading-tight" style={{ color: 'rgb(var(--text-1))' }}>
+            {readOnlyLevel ? 'My Skill Entries' : 'Assess Skills'}
+          </h3>
+          <p className="text-xs mt-1 max-w-2xl" style={{ color: 'rgb(var(--text-3))' }}>
+            {readOnlyLevel
+              ? 'Add skills and technologies you have used. Saved rows stay pending until a manager approves them.'
+              : 'Add skills used by this person. Managers approve rows and set the final level.'}
+          </p>
+          {employeeName && (
+            <p className="text-sm mt-1" style={{ color: 'rgb(var(--text-2))' }}>
+              <span className="font-semibold" style={{ color: 'rgb(var(--text-1))' }}>
+                Selected Resource:
+              </span>{' '}
+              {employeeName}
+            </p>
+          )}
+        </div>
+        {onClose && (
+          <button onClick={onClose} className="btn-ghost w-8 h-8 p-0 rounded-lg flex items-center justify-center">
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2 items-center">
+        <input
+          type="text"
+          placeholder="Search by skill area, skill, or technology..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="field w-full h-10"
+        />
+        <div className="flex items-center gap-2">
+          {unsavedCount > 0 && (
+            <span
+              className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
+              title="Rows added on screen but not saved yet."
+              style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
+            >
+              {unsavedCount} unsaved
+            </span>
+          )}
+          {pendingCount > 0 && (
+            <span
+              className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
+              title="Waiting for manager approval. Pending rows do not count in final scores yet."
+              style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#f97316' }}
+            >
+              {pendingCount} pending
+            </span>
+          )}
+          <span
+            className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
+            title="Approved rows count in reports and dashboards."
+            style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}
+          >
+            {savedCount} approved
+          </span>
+        </div>
+      </div>
+
+      {isInitializing && (
+        <div className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}>
+          Loading existing assessments...
+        </div>
+      )}
+
+      <div className="overflow-auto rounded-lg border flex-1" style={{ borderColor: 'rgb(var(--border))' }}>
+        <table className="w-full table-fixed text-xs" style={{ minWidth: '900px' }}>
+          <colgroup>
+            <col style={{ width: '14%' }} />{/* Skill Area */}
+            <col style={{ width: '18%' }} />{/* Skill */}
+            <col style={{ width: '18%' }} />{/* Technology */}
+            <col style={{ width: '10%' }} />{/* Type */}
+            <col style={{ width: '7%'  }} />{/* Projects */}
+            <col style={{ width: '9%'  }} />{/* Level */}
+            <col style={{ width: '12%' }} />{/* Score */}
+            <col style={{ width: '12%' }} />{/* Actions */}
+          </colgroup>
+          <thead>
+            <tr style={{ backgroundColor: 'rgb(var(--surface-2))', borderBottom: '1px solid rgb(var(--border))' }}>
+              <TableHeader label="Skill Area" sortKey="domain" help="A group of related skills, such as Cloud, SRE, or Security." />
+              <TableHeader label="Skill" sortKey="competency" help="The skill being assessed." />
+              <TableHeader label="Technology" sortKey="technology" help="The specific tool or technology used for this skill." />
+              <TableHeader label="Type" sortKey="type" help="How important this technology is for the skill." />
+              <TableHeader label="Projects" sortKey="projects" help="How many real projects used this technology." />
+              <PlainHeader label="Level" help="How strong the person is in this technology." />
+              <PlainHeader label="Score" help="Auto-calculated from importance, projects, and level." />
+              <PlainHeader label="Actions" />
+            </tr>
+          </thead>
+          <tbody>
+            {displayRows.map((row) => {
+              const enriched = validateAndEnrichRow(row);
+              const competencies = getCompetenciesForDomain(row.domainId);
+              const technologies = getTechnologiesForCompetency(row.domainId, row.competencyId);
+              const domainLabel = hierarchy.find((d) => d.domainId === row.domainId)?.domainName ?? '—';
+              const competencyLabel = competencies.find((c) => c.competencyId === row.competencyId)?.competencyName ?? '—';
+              const technologyLabel = technologies.find((t) => t.id === row.technologyId)?.name ?? '—';
+              const projectLabel = row.projects === 3 ? '3+' : String(row.projects);
+              const rowEditable = isRowEditable(row);
+
+              const isApproving = approvingRowIds.has(row.id);
+              const isPending = row.status === 'pending' && !row.isNew;
+              const rowBg = enriched.error
+                ? 'rgba(var(--danger-soft), 0.12)'
+                : isApproving
+                  ? 'rgba(251,146,60,0.10)'   // orange tint — approval mode
+                  : rowEditable
+                    ? 'rgba(var(--accent-soft), 0.15)'
+                    : isPending
+                      ? 'rgba(251,146,60,0.06)' // subtle orange for pending
+                      : 'transparent';
+
+              return (
+                <tr
+                  key={row.id}
+                  style={{
+                    borderBottom: '1px solid rgb(var(--border))',
+                    backgroundColor: rowBg,
+                    borderLeft: isApproving
+                      ? '3px solid #f97316'
+                      : rowEditable
+                        ? '3px solid rgb(var(--accent))'
+                        : isPending
+                          ? '3px solid #f97316'
+                          : '3px solid transparent',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(var(--surface-2))')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = rowBg)}
+                >
+                  {/* Skill Area */}
+                  <td className="px-2.5 py-2 align-middle">
+                    {rowEditable
+                      ? <SearchableSelect value={row.domainId ? String(row.domainId) : ''} onChange={(v) => updateRow(row.id, 'domainId', v ? Number(v) : null)} invalid={enriched.error?.includes('Skill Area')} className="w-full" placeholder="Search skill area..." options={[{ value: '', label: '—' }, ...hierarchy.map((d) => ({ value: String(d.domainId), label: d.domainName }))]} />
+                      : <span className="block truncate text-xs" style={{ color: domainLabel === '—' ? 'rgb(var(--text-3))' : 'rgb(var(--text-1))' }}>{domainLabel}</span>
+                    }
+                  </td>
+
+                  {/* Skill */}
+                  <td className="px-2.5 py-2 align-middle">
+                    {rowEditable
+                      ? <SearchableSelect value={row.competencyId ? String(row.competencyId) : ''} onChange={(v) => updateRow(row.id, 'competencyId', v ? Number(v) : null)} disabled={!row.domainId} invalid={enriched.error?.includes('Skill')} className="w-full" placeholder="Search skill..." options={[{ value: '', label: '—' }, ...competencies.map((c) => ({ value: String(c.competencyId), label: c.competencyName }))]} />
+                      : <span className="block truncate text-xs" style={{ color: competencyLabel === '—' ? 'rgb(var(--text-3))' : 'rgb(var(--text-1))' }}>{competencyLabel}</span>
+                    }
+                  </td>
+
+                  {/* Technology */}
+                  <td className="px-2.5 py-2 align-middle">
+                    {rowEditable
+                      ? <SearchableSelect value={row.technologyId ? String(row.technologyId) : ''} onChange={(v) => updateRow(row.id, 'technologyId', v ? Number(v) : null)} disabled={!row.competencyId} invalid={enriched.error?.includes('Technology')} className="w-full" placeholder="Search technology..." options={[{ value: '', label: '—' }, ...technologies.map((t) => ({ value: String(t.id), label: t.name }))]} />
+                      : <span className="block truncate text-xs" style={{ color: technologyLabel === '—' ? 'rgb(var(--text-3))' : 'rgb(var(--text-1))' }}>{technologyLabel}</span>
+                    }
+                  </td>
+
+                  {/* Type */}
+                  <td className="px-2.5 py-2 align-middle">
+                    {rowEditable
+                      ? <SearchableSelect value={row.type} onChange={(v) => updateRow(row.id, 'type', v as BulkRow['type'])} className="w-full" placeholder="Importance..." options={TYPE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))} />
+                      : <span className="text-xs" style={{ color: 'rgb(var(--text-1))' }}>{row.type}</span>
+                    }
+                  </td>
+
+                  {/* Projects */}
+                  <td className="px-2.5 py-2 align-middle">
+                    {rowEditable
+                      ? <SearchableSelect value={String(row.projects)} onChange={(v) => updateRow(row.id, 'projects', Number(v))} className="w-full" placeholder="Projects..." options={PROJECT_OPTIONS.map((option) => ({ value: option.value, label: option.label }))} />
+                      : <span className="text-xs" style={{ color: 'rgb(var(--text-1))' }}>{projectLabel}</span>
+                    }
+                  </td>
+
+                  {/* Level — editable in approval mode or by manager; read-only for engineers */}
+                  <td className="px-2.5 py-2 align-middle">
+                    {(rowEditable && !readOnlyLevel) || isApproving
+                      ? <SearchableSelect value={row.level} onChange={(v) => updateRow(row.id, 'level', v as AssessmentLevel)} className="w-full" placeholder="Level..." options={LEVEL_OPTIONS.map((l) => ({ value: l, label: LEVEL_LABELS[l] }))} />
+                      : isPending
+                        ? <span className="text-xs font-semibold" style={{ color: LEVEL_COLORS[row.level] ?? 'rgb(var(--text-2))' }}>
+                            {LEVEL_LABELS[row.level] ?? row.level}
+                          </span>
+                        : <span className="text-xs font-semibold" style={{ color: LEVEL_COLORS[row.level] ?? 'rgb(var(--text-2))' }}>
+                            {LEVEL_LABELS[row.level] ?? row.level}
+                            {readOnlyLevel && row.level !== 'Unset' && <span className="ml-1 text-[10px] font-normal" style={{ color: 'rgb(var(--text-3))' }}>(manager)</span>}
+                          </span>
+                    }
+                  </td>
+
+                  {/* Score */}
+                  <td className="px-2.5 py-2 align-middle">
+                    <div className="flex items-center gap-1">
+                      {enriched.scorePreview !== undefined ? (
+                        <>
+                          <Stars count={Math.round(enriched.scorePreview * 5)} />
+                          <span className="text-xs" style={{ color: 'rgb(var(--text-2))' }}>
+                            {(enriched.scorePreview * 100).toFixed(0)}%
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs" style={{ color: 'rgb(var(--text-3))' }}>—</span>
+                      )}
+                    </div>
+                  </td>
+
+
+                  <td className="px-2.5 py-1.5 align-middle">
+                    <div className="flex items-center gap-1.5">
+
+                      {/* Save (✓) when editing or approving */}
+                      {rowEditable ? (
+                        <button
+                          onClick={() => handleSaveRow(row.id)}
+                          disabled={savingRowIds.has(row.id)}
+                          className="btn-ghost w-7 h-7 p-0 rounded-md flex items-center justify-center"
+                          title={isApproving ? 'Approve & save' : 'Save this row'}
+                        >
+                          {savingRowIds.has(row.id)
+                            ? <span className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: isApproving ? '#f97316' : 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
+                            : <Check size={14} style={{ color: isApproving ? '#f97316' : 'rgb(var(--success))' }} />}
+                        </button>
+                      ) : isPending && canApprove ? (
+                        /* Approve button — manager clicks to enter approval mode */
+                        <button
+                          onClick={() => setApprovingRowIds((prev) => new Set(prev).add(row.id))}
+                          className="btn-ghost w-7 h-7 p-0 rounded-md flex items-center justify-center"
+                          title="Approve this skill"
+                          style={{ color: '#f97316' }}
+                        >
+                          <ShieldCheck size={15} />
+                        </button>
+                      ) : !isPending ? (
+                        /* Edit button — normal approved rows */
+                        <button
+                          onClick={() => setEditingRowIds((prev) => new Set(prev).add(row.id))}
+                          className="btn-ghost w-7 h-7 p-0 rounded-md flex items-center justify-center"
+                          title="Edit row"
+                          style={{ color: 'rgb(var(--accent))' }}
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                      ) : (
+                        /* Pending, no canApprove (engineer view) — no edit button */
+                        <div className="w-7 h-7" />
+                      )}
+
+                      {/* Delete */}
+                      <button
+                        onClick={() => deleteRow(row.id)}
+                        disabled={savingRowIds.has(row.id) || deleteAssessment.isPending}
+                        className="btn-ghost w-7 h-7 p-0 rounded-md flex items-center justify-center"
+                        title="Delete row"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+
+                      {/* Pending Approval badge — shown after delete for pending rows */}
+                      {isPending && (
+                        <span
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
+                          style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#f97316' }}
+                        >
+                          Pending Approval
+                        </span>
+                      )}
+
+                      {/* Per-row error */}
+                      {enriched.error && (
+                        <span className="text-[10px] max-w-[140px] leading-tight" style={{ color: 'rgb(var(--danger))' }}>
+                          {enriched.error}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <button
+          onClick={addRow}
+          disabled={isInitializing}
+          className="btn-secondary flex items-center gap-2 px-4 text-xs"
+        >
+          <Plus size={15} /> Add Row
+        </button>
+
+        {onClose && (
+          <button onClick={onClose} className="btn-ghost px-5 text-xs">
+            Close
+          </button>
+        )}
+      </div>
+    </div>
+    </>
+  );
+};

@@ -1,0 +1,341 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Theme Variables ────────────────────────────────────────────────────── */
+/* All values are space-separated RGB triplets for Tailwind opacity modifier  */
+
+@layer base {
+
+  /* ── Light Theme (default) ────────────────────────────────────────────── */
+  :root {
+    --bg:           249 250 251;   /* gray-50 */
+    --surface:      255 255 255;   /* white */
+    --surface-2:    243 244 246;   /* gray-100 */
+    --surface-3:    229 231 235;   /* gray-200 */
+
+    --border:       229 231 235;   /* gray-200 */
+    --border-2:     209 213 219;   /* gray-300 */
+
+    --text-1:       17 24 39;      /* gray-900 */
+    --text-2:       75 85 99;      /* gray-600 */
+    --text-3:       156 163 175;   /* gray-400 */
+
+    --accent:       109 40 217;    /* violet-700 */
+    --accent-h:     124 58 237;    /* violet-600 hover */
+    --accent-soft:  237 233 254;   /* violet-100 */
+    --accent-txt:   91 33 182;     /* violet-800 */
+    --accent-ring:  196 181 253;   /* violet-300 */
+
+    --success:      22 163 74;     /* green-600 */
+    --success-soft: 220 252 231;
+    --warning:      217 119 6;     /* amber-600 */
+    --warning-soft: 254 243 199;
+    --danger:       220 38 38;     /* red-600 */
+    --danger-soft:  254 226 226;
+
+    --sidebar-w:    240px;
+    --sidebar-w-sm: 64px;
+    --radius:       0.75rem;
+
+    /* Legacy compat (used by old hsl()-based classes) */
+    --background:        0 0% 98%;
+    --foreground:        220 14% 10%;
+    --card:              0 0% 100%;
+    --card-foreground:   220 14% 10%;
+    --primary:           263 70% 50%;
+    --primary-foreground: 0 0% 100%;
+    --muted:             220 14% 96%;
+    --muted-foreground:  215 16% 47%;
+    --border-hsl:        220 13% 90%;
+    --ring:              263 70% 50%;
+  }
+
+  /* ── Dark Theme ───────────────────────────────────────────────────────── */
+  .dark {
+    --bg:           9 9 11;        /* zinc-950 */
+    --surface:      24 24 27;      /* zinc-900 */
+    --surface-2:    39 39 42;      /* zinc-800 */
+    --surface-3:    63 63 70;      /* zinc-700 */
+
+    --border:       63 63 70;      /* zinc-700 */
+    --border-2:     82 82 91;      /* zinc-600 */
+
+    --text-1:       250 250 250;   /* zinc-50 */
+    --text-2:       161 161 170;   /* zinc-400 */
+    --text-3:       113 113 122;   /* zinc-500 */
+
+    --accent:       139 92 246;    /* violet-500 */
+    --accent-h:     124 58 237;    /* violet-600 */
+    --accent-soft:  46 16 101;     /* dark violet */
+    --accent-txt:   196 181 253;   /* violet-300 */
+    --accent-ring:  109 40 217;    /* violet-700 */
+
+    --success:      74 222 128;    /* green-400 */
+    --success-soft: 5 46 22;
+    --warning:      251 191 36;    /* amber-400 */
+    --warning-soft: 78 45 3;
+    --danger:       248 113 113;   /* red-400 */
+    --danger-soft:  69 10 10;
+
+    --background:        240 10% 4%;
+    --foreground:        0 0% 98%;
+    --card:              240 10% 7%;
+    --card-foreground:   0 0% 98%;
+    --primary:           263 70% 60%;
+    --primary-foreground: 0 0% 100%;
+    --muted:             240 4% 16%;
+    --muted-foreground:  240 5% 65%;
+    --border-hsl:        240 6% 25%;
+    --ring:              263 70% 60%;
+  }
+
+  /* ── Midnight / DevOps Theme ──────────────────────────────────────────── */
+  .midnight {
+    --bg:           3 7 18;        /* near-black navy */
+    --surface:      9 14 26;       /* dark navy */
+    --surface-2:    15 23 42;      /* slate-900 */
+    --surface-3:    30 41 59;      /* slate-800 */
+
+    --border:       30 41 59;      /* slate-800 */
+    --border-2:     51 65 85;      /* slate-700 */
+
+    --text-1:       226 232 240;   /* slate-200 */
+    --text-2:       100 116 139;   /* slate-500 */
+    --text-3:       71 85 105;     /* slate-600 */
+
+    --accent:       6 182 212;     /* cyan-500 */
+    --accent-h:     8 145 178;     /* cyan-600 */
+    --accent-soft:  8 51 68;       /* dark cyan */
+    --accent-txt:   103 232 249;   /* cyan-300 */
+    --accent-ring:  21 94 117;     /* cyan-900 */
+
+    --success:      16 185 129;    /* emerald-500 */
+    --success-soft: 5 46 22;
+    --warning:      245 158 11;    /* amber-500 */
+    --warning-soft: 78 45 3;
+    --danger:       239 68 68;     /* red-500 */
+    --danger-soft:  69 10 10;
+
+    --background:        222 47% 5%;
+    --foreground:        210 40% 90%;
+    --card:              222 47% 7%;
+    --card-foreground:   210 40% 90%;
+    --primary:           189 94% 43%;
+    --primary-foreground: 222 47% 5%;
+    --muted:             222 47% 10%;
+    --muted-foreground:  210 16% 50%;
+    --border-hsl:        222 30% 18%;
+    --ring:              189 94% 43%;
+  }
+}
+
+/* ─── Global Resets & Base ───────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  border-color: rgb(var(--border));
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  background-color: rgb(var(--bg));
+  color: rgb(var(--text-1));
+  transition: background-color 0.3s ease, color 0.2s ease;
+  min-height: 100vh;
+}
+
+/* ─── Custom Scrollbar ───────────────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgb(var(--surface-2)); }
+::-webkit-scrollbar-thumb { background: rgb(var(--border-2)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--text-3)); }
+
+/* ─── Component Utilities ────────────────────────────────────────────────── */
+
+@layer components {
+
+  /* Cards */
+  .card {
+    @apply rounded-xl border bg-surface shadow-card transition-shadow;
+    border-color: rgb(var(--border));
+    background-color: rgb(var(--surface));
+  }
+
+  .card-hover {
+    @apply card hover:shadow-card-hover cursor-pointer;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-medium rounded-lg
+           transition-all duration-150 focus:outline-none focus-visible:ring-2
+           disabled:opacity-50 disabled:cursor-not-allowed select-none;
+    --tw-ring-color: rgb(var(--accent-ring));
+  }
+
+  .btn-primary {
+    @apply btn px-4 py-2 text-sm;
+    background-color: rgb(var(--accent));
+    color: white;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: rgb(var(--accent-h));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgb(var(--accent) / 0.35);
+  }
+  .btn-primary:active:not(:disabled) { transform: translateY(0); }
+
+  .btn-secondary {
+    @apply btn px-4 py-2 text-sm border;
+    background-color: rgb(var(--surface-2));
+    color: rgb(var(--text-1));
+    border-color: rgb(var(--border));
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: rgb(var(--surface-3));
+  }
+
+  .btn-ghost {
+    @apply btn px-3 py-2 text-sm;
+    color: rgb(var(--text-2));
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background-color: rgb(var(--surface-2));
+    color: rgb(var(--text-1));
+  }
+
+  .btn-danger {
+    @apply btn px-4 py-2 text-sm;
+    background-color: rgb(var(--danger));
+    color: white;
+  }
+  .btn-danger:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  /* Form inputs */
+  .field {
+    @apply w-full rounded-lg px-3 py-2 text-sm transition-all duration-150
+           focus:outline-none focus:ring-2;
+    background-color: rgb(var(--surface-2));
+    border: 1px solid rgb(var(--border));
+    color: rgb(var(--text-1));
+    --tw-ring-color: rgb(var(--accent) / 0.4);
+  }
+  .field::placeholder { color: rgb(var(--text-3)); }
+  .field:focus { border-color: rgb(var(--accent)); }
+
+  .field-label {
+    @apply block text-xs font-semibold uppercase tracking-wide mb-1.5;
+    color: rgb(var(--text-2));
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold;
+  }
+  .badge-accent {
+    background-color: rgb(var(--accent-soft));
+    color: rgb(var(--accent-txt));
+  }
+  .badge-success {
+    background-color: rgb(var(--success-soft));
+    color: rgb(var(--success));
+  }
+  .badge-warning {
+    background-color: rgb(var(--warning-soft));
+    color: rgb(var(--warning));
+  }
+  .badge-danger {
+    background-color: rgb(var(--danger-soft));
+    color: rgb(var(--danger));
+  }
+
+  /* Nav item */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+           transition-all duration-150 cursor-pointer select-none;
+    color: rgb(var(--text-2));
+  }
+  .nav-item:hover {
+    background-color: rgb(var(--surface-2));
+    color: rgb(var(--text-1));
+  }
+  .nav-item.active {
+    background-color: rgb(var(--accent-soft));
+    color: rgb(var(--accent));
+  }
+
+  /* Table */
+  .data-table { @apply w-full text-sm; }
+  .data-table thead tr {
+    border-bottom: 1px solid rgb(var(--border));
+    background-color: rgb(var(--surface-2));
+  }
+  .data-table thead th {
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider;
+    color: rgb(var(--text-2));
+  }
+  .data-table tbody tr {
+    border-bottom: 1px solid rgb(var(--border));
+    transition: background-color 0.1s;
+  }
+  .data-table tbody tr:last-child { border-bottom: none; }
+  .data-table tbody tr:hover { background-color: rgb(var(--surface-2) / 0.5); }
+  .data-table tbody td { @apply px-4 py-3; color: rgb(var(--text-1)); }
+
+  /* Section header */
+  .section-title {
+    @apply text-xl font-bold tracking-tight;
+    color: rgb(var(--text-1));
+  }
+  .section-desc {
+    @apply text-sm mt-0.5;
+    color: rgb(var(--text-2));
+  }
+
+  /* Glass effect */
+  .glass {
+    backdrop-filter: blur(12px) saturate(150%);
+    background-color: rgb(var(--surface) / 0.8);
+    border: 1px solid rgb(var(--border) / 0.6);
+  }
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+
+@keyframes spin       { to { transform: rotate(360deg) } }
+@keyframes fade-in   { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slide-up  { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes slide-in  { from { opacity: 0; transform: translateX(-10px) } to { opacity: 1; transform: translateX(0) } }
+@keyframes scale-in  { from { opacity: 0; transform: scale(0.97) } to { opacity: 1; transform: scale(1) } }
+@keyframes pulse-dot { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50% }
+  50%  { background-position: 100% 50% }
+  100% { background-position: 0% 50% }
+}
+
+.animate-fade-in    { animation: fade-in   0.2s ease-out both }
+.animate-slide-up   { animation: slide-up  0.25s ease-out both }
+.animate-slide-in   { animation: slide-in  0.2s ease-out both }
+.animate-scale-in   { animation: scale-in  0.2s ease-out both }
+.animate-pulse-dot  { animation: pulse-dot 1.5s ease-in-out infinite }
+.animate-gradient   { animation: gradient-shift 6s ease infinite; background-size: 200% 200% }
+
+/* Staggered children */
+.stagger > *:nth-child(1) { animation-delay: 0ms }
+.stagger > *:nth-child(2) { animation-delay: 60ms }
+.stagger > *:nth-child(3) { animation-delay: 120ms }
+.stagger > *:nth-child(4) { animation-delay: 180ms }
+.stagger > *:nth-child(5) { animation-delay: 240ms }
