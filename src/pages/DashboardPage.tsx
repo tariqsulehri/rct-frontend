@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import {
   ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList, ReferenceLine,
+  BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   PieChart, Pie, Legend,
 } from 'recharts';
@@ -797,14 +797,19 @@ const OverviewTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> = (
 };
 
 /* ── Radar label tick: full text, position-aware alignment ─────────────── */
-function RadarTick({ payload, x = 0, y = 0, cx = 0 }: {
+function RadarTick({ payload, x = 0, y = 0, cx = 0, cy = 0 }: {
   payload?: { value: string }; x?: number; y?: number; cx?: number; cy?: number;
 }) {
   if (!payload) return null;
   const dx = x - (cx as number);
+  const dy = y - (cy as number);
+  const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+  const labelOffset = 14;
+  const labelX = x + (dx / distance) * labelOffset;
+  const labelY = y + (dy / distance) * labelOffset;
   const textAnchor = Math.abs(dx) < 12 ? 'middle' : dx > 0 ? 'start' : 'end';
   return (
-    <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fill="#d1d5db" fontSize={11}>
+    <text x={labelX} y={labelY} textAnchor={textAnchor} dominantBaseline="central" fill="#d1d5db" fontSize={11}>
       {payload.value}
     </text>
   );
@@ -844,7 +849,11 @@ const AssessmentsTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> 
     ? Math.round(promoRow.avg_threshold * 100)
     : 0;
 
-  const domains = myRow ? Object.keys(myRow.domain_scores) : [];
+  const domains = Array.from(new Set([
+    ...Object.keys(myRow?.domain_scores ?? {}),
+    ...Object.keys(gapRow?.domain_gaps ?? {}),
+    ...(gapData?.domains ?? []),
+  ]));
 
   const radarData = domains.map((d, i) => {
     const score     = Math.round((myRow?.domain_scores[d] ?? 0) * 100);
@@ -860,7 +869,7 @@ const AssessmentsTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> 
     };
   });
 
-  const barData = [...radarData].sort((a, b) => b.score - a.score);
+  const barData = [...radarData].sort((a, b) => b.score - a.score || a.fullDomain.localeCompare(b.fullDomain));
   const competencyRows = (gapData?.competencies ?? [])
     .map((comp) => {
       const gap = gapRow?.competency_gaps?.[comp.name];
@@ -1014,23 +1023,28 @@ const AssessmentsTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> 
                   </option>
                 ))}
               </select>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                <span className="font-semibold" style={{ color: 'rgb(var(--accent-txt))' }}>From Grade:</span>
-                <span style={{ color: 'rgb(var(--text-1))' }}>{fromGrade}</span>
-                <span style={{ color: 'rgb(var(--text-3))' }}>→</span>
-                <span className="font-semibold" style={{ color: 'rgb(var(--warning))' }}>To Grade:</span>
-                <span style={{ color: 'rgb(var(--text-1))' }}>{toGrade}</span>
+              <div className="grid gap-1 text-xs">
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold shrink-0" style={{ color: 'rgb(var(--accent-txt))' }}>From Grade:</span>
+                  <span style={{ color: 'rgb(var(--text-1))' }}>{fromGrade}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold shrink-0" style={{ color: 'rgb(var(--warning))' }}>To Grade:</span>
+                  <span style={{ color: 'rgb(var(--text-1))' }}>{toGrade}</span>
+                </div>
               </div>
             </div>
           ) : (
-            <div className="section-desc flex flex-wrap items-center gap-x-2 gap-y-1">
+            <div className="section-desc grid gap-1">
               <span>{formatEmployeeOption(myRow?.full_name, myRow?.emp_code)}</span>
-              <span style={{ color: 'rgb(var(--text-3))' }}>·</span>
-              <span className="font-semibold" style={{ color: 'rgb(var(--accent-txt))' }}>From Grade:</span>
-              <span style={{ color: 'rgb(var(--text-1))' }}>{fromGrade}</span>
-              <span style={{ color: 'rgb(var(--text-3))' }}>→</span>
-              <span className="font-semibold" style={{ color: 'rgb(var(--warning))' }}>To Grade:</span>
-              <span style={{ color: 'rgb(var(--text-1))' }}>{toGrade}</span>
+              <div className="flex items-start gap-2">
+                <span className="font-semibold shrink-0" style={{ color: 'rgb(var(--accent-txt))' }}>From Grade:</span>
+                <span style={{ color: 'rgb(var(--text-1))' }}>{fromGrade}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-semibold shrink-0" style={{ color: 'rgb(var(--warning))' }}>To Grade:</span>
+                <span style={{ color: 'rgb(var(--text-1))' }}>{toGrade}</span>
+              </div>
             </div>
           )}
         </div>
@@ -1116,8 +1130,8 @@ const AssessmentsTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> 
               How strong this person is in each skill area.
             </p>
           </div>
-          <ResponsiveContainer width="100%" height={400}>
-            <RadarChart data={radarData} outerRadius="68%" margin={{ top: 24, right: 110, bottom: 24, left: 110 }}>
+          <ResponsiveContainer width="100%" height={640}>
+            <RadarChart data={radarData} outerRadius="82%" margin={{ top: 76, right: 126, bottom: 76, left: 126 }}>
               <PolarGrid stroke={c.grid} />
               <PolarAngleAxis dataKey="fullDomain" tick={<RadarTick />} />
               <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }}
@@ -1152,87 +1166,108 @@ const AssessmentsTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> 
           </ResponsiveContainer>
         </div>
 
-        {/* Bar breakdown */}
+        {/* Skill-area gap map */}
         <div className="card p-5">
-          <div className="mb-3">
-            <div className="flex items-center gap-1.5">
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-2))' }}>
-                Score by Skill Area
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-2))' }}>
+                  Score by Skill Area
+                </p>
+                <InfoTip text="Compares achieved score with the required target for each skill area." />
+              </div>
+              <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
+                Gap map of skill-area strength against the required target.
               </p>
-              <InfoTip text="Compares achieved score with the required target for each skill area." />
+            </div>
+            <div
+              className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
+              style={{ backgroundColor: 'rgb(var(--surface-3))', color: 'rgb(var(--text-1))' }}
+            >
+              {barData.length} areas
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={Math.max(260, barData.length * 34)}>
-            <BarChart data={barData} layout="vertical" margin={{ left: 8, right: 52, top: 16, bottom: 0 }} barCategoryGap="30%">
-              <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: c.text }}
-                tickFormatter={v => `${v}%`} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="domain" width={110}
-                tick={{ fontSize: 10, fill: c.text }} axisLine={false} tickLine={false} />
-              <Tooltip
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const d = payload[0].payload;
-                  return (
-                    <div style={tooltipStyle(c)}>
-                      <p className="font-semibold text-xs mb-1" style={{ color: d.meets ? c.success : (d.threshold > 0 ? c.danger : c.accent) }}>
-                        {d.fullDomain ?? d.domain}
-                      </p>
-                      <p style={{ color: c.text }}>Achieved: <b>{d.score}%</b></p>
-                      {d.threshold > 0 && (
-                        <>
-                          <p style={{ color: c.warning }}>Required: {d.threshold}%</p>
-                          <p style={{ color: d.meets ? c.success : c.danger }}>
-                            {d.meets ? '✓ Meets target' : `✗ Gap: ${d.threshold - d.score}%`}
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  );
-                }}
-              />
-              {/* Achieved bar */}
-              <Bar dataKey="score" name="Achieved" radius={[0, 5, 5, 0]} maxBarSize={10}>
-                {barData.map((d, i) => (
-                  <Cell key={i} fill={
-                    d.threshold > 0
-                      ? (d.meets ? c.success : c.danger)
-                      : (d.score >= 75 ? c.success : d.score >= 40 ? c.warning : c.danger)
-                  } />
-                ))}
-                <LabelList dataKey="score" position="right" formatter={(v: number) => `${v}%`}
-                  style={{ fontSize: 10, fill: c.text }} />
-              </Bar>
-              {/* Required bar — thin amber bar when threshold data exists */}
-              {avgThreshold > 0 && (
-                <Bar dataKey="threshold" name="Required" radius={[0, 4, 4, 0]} maxBarSize={4} fill={c.warning} fillOpacity={0.55}>
-                  <LabelList dataKey="threshold" position="right"
-                    formatter={(v: number) => v > 0 ? `${v}%` : ''}
-                    style={{ fontSize: 9, fill: c.warning }} />
-                </Bar>
-              )}
-              {/* Dashed vertical line — label pinned above bars to avoid overlap */}
-              {avgThreshold > 0 && (
-                <ReferenceLine
-                  x={avgThreshold}
-                  stroke={c.warning}
-                  strokeDasharray="4 3"
-                  strokeWidth={1.5}
-                  label={{ value: `Required: ${avgThreshold}%`, position: 'top', fill: c.warning, fontSize: 9, fontWeight: 600 }}
-                />
-              )}
-            </BarChart>
-          </ResponsiveContainer>
-          {/* Legend */}
-          <div className="flex gap-4 mt-2 justify-end flex-wrap">
-            {(avgThreshold > 0
-              ? [['Meets Required', c.success], ['Below Required', c.danger], ['Required', c.warning]] as [string, string][]
-              : [['≥75% Proficient', c.success], ['≥40% Developing', c.warning], ['<40% Gap', c.danger]] as [string, string][]
-            ).map(([label, color]) => (
-              <div key={label} className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                <span className="text-xs" style={{ color: c.text }}>{label}</span>
-              </div>
-            ))}
+
+          <div className="mb-3 grid grid-cols-[minmax(120px,0.9fr)_minmax(180px,1.6fr)_72px] gap-3 px-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>
+            <span>Skill area</span>
+            <div className="relative">
+              <div className="absolute left-0">0</div>
+              <div className="absolute left-1/4 -translate-x-1/2">25</div>
+              <div className="absolute left-1/2 -translate-x-1/2">50</div>
+              <div className="absolute left-3/4 -translate-x-1/2">75</div>
+              <div className="absolute right-0">100</div>
+            </div>
+            <span className="text-right">Gap</span>
+          </div>
+
+          <div className="space-y-3">
+            {barData.map((d) => {
+              const gap = Math.max(0, d.threshold - d.score);
+              const isNear = d.threshold > 0 && !d.meets && gap <= 10;
+              const rowColor = d.threshold > 0
+                ? (d.meets ? c.success : isNear ? c.warning : c.danger)
+                : (d.score >= 75 ? c.success : d.score >= 40 ? c.warning : c.danger);
+              const targetLabel = d.threshold > 0 ? `${d.threshold}% required` : 'No target set';
+              const statusLabel = d.threshold > 0
+                ? (d.meets ? 'Met' : isNear ? 'Near' : 'Below')
+                : 'Score';
+
+              return (
+                <div
+                  key={d.fullDomain}
+                  className="grid grid-cols-[minmax(120px,0.9fr)_minmax(180px,1.6fr)_72px] items-center gap-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold leading-snug" style={{ color: 'rgb(var(--text-1))' }}>
+                      {d.fullDomain}
+                    </p>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'rgb(var(--text-2))' }}>
+                      {d.score}% achieved{d.threshold > 0 ? ` / ${d.threshold}% required` : ''}
+                    </p>
+                  </div>
+
+                  <div
+                    className="relative h-6"
+                    title={`${d.fullDomain}: ${d.score}% achieved. ${targetLabel}.`}
+                  >
+                    <div
+                      className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2"
+                      style={{ backgroundColor: 'rgb(var(--border))' }}
+                    />
+                    {[25, 50, 75].map((tick) => (
+                      <div
+                        key={tick}
+                        className="absolute top-1/2 h-3 w-px -translate-y-1/2"
+                        style={{ left: `${tick}%`, backgroundColor: 'rgb(var(--border))' }}
+                      />
+                    ))}
+                    <div
+                      className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-full"
+                      style={{ width: `${Math.min(100, Math.max(0, d.score))}%`, backgroundColor: rowColor }}
+                    />
+                    {d.threshold > 0 && (
+                      <div
+                        className="absolute top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full"
+                        style={{
+                          left: `calc(${Math.min(100, Math.max(0, d.threshold))}% - 1px)`,
+                          backgroundColor: c.warning,
+                          boxShadow: '0 0 0 2px rgb(var(--surface-1))',
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  <div className="text-right">
+                    <span
+                      className="inline-flex min-w-14 justify-center rounded-full px-2 py-1 text-[11px] font-semibold"
+                      style={{ backgroundColor: `${rowColor}22`, color: rowColor }}
+                    >
+                      {d.threshold > 0 && !d.meets ? `${gap}%` : statusLabel}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
