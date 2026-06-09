@@ -77,6 +77,14 @@ const TYPE_OPTIONS = [
   { value: 'Tertiary', label: 'Tertiary - related skill' },
 ] as const;
 
+function createRowId() {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `row-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 const InfoTip: React.FC<{ text: string }> = ({ text }) => (
   <button
     type="button"
@@ -256,7 +264,7 @@ const SearchableSelect: React.FC<{
 
 function createEmptyRow(): BulkRow {
   return {
-    id: crypto.randomUUID(),
+    id: createRowId(),
     isNew: true,
     status: 'pending',      // new rows start pending until saved by manager
     domainId: null,
@@ -378,7 +386,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
       const mapped = techLocationMap.get(assessment.technology_id);
 
       return {
-        id: crypto.randomUUID(),
+        id: createRowId(),
         existingAssessmentId: assessment.id,
         isNew: false,
         status: (assessment.status as 'approved' | 'pending') ?? 'approved',
