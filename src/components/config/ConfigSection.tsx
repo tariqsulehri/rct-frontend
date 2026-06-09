@@ -1,12 +1,16 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { Plus, X, Search, Building2, Users, Award, Layers, Cpu, Zap, User, Settings, Tag, Network, Weight, Pencil } from 'lucide-react';
+import { X, Search, Building2, Users, Award, Layers, Cpu, Zap, User, Settings, Tag, Network } from 'lucide-react';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ActionBtns, TableShell, TD, TR } from './ConfigTable';
 import { HEADER_GRADIENTS, useTableState } from './ConfigTableState';
 import {
+  useConfigAssessmentTypes, useUpdateAssessmentType,
+  useConfigAssessmentLevels, useUpdateAssessmentLevel,
+  useConfigAssessmentStatuses, useUpdateAssessmentStatus,
+  useConfigAssessmentProjects, useUpdateAssessmentProject,
   useConfigDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment,
   useConfigUsers, useCreateUser, useUpdateUser, useDeleteUser,
   useConfigEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee,
@@ -15,9 +19,8 @@ import {
   useConfigCompetencies, useCreateCompetency, useUpdateCompetency, useDeleteCompetency,
   useConfigTechnologies, useCreateTechnology, useUpdateTechnology, useDeleteTechnology,
   useConfigCompetencyCategories, useCreateCompetencyCategory, useUpdateCompetencyCategory, useDeleteCompetencyCategory,
-  useDepartmentConfig, useUpsertDepartmentConfig, useUpsertDomainWeights,
-  useConfigDomainGradeWeights, useUpsertDomainGradeWeight, useDeleteDomainGradeWeight,
-  ConfigDepartment, ConfigUser, ConfigEmployee, ConfigGrade, ConfigSkillDomain, ConfigCompetency, ConfigTechnology, ConfigCompetencyCategory, ConfigDomainGradeWeight,
+  ConfigAssessmentType, ConfigAssessmentLevel, ConfigAssessmentStatus, ConfigAssessmentProject,
+  ConfigDepartment, ConfigUser, ConfigEmployee, ConfigGrade, ConfigSkillDomain, ConfigCompetency, ConfigTechnology, ConfigCompetencyCategory,
 } from '@/hooks/useConfig';
 import { useCompetencyScores, useGapMatrix, usePromotionReadiness } from '@/hooks/useReports';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
@@ -31,258 +34,388 @@ const F = 'field';
 const L = 'field-label';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DEPARTMENT CONFIG MODAL
+// ASSESSMENT TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
-const DepartmentConfigModal: React.FC<{ dept: ConfigDepartment; onClose: () => void }> = ({ dept, onClose }) => {
-  const { data, isLoading } = useDepartmentConfig(dept.id);
-  const { data: allDomains } = useConfigSkillDomains();
-  const upsertConfig = useUpsertDepartmentConfig();
-  const upsertWeights = useUpsertDomainWeights();
+const AssessmentTypesSection: React.FC = () => {
+  const { data: types, isLoading, isError } = useConfigAssessmentTypes();
+  const updateType = useUpdateAssessmentType();
 
-  const [tab, setTab] = useState<'formula' | 'domains'>('formula');
+  const [editing, setEditing] = useState<ConfigAssessmentType | null>(null);
+  const [form, setForm] = useState({ label: '', weight: '', description: '', sort_order: '', is_active: true });
 
-  // Formula weights state
-  const [fw, setFw] = useState({ primary: 0.5, secondary: 0.3, tertiary: 0.2, notes: '' });
-  // Domain weights state: domain_id -> { weight, is_active }
-  const [dw, setDw] = useState<Record<number, { weight: number; is_active: boolean }>>({});
-
-  // Populate state from loaded data
-  useEffect(() => {
-    if (data?.config) {
-      setFw({
-        primary: data.config.primary_weight,
-        secondary: data.config.secondary_weight,
-        tertiary: data.config.tertiary_weight,
-        notes: data.config.notes ?? '',
-      });
-    }
-    if (allDomains) {
-      const map: Record<number, { weight: number; is_active: boolean }> = {};
-      for (const d of allDomains) {
-        const existing = data?.domain_weights?.find(w => w.domain_id === d.id);
-        map[d.id] = existing
-          ? { weight: existing.weight, is_active: existing.is_active }
-          : { weight: 0, is_active: true };
-      }
-      setDw(map);
-    }
-  }, [data, allDomains]);
-
-  const fwTotal = Math.round((fw.primary + fw.secondary + fw.tertiary) * 100) / 100;
-  const fwValid = Math.abs(fwTotal - 1.0) < 0.001;
-
-  const handleSaveFormula = async () => {
-    if (!fwValid) return;
-    await upsertConfig.mutateAsync({
-      id: dept.id,
-      data: { primary_weight: fw.primary, secondary_weight: fw.secondary, tertiary_weight: fw.tertiary, notes: fw.notes || undefined },
+  const openEdit = (type: ConfigAssessmentType) => {
+    setEditing(type);
+    setForm({
+      label: type.label,
+      weight: String(type.weight),
+      description: type.description ?? '',
+      sort_order: String(type.sort_order),
+      is_active: type.is_active,
     });
   };
 
-  const handleSaveDomains = async () => {
-    const weights = Object.entries(dw).map(([domainId, val]) => ({
-      domain_id: Number(domainId),
-      weight: val.weight,
-      is_active: val.is_active,
-    }));
-    await upsertWeights.mutateAsync({ id: dept.id, weights });
+  const handleSave = async () => {
+    if (!editing) return;
+    await updateType.mutateAsync({
+      id: editing.id,
+      data: {
+        label: form.label,
+        weight: Number(form.weight),
+        description: form.description || null,
+        sort_order: Number(form.sort_order),
+        is_active: form.is_active,
+      },
+    });
+    setEditing(null);
   };
 
-  const domainTotal = Math.round(Object.values(dw).filter(d => d.is_active).reduce((s, d) => s + d.weight, 0) * 100) / 100;
+  const ts = useTableState(types, (type, q) =>
+    type.code.toLowerCase().includes(q) ||
+    type.label.toLowerCase().includes(q) ||
+    (type.description ?? '').toLowerCase().includes(q),
+    (a, b) => a.sort_order - b.sort_order);
 
   return (
-    <Modal onClose={onClose} wide>
-      {/* Custom header */}
-      <div className="-mx-6 -mt-6 px-6 py-5 mb-6 rounded-t-2xl"
-        style={{ background: HEADER_GRADIENTS['departments'] }}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-            <Settings size={20} className="text-white" />
-          </div>
-          <div>
-            <p className="font-bold text-white text-base">{dept.name} — Scoring Setup</p>
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.75)' }}>
-              Department-specific skill importance and skill area weights
-            </p>
-          </div>
-        </div>
-
-        {/* Sub-tabs */}
-        <div className="flex gap-2 mt-4">
-          {(['formula', 'domains'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-              style={{
-                backgroundColor: tab === t ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.15)',
-                color: tab === t ? '#6366f1' : 'white',
-              }}>
-              {t === 'formula' ? 'Skill Importance' : 'Skill Area Weights'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {isLoading ? (
-        <p className="text-sm text-center py-8" style={{ color: 'rgb(var(--text-3))' }}>Loading…</p>
-      ) : tab === 'formula' ? (
-        /* ── Skill importance weights ─────────────────────── */
-        <div className="space-y-5">
-          <div className="rounded-xl p-4" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
-            <p className="text-xs mb-3 font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>
-              How skill types count for this department
-            </p>
-            <p className="text-xs" style={{ color: 'rgb(var(--text-2))' }}>
-              Primary skills are the main skills, Secondary skills support the work, and Tertiary skills are related extras.
-              Weights must sum to <strong>1.00</strong>.
-            </p>
-          </div>
-
-          {/* Primary */}
-          {(['primary', 'secondary', 'tertiary'] as const).map((key, i) => {
-            const colors = ['#6366f1', '#10b981', '#f59e0b'];
-            const labels = ['Primary', 'Secondary', 'Tertiary'];
-            const val = fw[key];
-            return (
-              <div key={key}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-sm font-semibold" style={{ color: 'rgb(var(--text-1))' }}>
-                    <span className="inline-block w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: colors[i] }} />
-                    {labels[i]}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number" min="0" max="1" step="0.01"
-                      value={val}
-                      onChange={e => setFw({ ...fw, [key]: parseFloat(e.target.value) || 0 })}
-                      className="field w-20 text-center py-1 text-sm"
-                    />
-                    <span className="text-xs font-mono" style={{ color: 'rgb(var(--text-3))' }}>
-                      {(val * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                </div>
-                <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
-                  <div className="h-2 rounded-full transition-all" style={{ width: `${val * 100}%`, backgroundColor: colors[i] }} />
-                </div>
+    <>
+      <TableShell tabKey="assessment-types" title="Assessment Types"
+        headers={['Type', 'Value', 'Description', 'Status']}
+        loading={isLoading} error={isError}
+        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+        {ts.paged.map((type, idx) => (
+          <TR key={type.id} idx={idx}>
+            <TD>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: type.code === 'Primary' ? '#2563eb' : type.code === 'Secondary' ? '#059669' : '#d97706' }} />
+                <span className="font-semibold">{type.label}</span>
               </div>
-            );
-          })}
+            </TD>
+            <TD>
+              <span className="font-mono font-semibold" style={{ color: 'rgb(var(--accent))' }}>
+                {type.weight.toFixed(2)}
+              </span>
+              <span className="text-xs ml-2" style={{ color: 'rgb(var(--text-3))' }}>
+                {(type.weight * 100).toFixed(0)}%
+              </span>
+            </TD>
+            <TD muted small>{type.description ?? '—'}</TD>
+            <TD><span className={type.is_active ? 'badge badge-success' : 'badge'}>{type.is_active ? 'Active' : 'Inactive'}</span></TD>
+            <td className="px-4 py-3">
+              <button onClick={() => openEdit(type)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button>
+            </td>
+          </TR>
+        ))}
+      </TableShell>
 
-          {/* Total */}
-          <div className="flex items-center justify-between rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: fwValid ? 'rgb(var(--success-soft, var(--accent-soft)))' : 'rgb(var(--danger-soft))',
-              border: `1px solid ${fwValid ? 'rgb(var(--success, var(--accent)))' : 'rgb(var(--danger))'}`,
-            }}>
-            <span className="text-sm font-semibold" style={{ color: fwValid ? 'rgb(var(--success, var(--accent)))' : 'rgb(var(--danger))' }}>
-              Total
-            </span>
-            <span className="text-sm font-bold font-mono" style={{ color: fwValid ? 'rgb(var(--success, var(--accent)))' : 'rgb(var(--danger))' }}>
-              {fwTotal.toFixed(2)} {fwValid ? '✓' : '≠ 1.00'}
-            </span>
+      {editing && (
+        <Modal onClose={() => setEditing(null)}>
+          <div className="space-y-4">
+            <div><label className={L}>Type</label><input className={F} value={editing.code} disabled /></div>
+            <div><label className={L}>Label</label><input className={F} value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className={L}>Scoring Value</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /></div>
+              <div><label className={L}>Sort Order</label><input type="number" min="0" className={F} value={form.sort_order} onChange={e => setForm({ ...form, sort_order: e.target.value })} /></div>
+            </div>
+            <div><label className={L}>Description</label><input className={F} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })}
+                className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Active</span>
+            </label>
+            <FormFooter onSave={handleSave} onCancel={() => setEditing(null)} saving={updateType.isPending} />
           </div>
-
-          <div>
-            <label className={L}>Notes (optional)</label>
-            <input className={F} value={fw.notes} onChange={e => setFw({ ...fw, notes: e.target.value })}
-              placeholder="e.g. DevOps team weights infrastructure skills higher" />
-          </div>
-
-          <div className="flex gap-3 pt-2 border-t" style={{ borderColor: 'rgb(var(--border))' }}>
-            <button onClick={handleSaveFormula} disabled={!fwValid || upsertConfig.isPending}
-              className="btn-primary flex-1 py-2">
-              {upsertConfig.isPending ? 'Saving…' : upsertConfig.isSuccess ? '✓ Saved' : 'Save Skill Importance'}
-            </button>
-            <button onClick={onClose} className="btn-secondary flex-1 py-2">Close</button>
-          </div>
-        </div>
-      ) : (
-        /* ── Skill area weights ───────────────────────────── */
-        <div className="space-y-4">
-          <div className="rounded-xl p-4" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
-            <p className="text-xs mb-1 font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>
-              Active skill areas and their importance for {dept.name}
-            </p>
-            <p className="text-xs" style={{ color: 'rgb(var(--text-2))' }}>
-              Turn skill areas on or off and adjust how much they count. Turned-off areas are excluded from scoring.
-              Active weights total: <strong>{domainTotal.toFixed(2)}</strong>
-            </p>
-          </div>
-
-          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-            {(allDomains ?? []).map((domain, i) => {
-              const entry = dw[domain.id] ?? { weight: 0, is_active: true };
-              const color = ['#6366f1','#10b981','#f59e0b','#ef4444','#06b6d4','#8b5cf6','#f97316'][i % 7];
-              return (
-                <div key={domain.id} className="rounded-xl p-3 transition-all"
-                  style={{
-                    border: `1px solid ${entry.is_active ? color + '40' : 'rgb(var(--border))'}`,
-                    backgroundColor: entry.is_active ? color + '08' : 'rgb(var(--surface-2))',
-                  }}>
-                  <div className="flex items-center gap-3">
-                    {/* Toggle */}
-                    <button onClick={() => setDw({ ...dw, [domain.id]: { ...entry, is_active: !entry.is_active } })}
-                      className="shrink-0 transition-colors">
-                      {entry.is_active ? (
-                        <div className="w-10 h-5 rounded-full flex items-center px-0.5" style={{ backgroundColor: color }}>
-                          <div className="w-4 h-4 rounded-full bg-white ml-auto" />
-                        </div>
-                      ) : (
-                        <div className="w-10 h-5 rounded-full flex items-center px-0.5" style={{ backgroundColor: 'rgb(var(--border))' }}>
-                          <div className="w-4 h-4 rounded-full bg-white" />
-                        </div>
-                      )}
-                    </button>
-
-                    {/* Domain name */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate"
-                        style={{ color: entry.is_active ? 'rgb(var(--text-1))' : 'rgb(var(--text-3))' }}>
-                        {domain.name}
-                      </p>
-                      <p className="text-xs truncate" style={{ color: 'rgb(var(--text-3))' }}>
-                        Counts in scoring
-                      </p>
-                    </div>
-
-                    {/* Weight input */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <input
-                        type="number" min="0" max="1" step="0.01"
-                        value={entry.weight}
-                        disabled={!entry.is_active}
-                        onChange={e => setDw({ ...dw, [domain.id]: { ...entry, weight: parseFloat(e.target.value) || 0 } })}
-                        className="field w-18 text-center py-1 text-sm"
-                        style={{ width: '72px', opacity: entry.is_active ? 1 : 0.4 }}
-                      />
-                      <span className="text-xs font-mono w-8 text-right" style={{ color: 'rgb(var(--text-3))' }}>
-                        {(entry.weight * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Mini progress bar */}
-                  {entry.is_active && (
-                    <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgb(var(--border))' }}>
-                      <div className="h-1.5 rounded-full" style={{ width: `${Math.min(entry.weight * 100 / 0.3 * 100, 100)}%`, backgroundColor: color }} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex gap-3 pt-2 border-t" style={{ borderColor: 'rgb(var(--border))' }}>
-            <button onClick={handleSaveDomains} disabled={upsertWeights.isPending}
-              className="btn-primary flex-1 py-2">
-              {upsertWeights.isPending ? 'Saving…' : upsertWeights.isSuccess ? '✓ Saved' : 'Save Skill Area Weights'}
-            </button>
-            <button onClick={onClose} className="btn-secondary flex-1 py-2">Close</button>
-          </div>
-        </div>
+        </Modal>
       )}
-    </Modal>
+    </>
+  );
+};
+
+const AssessmentLevelsSection: React.FC = () => {
+  const { data: levels, isLoading, isError } = useConfigAssessmentLevels();
+  const updateLevel = useUpdateAssessmentLevel();
+  const [editing, setEditing] = useState<ConfigAssessmentLevel | null>(null);
+  const [form, setForm] = useState({ label: '', weight: '', threshold: '', description: '', sort_order: '', is_active: true });
+
+  const openEdit = (levelConfig: ConfigAssessmentLevel) => {
+    setEditing(levelConfig);
+    setForm({
+      label: levelConfig.label,
+      weight: String(levelConfig.weight),
+      threshold: levelConfig.threshold == null ? '' : String(levelConfig.threshold),
+      description: levelConfig.description ?? '',
+      sort_order: String(levelConfig.sort_order),
+      is_active: levelConfig.is_active,
+    });
+  };
+
+  const handleSave = async () => {
+    if (!editing) return;
+    await updateLevel.mutateAsync({
+      id: editing.id,
+      data: {
+        label: form.label,
+        weight: Number(form.weight),
+        threshold: form.threshold === '' ? null : Number(form.threshold),
+        description: form.description || null,
+        sort_order: Number(form.sort_order),
+        is_active: form.is_active,
+      },
+    });
+    setEditing(null);
+  };
+
+  const ts = useTableState(levels, (levelConfig, q) =>
+    levelConfig.code.toLowerCase().includes(q) ||
+    levelConfig.label.toLowerCase().includes(q) ||
+    (levelConfig.description ?? '').toLowerCase().includes(q),
+    (a, b) => a.sort_order - b.sort_order);
+
+  return (
+    <>
+      <TableShell tabKey="assessment-levels" title="Level Config"
+        headers={['Level', 'Weight', 'Threshold', 'Description', 'Status']}
+        loading={isLoading} error={isError}
+        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+        {ts.paged.map((levelConfig, idx) => (
+          <TR key={levelConfig.id} idx={idx}>
+            <TD><span className="font-semibold">{levelConfig.label}</span></TD>
+            <TD mono>{levelConfig.weight.toFixed(2)}</TD>
+            <TD mono>{levelConfig.threshold == null ? '—' : levelConfig.threshold.toFixed(2)}</TD>
+            <TD muted small>{levelConfig.description ?? '—'}</TD>
+            <TD><span className={levelConfig.is_active ? 'badge badge-success' : 'badge'}>{levelConfig.is_active ? 'Active' : 'Inactive'}</span></TD>
+            <td className="px-4 py-3"><button onClick={() => openEdit(levelConfig)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button></td>
+          </TR>
+        ))}
+      </TableShell>
+
+      {editing && (
+        <Modal onClose={() => setEditing(null)}>
+          <div className="space-y-4">
+            <div><label className={L}>Code</label><input className={F} value={editing.code} disabled /></div>
+            <div><label className={L}>Label</label><input className={F} value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></div>
+            <div className="grid grid-cols-3 gap-4">
+              <div><label className={L}>Weight</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /></div>
+              <div><label className={L}>Threshold</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.threshold} onChange={e => setForm({ ...form, threshold: e.target.value })} /></div>
+              <div><label className={L}>Sort Order</label><input type="number" min="0" className={F} value={form.sort_order} onChange={e => setForm({ ...form, sort_order: e.target.value })} /></div>
+            </div>
+            <div><label className={L}>Description</label><input className={F} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Active</span>
+            </label>
+            <FormFooter onSave={handleSave} onCancel={() => setEditing(null)} saving={updateLevel.isPending} />
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+};
+
+const AssessmentStatusesSection: React.FC = () => {
+  const { data: statuses, isLoading, isError } = useConfigAssessmentStatuses();
+  const updateStatus = useUpdateAssessmentStatus();
+  const [editing, setEditing] = useState<ConfigAssessmentStatus | null>(null);
+  const [form, setForm] = useState({ label: '', description: '', counts_toward_score: false, is_terminal: false, sort_order: '', is_active: true });
+
+  const openEdit = (status: ConfigAssessmentStatus) => {
+    setEditing(status);
+    setForm({
+      label: status.label,
+      description: status.description ?? '',
+      counts_toward_score: status.counts_toward_score,
+      is_terminal: status.is_terminal,
+      sort_order: String(status.sort_order),
+      is_active: status.is_active,
+    });
+  };
+
+  const handleSave = async () => {
+    if (!editing) return;
+    await updateStatus.mutateAsync({
+      id: editing.id,
+      data: {
+        label: form.label,
+        description: form.description || null,
+        counts_toward_score: form.counts_toward_score,
+        is_terminal: form.is_terminal,
+        sort_order: Number(form.sort_order),
+        is_active: form.is_active,
+      },
+    });
+    setEditing(null);
+  };
+
+  const ts = useTableState(statuses, (status, q) =>
+    status.code.toLowerCase().includes(q) ||
+    status.label.toLowerCase().includes(q) ||
+    (status.description ?? '').toLowerCase().includes(q),
+    (a, b) => a.sort_order - b.sort_order);
+
+  return (
+    <>
+      <TableShell tabKey="assessment-statuses" title="Status Config"
+        headers={['Status', 'Counts', 'Terminal', 'Description', 'Active']}
+        loading={isLoading} error={isError}
+        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+        {ts.paged.map((status, idx) => (
+          <TR key={status.id} idx={idx}>
+            <TD><span className="font-semibold">{status.label}</span></TD>
+            <TD><span className={status.counts_toward_score ? 'badge badge-success' : 'badge'}>{status.counts_toward_score ? 'Scores' : 'Ignored'}</span></TD>
+            <TD><span className={status.is_terminal ? 'badge badge-accent' : 'badge'}>{status.is_terminal ? 'Terminal' : 'Open'}</span></TD>
+            <TD muted small>{status.description ?? '—'}</TD>
+            <TD><span className={status.is_active ? 'badge badge-success' : 'badge'}>{status.is_active ? 'Active' : 'Inactive'}</span></TD>
+            <td className="px-4 py-3"><button onClick={() => openEdit(status)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button></td>
+          </TR>
+        ))}
+      </TableShell>
+
+      {editing && (
+        <Modal onClose={() => setEditing(null)}>
+          <div className="space-y-4">
+            <div><label className={L}>Code</label><input className={F} value={editing.code} disabled /></div>
+            <div><label className={L}>Label</label><input className={F} value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></div>
+            <div><label className={L}>Description</label><input className={F} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+            <div><label className={L}>Sort Order</label><input type="number" min="0" className={F} value={form.sort_order} onChange={e => setForm({ ...form, sort_order: e.target.value })} /></div>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.counts_toward_score} onChange={e => setForm({ ...form, counts_toward_score: e.target.checked })} className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Counts toward score</span>
+            </label>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.is_terminal} onChange={e => setForm({ ...form, is_terminal: e.target.checked })} className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Terminal status</span>
+            </label>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Active</span>
+            </label>
+            <FormFooter onSave={handleSave} onCancel={() => setEditing(null)} saving={updateStatus.isPending} />
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+};
+
+const AssessmentProjectsSection: React.FC = () => {
+  const { data: projects, isLoading, isError } = useConfigAssessmentProjects();
+  const updateProject = useUpdateAssessmentProject();
+  const [editing, setEditing] = useState<ConfigAssessmentProject | null>(null);
+  const [form, setForm] = useState({ label: '', description: '', duration_months_min: '', duration_months_max: '', credit: '', threshold: '', sort_order: '', is_active: true });
+
+  const openEdit = (project: ConfigAssessmentProject) => {
+    setEditing(project);
+    setForm({
+      label: project.label,
+      description: project.description ?? '',
+      duration_months_min: project.duration_months_min == null ? '' : String(project.duration_months_min),
+      duration_months_max: project.duration_months_max == null ? '' : String(project.duration_months_max),
+      credit: String(project.credit),
+      threshold: project.threshold == null ? '' : String(project.threshold),
+      sort_order: String(project.sort_order),
+      is_active: project.is_active,
+    });
+  };
+
+  const handleSave = async () => {
+    if (!editing) return;
+    await updateProject.mutateAsync({
+      id: editing.id,
+      data: {
+        label: form.label,
+        description: form.description || null,
+        duration_months_min: form.duration_months_min === '' ? null : Number(form.duration_months_min),
+        duration_months_max: form.duration_months_max === '' ? null : Number(form.duration_months_max),
+        credit: Number(form.credit),
+        threshold: form.threshold === '' ? null : Number(form.threshold),
+        sort_order: Number(form.sort_order),
+        is_active: form.is_active,
+      },
+    });
+    setEditing(null);
+  };
+
+  const ts = useTableState(projects, (project, q) =>
+    project.label.toLowerCase().includes(q) ||
+    String(project.project_count).includes(q) ||
+    (project.description ?? '').toLowerCase().includes(q),
+    (a, b) => a.sort_order - b.sort_order);
+
+  return (
+    <>
+      <TableShell tabKey="assessment-projects" title="Project Config"
+        headers={['Projects', 'Credit', 'Duration', 'Threshold', 'Description', 'Status']}
+        loading={isLoading} error={isError}
+        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+        {ts.paged.map((project, idx) => (
+          <TR key={project.id} idx={idx}>
+            <TD><span className="font-semibold">{project.label}</span></TD>
+            <TD mono>{project.credit.toFixed(2)}</TD>
+            <TD muted small>
+              {project.duration_months_min == null && project.duration_months_max == null
+                ? '—'
+                : `${project.duration_months_min ?? 0}-${project.duration_months_max ?? '∞'} months`}
+            </TD>
+            <TD mono>{project.threshold == null ? '—' : project.threshold.toFixed(2)}</TD>
+            <TD muted small>{project.description ?? '—'}</TD>
+            <TD><span className={project.is_active ? 'badge badge-success' : 'badge'}>{project.is_active ? 'Active' : 'Inactive'}</span></TD>
+            <td className="px-4 py-3"><button onClick={() => openEdit(project)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button></td>
+          </TR>
+        ))}
+      </TableShell>
+
+      {editing && (
+        <Modal onClose={() => setEditing(null)} wide>
+          <div className="space-y-4">
+            <div><label className={L}>Project Count</label><input className={F} value={editing.project_count === 3 ? '3+' : String(editing.project_count)} disabled /></div>
+            <div><label className={L}>Label</label><input className={F} value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div><label className={L}>Min Months</label><input type="number" min="0" className={F} value={form.duration_months_min} onChange={e => setForm({ ...form, duration_months_min: e.target.value })} /></div>
+              <div><label className={L}>Max Months</label><input type="number" min="0" className={F} value={form.duration_months_max} onChange={e => setForm({ ...form, duration_months_max: e.target.value })} /></div>
+              <div><label className={L}>Credit</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.credit} onChange={e => setForm({ ...form, credit: e.target.value })} /></div>
+              <div><label className={L}>Threshold</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.threshold} onChange={e => setForm({ ...form, threshold: e.target.value })} /></div>
+            </div>
+            <div><label className={L}>Description</label><input className={F} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+            <div><label className={L}>Sort Order</label><input type="number" min="0" className={F} value={form.sort_order} onChange={e => setForm({ ...form, sort_order: e.target.value })} /></div>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Active</span>
+            </label>
+            <FormFooter onSave={handleSave} onCancel={() => setEditing(null)} saving={updateProject.isPending} />
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+};
+
+const ScoringConfigSection: React.FC = () => {
+  const [active, setActive] = useState<'types' | 'levels' | 'statuses' | 'projects'>('types');
+  const items = [
+    { id: 'types' as const, label: 'Types' },
+    { id: 'levels' as const, label: 'Levels' },
+    { id: 'statuses' as const, label: 'Statuses' },
+    { id: 'projects' as const, label: 'Projects' },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="card p-1 flex gap-1 flex-wrap">
+        {items.map((item) => (
+          <button key={item.id} onClick={() => setActive(item.id)}
+            className="px-3.5 py-2 rounded-lg text-sm font-medium transition-all"
+            style={{
+              backgroundColor: active === item.id ? 'rgb(var(--accent))' : 'transparent',
+              color: active === item.id ? 'white' : 'rgb(var(--text-2))',
+            }}>
+            {item.label}
+          </button>
+        ))}
+      </div>
+      {active === 'types' && <AssessmentTypesSection />}
+      {active === 'levels' && <AssessmentLevelsSection />}
+      {active === 'statuses' && <AssessmentStatusesSection />}
+      {active === 'projects' && <AssessmentProjectsSection />}
+    </div>
   );
 };
 
@@ -301,7 +434,6 @@ const DepartmentsSection: React.FC = () => {
   const [editing, setEditing] = useState<ConfigDepartment | null>(null);
   const [form, setForm] = useState({ name: '', description: '' });
   const [selectedDept, setSelectedDept] = useState<ConfigDepartment | null>(null);
-  const [configuringDept, setConfiguringDept] = useState<ConfigDepartment | null>(null);
   const [memberSearch, setMemberSearch] = useState('');
 
   const openCreate = () => { setForm({ name: '', description: '' }); setEditing(null); setModal('create'); };
@@ -347,25 +479,7 @@ const DepartmentsSection: React.FC = () => {
                     {(employees ?? []).filter(e => e.department_id === d.id).length} members
                   </span>
                 </TD>
-                <td className="px-4 py-3">
-                  <div className="flex gap-1.5">
-                    <button onClick={() => setConfiguringDept(d)}
-                      className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg font-medium transition-colors"
-                      style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
-                      onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
-                      onMouseLeave={e => (e.currentTarget.style.opacity = '1')}>
-                      <Settings size={11} /> Configure
-                    </button>
-                    <button onClick={() => openEdit(d)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button>
-                    <button onClick={async () => { if (await confirm({ title: 'Delete Department', message: `"${d.name}" will be permanently deleted.`, confirmLabel: 'Delete' })) deleteDept.mutate(d.id); }}
-                      className="px-2.5 py-1 text-xs rounded-lg font-medium transition-colors"
-                      style={{ color: 'rgb(var(--danger))' }}
-                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgb(var(--danger-soft))')}
-                      onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
-                      Delete
-                    </button>
-                  </div>
-                </td>
+                <ActionBtns onEdit={() => openEdit(d)} onDelete={async () => { if (await confirm({ title: 'Delete Department', message: `"${d.name}" will be permanently deleted.`, confirmLabel: 'Delete' })) deleteDept.mutate(d.id); }} />
               </TR>
             ))}
           </TableShell>
@@ -467,10 +581,6 @@ const DepartmentsSection: React.FC = () => {
             <FormFooter onSave={handleSave} onCancel={() => setModal(null)} saving={createDept.isPending || updateDept.isPending} />
           </div>
         </Modal>
-      )}
-
-      {configuringDept && (
-        <DepartmentConfigModal dept={configuringDept} onClose={() => setConfiguringDept(null)} />
       )}
     </>
   );
@@ -1483,347 +1593,25 @@ const CategoriesSection: React.FC = () => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DOMAIN GRADE WEIGHTS
-// ═══════════════════════════════════════════════════════════════════════════════
-const DomainGradeWeightsSection: React.FC = () => {
-  const { data: weights, isLoading, isError } = useConfigDomainGradeWeights();
-  const { data: domains } = useConfigSkillDomains();
-  const { data: grades }  = useConfigGrades();
-  const upsert = useUpsertDomainGradeWeight();
-  const remove = useDeleteDomainGradeWeight();
-  const { confirm, dialog: confirmDialog } = useConfirmDialog();
-
-  // Top form state (add new entry)
-  const [form, setForm] = useState({ domain_id: '', grade_id: '', weight: '' });
-  const [saving, setSaving] = useState(false);
-  const [domainSearch, setDomainSearch] = useState('');
-
-  // Inline edit state: id of the row being edited + its draft value
-  const [editingId, setEditingId]   = useState<number | null>(null);
-  const [editValue, setEditValue]   = useState('');
-  const [autoSaving, setAutoSaving] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleSave = async () => {
-    if (!form.domain_id || !form.grade_id || !form.weight) return;
-    setSaving(true);
-    try {
-      await upsert.mutateAsync({
-        domain_id: Number(form.domain_id),
-        grade_id:  Number(form.grade_id),
-        weight:    parseFloat(form.weight) / 100,
-      });
-      setForm({ domain_id: '', grade_id: '', weight: '' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const startEdit = (w: ConfigDomainGradeWeight) => {
-    setEditingId(w.id);
-    setEditValue(String(Math.round(w.weight * 100)));
-  };
-
-  const stopEdit = () => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    setEditingId(null);
-    setEditValue('');
-    setAutoSaving(false);
-  };
-
-  const handleEditChange = (w: ConfigDomainGradeWeight, raw: string) => {
-    const parsed = parseFloat(raw);
-    const clamped = isNaN(parsed) ? '' : String(Math.min(100, Math.max(0, parsed)));
-    setEditValue(clamped);
-    if (!clamped) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    setAutoSaving(true);
-    debounceRef.current = setTimeout(async () => {
-      await upsert.mutateAsync({ domain_id: w.domain_id, grade_id: w.grade_id, weight: parseFloat(clamped) / 100 });
-      setAutoSaving(false);
-    }, 700);
-  };
-
-  // Search + grade filter
-  const [search,      setSearch]      = useState('');
-  const [gradeFilter, setGradeFilter] = useState<string>('All');
-
-  // Group weights by domain, then apply search + grade filter
-  const grouped = useMemo(() => {
-    if (!weights) return [];
-    const map = new Map<number, { domain: ConfigDomainGradeWeight['domain']; rows: ConfigDomainGradeWeight[] }>();
-    for (const w of weights) {
-      if (!map.has(w.domain_id)) map.set(w.domain_id, { domain: w.domain, rows: [] });
-      map.get(w.domain_id)!.rows.push(w);
-    }
-    return [...map.values()]
-      .sort((a, b) => a.domain.name.localeCompare(b.domain.name))
-      .filter(({ domain }) => domain.name.toLowerCase().includes(search.toLowerCase().trim()))
-      .map(({ domain, rows }) => ({
-        domain,
-        rows: gradeFilter === 'All' ? rows : rows.filter(r => r.grade.code === gradeFilter),
-      }))
-      .filter(({ rows }) => rows.length > 0);
-  }, [weights, search, gradeFilter]);
-
-  const matrixGrades = (grades ?? []).filter(g => ['G13','G14','G15','G16','G17','G18','G19','G20','G21'].includes(g.code));
-
-  const sortedDomains = useMemo(() =>
-    [...(domains ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [domains]);
-
-  const filteredDomains = useMemo(() => {
-    const q = domainSearch.toLowerCase().trim();
-    return q ? sortedDomains.filter(d => d.name.toLowerCase().includes(q)) : sortedDomains;
-  }, [sortedDomains, domainSearch]);
-
-  // Existing weights for the selected domain — used to pre-fill weight when re-selecting a grade
-  const existingWeightForGrade = useMemo(() => {
-    if (!form.domain_id || !weights) return new Map<number, number>();
-    const map = new Map<number, number>();
-    weights
-      .filter(w => w.domain_id === Number(form.domain_id))
-      .forEach(w => map.set(w.grade_id, Math.round(w.weight * 100)));
-    return map;
-  }, [form.domain_id, weights]);
-
-  return (
-    <>
-      {confirmDialog}
-      <div className="space-y-5">
-        {/* ── Add Form ── */}
-        <div className="card overflow-hidden">
-          <div className="px-5 py-3 text-sm font-semibold text-white"
-            style={{ background: HEADER_GRADIENTS['domain-grade-weights'] }}>
-            Add / Update Grade Skill Weight
-          </div>
-          <div className="p-5 space-y-4">
-            <p className="text-sm" style={{ color: 'rgb(var(--text-2))' }}>
-              Set how much each skill area counts at each grade level. Saving an existing combination will update it.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className={L}>Skill Area</label>
-                <input
-                  type="text"
-                  className={F}
-                  placeholder="Search skill areas…"
-                  value={domainSearch}
-                  onChange={e => setDomainSearch(e.target.value)}
-                />
-                <select className={`${F} mt-1`} value={form.domain_id}
-                  onChange={e => {
-                    setForm({ ...form, domain_id: e.target.value, grade_id: '' });
-                    setDomainSearch('');
-                  }}>
-                  <option value="">
-                    {filteredDomains.length === 0 ? 'No match…' : `Select skill area… (${filteredDomains.length})`}
-                  </option>
-                  {filteredDomains.map(d => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={L}>Grade</label>
-                <select className={F} value={form.grade_id}
-                  onChange={e => {
-                    const gradeId = e.target.value;
-                    const existing = existingWeightForGrade.get(Number(gradeId));
-                    setForm({ ...form, grade_id: gradeId, weight: existing !== undefined ? String(existing) : '' });
-                  }}
-                  disabled={!form.domain_id}>
-                  <option value="">{!form.domain_id ? 'Select skill area first…' : 'Select grade…'}</option>
-                  {matrixGrades.map(g => (
-                    <option key={g.id} value={g.id}>
-                      {g.code} — {g.title}{existingWeightForGrade.has(g.id) ? ' (update)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={L}>Weight (%)</label>
-                <div className="flex gap-2">
-                  <input type="number" className={F} min="0" max="100" step="5"
-                    placeholder="e.g. 55"
-                    value={form.weight}
-                    onChange={e => {
-                      const v = parseFloat(e.target.value);
-                      setForm({ ...form, weight: isNaN(v) ? '' : String(Math.min(100, Math.max(0, v))) });
-                    }} />
-                  <button
-                    onClick={handleSave}
-                    disabled={saving || !form.domain_id || !form.grade_id || !form.weight}
-                    className="btn btn-primary shrink-0 flex items-center gap-1.5 px-4"
-                    style={{ whiteSpace: 'nowrap' }}>
-                    <Plus size={14} />
-                    {saving ? 'Saving…' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Search + Grade Filter ── */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: 'rgb(var(--text-3))' }} />
-            <input
-              className="field pl-8 w-full text-sm"
-              placeholder="Search skill area…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            {search && (
-              <button onClick={() => setSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2"
-                style={{ color: 'rgb(var(--text-3))' }}>
-                <X size={13} />
-              </button>
-            )}
-          </div>
-
-          {/* Grade quick-filter chips */}
-          <div className="flex gap-1.5 flex-wrap shrink-0">
-            {['All', 'G13', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19', 'G20', 'G21'].map(g => (
-              <button key={g} onClick={() => setGradeFilter(g)}
-                className="px-3 py-1 rounded-full text-xs font-semibold transition-all"
-                style={{
-                  backgroundColor: gradeFilter === g ? 'rgb(var(--accent))' : 'rgb(var(--surface-2))',
-                  color:           gradeFilter === g ? 'white'              : 'rgb(var(--text-2))',
-                }}>
-                {g}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Weight Table grouped by Domain ── */}
-        {isLoading && <p className="text-sm text-center py-8" style={{ color: 'rgb(var(--text-3))' }}>Loading…</p>}
-        {isError   && <p className="text-sm text-center py-8 text-red-500">Failed to load weights.</p>}
-
-        {!isLoading && grouped.map(({ domain, rows }) => (
-          <div key={domain.id} className="card overflow-hidden">
-            <div className="flex items-center gap-2 px-5 py-3 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
-              {domain.color && <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: domain.color }} />}
-              <span className="font-semibold text-sm" style={{ color: 'rgb(var(--text-1))' }}>{domain.name}</span>
-              <span className="text-xs ml-auto" style={{ color: 'rgb(var(--text-3))' }}>
-                {rows.length} grade{rows.length !== 1 ? 's' : ''} configured
-              </span>
-            </div>
-
-            <div className="divide-y" style={{ borderColor: 'rgb(var(--border))' }}>
-              {rows.map(w => {
-                const pct = Math.round(w.weight * 100);
-                const barColor = domain.color ?? '#6366f1';
-                const isEditing = editingId === w.id;
-
-                return (
-                  <div key={w.id} className="flex items-center gap-4 px-5 py-3">
-                    {/* Grade badge */}
-                    <span className="text-xs font-bold px-2 py-0.5 rounded shrink-0"
-                      style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))', minWidth: 36, textAlign: 'center' }}>
-                      {w.grade.code}
-                    </span>
-
-                    {isEditing ? (
-                      /* ── Inline edit mode — auto-saves on change ── */
-                      <>
-                        <input
-                          type="number" min="0" max="100" step="5"
-                          autoFocus
-                          value={editValue}
-                          onChange={e => handleEditChange(w, e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Escape') stopEdit(); }}
-                          className="field w-24 text-sm"
-                        />
-                        <span className="text-sm tabular-nums" style={{ color: 'rgb(var(--text-3))' }}>%</span>
-                        <span className="text-xs ml-1" style={{ color: 'rgb(var(--text-3))', minWidth: 52 }}>
-                          {autoSaving ? 'Saving…' : 'Saved ✓'}
-                        </span>
-                        <button onClick={stopEdit}
-                          className="p-1.5 rounded hover:bg-red-500/10 transition-colors ml-auto"
-                          style={{ color: 'rgb(var(--text-3))' }}
-                          title="Close">
-                          <X size={13} />
-                        </button>
-                      </>
-                    ) : (
-                      /* ── Display mode ── */
-                      <>
-                        <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'rgb(var(--border))' }}>
-                          <div className="h-full rounded-full transition-all"
-                            style={{ width: `${pct}%`, backgroundColor: barColor }} />
-                        </div>
-                        <span className="text-sm font-semibold tabular-nums w-12 text-right"
-                          style={{ color: 'rgb(var(--text-1))' }}>
-                          {pct}%
-                        </span>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button onClick={() => startEdit(w)}
-                            className="p-1.5 rounded hover:bg-blue-500/10 transition-colors"
-                            style={{ color: 'rgb(var(--text-3))' }}
-                            title="Edit">
-                            <Pencil size={13} />
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (await confirm({
-                                title: 'Remove Weight',
-                                message: `Remove ${domain.name} / ${w.grade.code} weight (${pct}%)?`,
-                                confirmLabel: 'Remove',
-                                variant: 'danger',
-                              })) remove.mutate(w.id);
-                            }}
-                            className="p-1.5 rounded hover:bg-red-500/10 transition-colors"
-                            style={{ color: 'rgb(var(--text-3))' }}
-                            title="Delete">
-                            <X size={13} />
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-
-        {!isLoading && grouped.length === 0 && (
-          <p className="text-sm text-center py-8" style={{ color: 'rgb(var(--text-3))' }}>
-            {search || gradeFilter !== 'All'
-              ? 'No results match your search or filter.'
-              : 'No weights configured yet. Use the form above to add the first entry.'}
-          </p>
-        )}
-      </div>
-    </>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // MAIN CONFIG SECTION
 // ═══════════════════════════════════════════════════════════════════════════════
-type ConfigTab = 'departments' | 'employees' | 'users' | 'grades' | 'skill-domains' | 'competencies' | 'technologies' | 'categories' | 'skill-map' | 'domain-grade-weights';
+type ConfigTab = 'scoring' | 'departments' | 'employees' | 'users' | 'grades' | 'skill-domains' | 'competencies' | 'technologies' | 'categories' | 'skill-map';
 
 const CONFIG_TABS: Array<{ id: ConfigTab; label: string; help: string; icon: React.ElementType }> = [
+  { id: 'scoring',      label: 'Scoring',          help: 'Types, levels, statuses, and project rules used in calculations.', icon: Settings },
   { id: 'departments',   label: 'Departments',       help: 'Company groups used for employees and scoring settings.', icon: Building2 },
   { id: 'employees',     label: 'Employees',         help: 'People whose skills and readiness are tracked.', icon: Users },
   { id: 'users',         label: 'Users',             help: 'Login accounts and app roles.', icon: User },
   { id: 'grades',        label: 'Grades',            help: 'Career levels such as G13, G14, and G15.', icon: Award },
   { id: 'categories',    label: 'Categories',        help: 'Simple labels used to group skills.', icon: Tag },
   { id: 'skill-domains', label: 'Skill Areas',       help: 'Large areas such as Cloud, SRE, Security, or DataOps.', icon: Layers },
-  { id: 'domain-grade-weights', label: 'Grade Skill Weights', help: 'How important each skill area is for each grade.', icon: Weight },
   { id: 'competencies',  label: 'Skills',            help: 'The skills employees are assessed against.', icon: Cpu },
   { id: 'technologies',  label: 'Technologies',      help: 'Tools or technologies linked to a skill.', icon: Zap },
   { id: 'skill-map',     label: 'Skill Map',         help: 'Shows how categories, skill areas, skills, and technologies connect.', icon: Network },
 ];
 
 export const ConfigSection: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ConfigTab>('departments');
+  const [activeTab, setActiveTab] = useState<ConfigTab>('scoring');
 
   return (
     <div className="space-y-5 animate-slide-up">
@@ -1858,12 +1646,12 @@ export const ConfigSection: React.FC = () => {
 
       {/* Content */}
       <div>
+        {activeTab === 'scoring'       && <ScoringConfigSection />}
         {activeTab === 'departments'   && <DepartmentsSection />}
         {activeTab === 'employees'     && <EmployeesSection />}
         {activeTab === 'users'         && <UsersSection />}
         {activeTab === 'grades'        && <GradesSection />}
         {activeTab === 'skill-domains'        && <SkillDomainsSection />}
-        {activeTab === 'domain-grade-weights' && <DomainGradeWeightsSection />}
         {activeTab === 'categories'           && <CategoriesSection />}
         {activeTab === 'competencies'  && <CompetenciesSection />}
         {activeTab === 'technologies'  && <TechnologiesSection />}

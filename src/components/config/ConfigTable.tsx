@@ -56,8 +56,8 @@ const Pagination: React.FC<{ page: number; total: number; pageSize: number; onCh
 export const TableShell: React.FC<{
   tabKey: string;
   title: string;
-  onAdd: () => void;
-  addLabel: string;
+  onAdd?: () => void;
+  addLabel?: string;
   headers: string[];
   children: React.ReactNode;
   loading?: boolean;
@@ -72,13 +72,15 @@ export const TableShell: React.FC<{
     <div className="flex items-center justify-between px-5 py-4"
       style={{ background: HEADER_GRADIENTS[tabKey] }}>
       <h2 className="text-sm font-bold text-white">{title}</h2>
-      <button onClick={onAdd}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-        style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', backdropFilter: 'blur(4px)' }}
-        onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.3)')}
-        onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)')}>
-        <Plus size={13} /> {addLabel}
-      </button>
+      {onAdd && addLabel && (
+        <button onClick={onAdd}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+          style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', backdropFilter: 'blur(4px)' }}
+          onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.3)')}
+          onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)')}>
+          <Plus size={13} /> {addLabel}
+        </button>
+      )}
     </div>
 
     <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgb(var(--border))' }}>

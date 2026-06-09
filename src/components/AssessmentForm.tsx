@@ -8,6 +8,7 @@ import {
   useUpdateAssessment,
   SkillAssessment,
 } from '@/hooks/useAssessment';
+import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes } from '@/hooks/useConfig';
 
 interface Props {
   employeeId: string;   // emp_code e.g. "1818"
@@ -15,7 +16,7 @@ interface Props {
   onClose?: () => void;
 }
 
-const PROJECT_OPTIONS = [
+const DEFAULT_PROJECT_OPTIONS = [
   { value: 0, label: '0 projects' },
   { value: 1, label: '1 project' },
   { value: 2, label: '2 projects' },
@@ -23,20 +24,20 @@ const PROJECT_OPTIONS = [
 ];
 
 // Preview hint mirrors the backend row-score formula before level weighting.
-const TYPE_HINTS: Record<string, string> = {
+const DEFAULT_TYPE_HINTS: Record<string, string> = {
   Primary: 'coeff 0.25',
   Secondary: 'coeff 0.15',
   Tertiary: 'coeff 0.10',
 };
 
-type AssessmentLevel = 'Unset' | 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Awareness';
-const LEVEL_OPTIONS: AssessmentLevel[] = ['Unset', 'Expert', 'Advanced', 'Proficient', 'Foundational', 'Awareness'];
+type AssessmentLevel = 'Unset' | 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness';
 const LEVEL_LABELS: Record<AssessmentLevel, string> = {
   Unset:       '— Unset',
   Expert:      'Expert',
   Advanced:    'Advanced',
   Proficient:  'Proficient',
   Foundational:'Foundational',
+  Beginner:    'Beginner',
   Awareness:   'Awareness',
 };
 
@@ -46,6 +47,7 @@ const LEVEL_COLORS: Record<string, string> = {
   Advanced:    '#22d3ee',
   Proficient:  'rgb(var(--warning))',
   Foundational:'#f97316',
+  Beginner:    '#f97316',
   Awareness:   '#a855f7',
   // computed labels (for result card)
   'L4 Expert': 'rgb(var(--success))',
@@ -145,6 +147,9 @@ const DuplicateModal: React.FC<{
 
 export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose }) => {
   const { data: hierarchy = [], isLoading: hierarchyLoading } = useSkillsHierarchy();
+  const { data: assessmentTypes = [] } = useConfigAssessmentTypes();
+  const { data: assessmentLevels = [] } = useConfigAssessmentLevels();
+  const { data: assessmentProjects = [] } = useConfigAssessmentProjects();
   const { checkDuplicate } = useDuplicateAssessmentCheck(employeeId);
   const createAssessment = useCreateAssessment();
   const updateAssessment = useUpdateAssessment();
@@ -178,6 +183,29 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
     () => selectedCompetency?.technologies.find((t) => t.id === selectedTechnologyId),
     [selectedCompetency, selectedTechnologyId]
   );
+  const typeHints = useMemo(() => {
+    const hints = { ...DEFAULT_TYPE_HINTS };
+    assessmentTypes.forEach((assessmentType) => {
+      hints[assessmentType.code] = `coeff ${assessmentType.weight.toFixed(2)}`;
+    });
+    return hints;
+  }, [assessmentTypes]);
+  const levelOptions = useMemo(() => {
+    const configured = assessmentLevels
+      .filter((levelConfig) => levelConfig.is_active)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((levelConfig) => ({ value: levelConfig.code, label: levelConfig.label }));
+    return configured.length > 0
+      ? configured
+      : Object.entries(LEVEL_LABELS).map(([value, label]) => ({ value, label }));
+  }, [assessmentLevels]);
+  const projectOptions = useMemo(() => {
+    const configured = assessmentProjects
+      .filter((projectConfig) => projectConfig.is_active)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((projectConfig) => ({ value: projectConfig.project_count, label: projectConfig.label }));
+    return configured.length > 0 ? configured : DEFAULT_PROJECT_OPTIONS;
+  }, [assessmentProjects]);
 
   // Reset dependent fields when parent changes
   const handleDomainChange = (domainId: number) => {
@@ -420,7 +448,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
                     {t}
                   </span>
                   <span className="text-xs" style={{ color: 'rgb(var(--text-3))' }}>
-                    {TYPE_HINTS[t]}
+                    {typeHints[t]}
                   </span>
                 </label>
               ))}
@@ -431,7 +459,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
             <div>
               <label className="field-label">Number of Projects</label>
               <select value={String(projects)} onChange={(e) => setProjects(Number(e.target.value))} className="field">
-                {PROJECT_OPTIONS.map((o) => (
+                {projectOptions.map((o) => (
                   <option key={o.value} value={String(o.value)}>
                     {o.label}
                   </option>
@@ -442,21 +470,21 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
             <div>
               <label className="field-label">Proficiency Level</label>
               <div className="space-y-2">
-                {LEVEL_OPTIONS.map((l) => (
-                  <label key={l} className="flex items-center gap-2 cursor-pointer">
+                {levelOptions.map((levelOption) => (
+                  <label key={levelOption.value} className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="level"
-                      value={l}
-                      checked={level === l}
-                      onChange={() => setLevel(l)}
+                      value={levelOption.value}
+                      checked={level === levelOption.value}
+                      onChange={() => setLevel(levelOption.value as AssessmentLevel)}
                       className="w-4 h-4"
                     />
                     <span
                       className="text-sm font-medium"
-                      style={{ color: LEVEL_COLORS[l] ?? 'rgb(var(--text-1))' }}
+                      style={{ color: LEVEL_COLORS[levelOption.value] ?? 'rgb(var(--text-1))' }}
                     >
-                      {LEVEL_LABELS[l]}
+                      {levelOption.label}
                     </span>
                   </label>
                 ))}

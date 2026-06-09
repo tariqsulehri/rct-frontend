@@ -3,6 +3,11 @@ import { useMemo, useState } from 'react';
 const PAGE_SIZE = 8;
 
 export const HEADER_GRADIENTS: Record<string, string> = {
+  'assessment-types': 'linear-gradient(135deg, #2563eb 0%, #059669 100%)',
+  'assessment-levels': 'linear-gradient(135deg, #059669 0%, #d97706 100%)',
+  'assessment-statuses': 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+  'assessment-projects': 'linear-gradient(135deg, #0891b2 0%, #16a34a 100%)',
+  scoring: 'linear-gradient(135deg, #2563eb 0%, #16a34a 100%)',
   departments: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
   users: 'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)',
   employees: 'linear-gradient(135deg, #10b981 0%, #0ea5e9 100%)',

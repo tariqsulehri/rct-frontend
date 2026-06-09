@@ -299,6 +299,16 @@ body {
     @apply text-xl font-bold tracking-tight;
     color: rgb(var(--text-1));
   }
+  .window-title {
+    @apply font-semibold uppercase tracking-wide;
+    color: rgb(var(--text-1));
+  }
+  .dark .card .text-xs.font-semibold.uppercase.tracking-wide,
+  .dark .card .text-sm.font-semibold.uppercase.tracking-wide,
+  .midnight .card .text-xs.font-semibold.uppercase.tracking-wide,
+  .midnight .card .text-sm.font-semibold.uppercase.tracking-wide {
+    color: rgb(var(--text-1)) !important;
+  }
   .section-desc {
     @apply text-sm mt-0.5;
     color: rgb(var(--text-2));

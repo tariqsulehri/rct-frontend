@@ -9,7 +9,7 @@ export interface SkillAssessment {
   technology_id: number;
   type: 'Primary' | 'Secondary' | 'Tertiary';
   projects: number;
-  level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Awareness' | 'Unset';
+  level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
   status: 'approved' | 'pending';
   assessed_by: string;   // emp_code of assessor e.g. "1139"
   assessed_at: string;
@@ -115,7 +115,7 @@ export const useCreateAssessment = () => {
       technology_id: number;
       type: 'Primary' | 'Secondary' | 'Tertiary';
       projects: number;
-      level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Awareness' | 'Unset';
+      level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
     }) => {
       const response = await apiClient.post<{ success: boolean; data: SkillAssessment }>(
         '/assessments/skill-assessments',
@@ -172,7 +172,7 @@ export const useUpdateAssessment = () => {
       data: Partial<{
         type: 'Primary' | 'Secondary' | 'Tertiary';
         projects: number;
-        level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Awareness' | 'Unset';
+        level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
       }>;
     }) => {
       const response = await apiClient.patch<{ success: boolean; data: SkillAssessment }>(

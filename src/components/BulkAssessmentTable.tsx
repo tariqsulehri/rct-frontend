@@ -4,6 +4,7 @@ import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Stars } from '@/components/ui/Stars';
 import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, ShieldCheck, Info } from 'lucide-react';
 import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
+import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes } from '@/hooks/useConfig';
 import {
   useSkillsHierarchy,
   useEmployeeAssessments,
@@ -24,7 +25,7 @@ interface Props {
   onClose?: () => void;
 }
 
-type AssessmentLevel = 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Awareness' | 'Unset';
+type AssessmentLevel = 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
 
 interface BulkRow {
   id: string;
@@ -50,14 +51,13 @@ interface SearchableOption {
 type SortKey = 'domain' | 'competency' | 'technology' | 'type' | 'projects';
 type SortOrder = 'asc' | 'desc';
 
-const LEVEL_OPTIONS: AssessmentLevel[] = ['Unset', 'Expert', 'Advanced', 'Proficient', 'Foundational', 'Awareness'];
-
 const LEVEL_COLORS: Record<AssessmentLevel, string> = {
   Unset:       'rgb(var(--text-3))',
   Expert:      'rgb(var(--success))',
   Advanced:    '#22d3ee',
   Proficient:  'rgb(var(--warning))',
   Foundational:'#f97316',
+  Beginner:    '#f97316',
   Awareness:   '#a855f7',
 };
 
@@ -67,6 +67,7 @@ const LEVEL_LABELS: Record<AssessmentLevel, string> = {
   Advanced:    'Advanced',
   Proficient:  'Proficient',
   Foundational:'Foundational',
+  Beginner:    'Beginner',
   Awareness:   'Awareness',
 };
 
@@ -74,13 +75,6 @@ const TYPE_OPTIONS = [
   { value: 'Primary', label: 'Primary - main skill' },
   { value: 'Secondary', label: 'Secondary - supporting skill' },
   { value: 'Tertiary', label: 'Tertiary - related skill' },
-] as const;
-
-const PROJECT_OPTIONS = [
-  { value: '0', label: '0 - no project yet' },
-  { value: '1', label: '1 - used in 1 project' },
-  { value: '2', label: '2 - used in 2 projects' },
-  { value: '3', label: '3+ - used in 3 or more projects' },
 ] as const;
 
 const InfoTip: React.FC<{ text: string }> = ({ text }) => (
@@ -307,6 +301,9 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const updateAssessment = useUpdateAssessment();
   const deleteAssessment = useDeleteAssessment();
   const approveAssessment = useApproveAssessment();
+  const { data: assessmentTypes = [] } = useConfigAssessmentTypes();
+  const { data: assessmentLevels = [] } = useConfigAssessmentLevels();
+  const { data: assessmentProjects = [] } = useConfigAssessmentProjects();
   const loadedEmployeeRef = useRef<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
@@ -321,6 +318,40 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const [savingRowIds, setSavingRowIds] = useState<Set<string>>(new Set());
 
   const techLocationMap = useMemo(() => buildTechnologyLocationMap(hierarchy), [hierarchy]);
+  const scoringValues = useMemo(() => ({
+    Primary: assessmentTypes.find((type) => type.code === 'Primary' && type.is_active)?.weight,
+    Secondary: assessmentTypes.find((type) => type.code === 'Secondary' && type.is_active)?.weight,
+    Tertiary: assessmentTypes.find((type) => type.code === 'Tertiary' && type.is_active)?.weight,
+  }), [assessmentTypes]);
+  const levelWeights = useMemo(() => Object.fromEntries(
+    assessmentLevels.filter((level) => level.is_active).map((level) => [level.code, level.weight]),
+  ), [assessmentLevels]);
+  const projectCredits = useMemo(() => Object.fromEntries(
+    assessmentProjects.filter((project) => project.is_active).map((project) => [project.project_count, project.credit]),
+  ), [assessmentProjects]);
+  const levelOptions = useMemo(() => {
+    const configured = assessmentLevels
+      .filter((level) => level.is_active)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((level) => ({ value: level.code, label: level.label }));
+    return configured.length > 0
+      ? configured
+      : Object.entries(LEVEL_LABELS).map(([value, label]) => ({ value, label }));
+  }, [assessmentLevels]);
+  const projectOptions = useMemo(() => {
+    const configured = assessmentProjects
+      .filter((project) => project.is_active)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((project) => ({ value: String(project.project_count), label: project.label }));
+    return configured.length > 0
+      ? configured
+      : [
+        { value: '0', label: '0 - no project yet' },
+        { value: '1', label: '1 - used in 1 project' },
+        { value: '2', label: '2 - used in 2 projects' },
+        { value: '3', label: '3+ - used in 3 or more projects' },
+      ];
+  }, [assessmentProjects]);
 
   useEffect(() => {
     loadedEmployeeRef.current = null;
@@ -479,7 +510,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         errors.push('Duplicate: this resource already has the same Skill Area, Skill, and Technology.');
       }
 
-      enriched.scorePreview = computeAssessmentScorePreview(row.type, row.projects, row.level);
+      enriched.scorePreview = computeAssessmentScorePreview(row.type, row.projects, row.level, scoringValues, levelWeights, projectCredits);
     }
 
     if (errors.length > 0) {
@@ -489,7 +520,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     }
 
     return enriched;
-  }, [checkDuplicate, employeeId, isRowEditable, rows]);
+  }, [checkDuplicate, employeeId, isRowEditable, rows, scoringValues, levelWeights, projectCredits]);
 
   const addRow = useCallback(() => {
     // Prepend so new row stays at the top, never jumps
@@ -866,7 +897,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                   {/* Projects */}
                   <td className="px-2.5 py-2 align-middle">
                     {rowEditable
-                      ? <SearchableSelect value={String(row.projects)} onChange={(v) => updateRow(row.id, 'projects', Number(v))} className="w-full" placeholder="Projects..." options={PROJECT_OPTIONS.map((option) => ({ value: option.value, label: option.label }))} />
+                      ? <SearchableSelect value={String(row.projects)} onChange={(v) => updateRow(row.id, 'projects', Number(v))} className="w-full" placeholder="Projects..." options={projectOptions} />
                       : <span className="text-xs" style={{ color: 'rgb(var(--text-1))' }}>{projectLabel}</span>
                     }
                   </td>
@@ -874,7 +905,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                   {/* Level — editable in approval mode or by manager; read-only for engineers */}
                   <td className="px-2.5 py-2 align-middle">
                     {(rowEditable && !readOnlyLevel) || isApproving
-                      ? <SearchableSelect value={row.level} onChange={(v) => updateRow(row.id, 'level', v as AssessmentLevel)} className="w-full" placeholder="Level..." options={LEVEL_OPTIONS.map((l) => ({ value: l, label: LEVEL_LABELS[l] }))} />
+                      ? <SearchableSelect value={row.level} onChange={(v) => updateRow(row.id, 'level', v as AssessmentLevel)} className="w-full" placeholder="Level..." options={levelOptions} />
                       : isPending
                         ? <span className="text-xs font-semibold" style={{ color: LEVEL_COLORS[row.level] ?? 'rgb(var(--text-2))' }}>
                             {LEVEL_LABELS[row.level] ?? row.level}

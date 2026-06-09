@@ -819,6 +819,10 @@ const AssessmentsTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> 
   const c = useChartColors();
   const isPrivileged = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const [showSkillEditor, setShowSkillEditor] = React.useState(false);
+  const [competencySearch, setCompetencySearch] = React.useState('');
+  const [competencyDomainFilter, setCompetencyDomainFilter] = React.useState('all');
+  const [competencyStatusFilter, setCompetencyStatusFilter] = React.useState('all');
+  const [competencyCriticalFilter, setCompetencyCriticalFilter] = React.useState('all');
 
   const rows = compData ?? [];
   const [selectedEmpCode, setSelectedEmpCode] = React.useState<string | null>(null);
@@ -857,6 +861,73 @@ const AssessmentsTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> 
   });
 
   const barData = [...radarData].sort((a, b) => b.score - a.score);
+  const competencyRows = (gapData?.competencies ?? [])
+    .map((comp) => {
+      const gap = gapRow?.competency_gaps?.[comp.name];
+      const score = Math.round((gap?.score ?? 0) * 100);
+      const threshold = Math.round((gap?.threshold ?? 0) * 100);
+      const gapPct = Math.max(0, threshold - score);
+      const meets = threshold > 0 && score >= threshold;
+
+      return {
+        name: comp.name,
+        domain: gap?.domain ?? comp.domain,
+        score,
+        threshold,
+        gap: gapPct,
+        meets,
+        hasRequirement: threshold > 0,
+        isCritical: gap?.is_critical ?? comp.is_critical,
+      };
+    })
+    .sort((a, b) => a.domain.localeCompare(b.domain) || a.name.localeCompare(b.name));
+  const competencyDomains = Array.from(new Set(competencyRows.map(row => row.domain).filter(Boolean))).sort();
+  const hasCompetencyFilters =
+    competencySearch.trim() !== '' ||
+    competencyDomainFilter !== 'all' ||
+    competencyStatusFilter !== 'all' ||
+    competencyCriticalFilter !== 'all';
+  const filteredCompetencyRows = competencyRows.filter((row) => {
+    const q = competencySearch.trim().toLowerCase();
+    const matchesSearch = !q ||
+      row.name.toLowerCase().includes(q) ||
+      row.domain.toLowerCase().includes(q);
+    const matchesDomain = competencyDomainFilter === 'all' || row.domain === competencyDomainFilter;
+    const matchesStatus =
+      competencyStatusFilter === 'all' ||
+      (competencyStatusFilter === 'assessed' && row.score > 0) ||
+      (competencyStatusFilter === 'unassessed' && row.score === 0) ||
+      (competencyStatusFilter === 'meets' && row.hasRequirement && row.meets) ||
+      (competencyStatusFilter === 'below' && row.hasRequirement && !row.meets) ||
+      (competencyStatusFilter === 'no-target' && !row.hasRequirement);
+    const matchesCritical =
+      competencyCriticalFilter === 'all' ||
+      (competencyCriticalFilter === 'critical' && row.isCritical) ||
+      (competencyCriticalFilter === 'standard' && !row.isCritical);
+
+    return matchesSearch && matchesDomain && matchesStatus && matchesCritical;
+  });
+  const filteredSkillDomainScores = Array.from(
+    filteredCompetencyRows.reduce((acc, row) => {
+      const current = acc.get(row.domain) ?? { scoreSum: 0, thresholdSum: 0, count: 0, requiredCount: 0, meetsCount: 0 };
+      current.scoreSum += row.score;
+      current.thresholdSum += row.threshold;
+      current.count += 1;
+      if (row.hasRequirement) {
+        current.requiredCount += 1;
+        if (row.meets) current.meetsCount += 1;
+      }
+      acc.set(row.domain, current);
+      return acc;
+    }, new Map<string, { scoreSum: number; thresholdSum: number; count: number; requiredCount: number; meetsCount: number }>()),
+  ).map(([domain, value]) => ({
+    domain,
+    score: Math.round(value.scoreSum / value.count),
+    threshold: value.requiredCount > 0 ? Math.round(value.thresholdSum / value.requiredCount) : 0,
+    count: value.count,
+    meetsCount: value.meetsCount,
+    requiredCount: value.requiredCount,
+  })).sort((a, b) => b.score - a.score || a.domain.localeCompare(b.domain));
 
   if (isLoading) {
     return (
@@ -1091,8 +1162,8 @@ const AssessmentsTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> 
               <InfoTip text="Compares achieved score with the required target for each skill area." />
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={Math.max(260, barData.length * (avgThreshold > 0 ? 44 : 28))}>
-            <BarChart data={barData} layout="vertical" margin={{ left: 8, right: 52, top: 18, bottom: 4 }} barCategoryGap="22%">
+          <ResponsiveContainer width="100%" height={Math.max(260, barData.length * 34)}>
+            <BarChart data={barData} layout="vertical" margin={{ left: 8, right: 52, top: 16, bottom: 0 }} barCategoryGap="30%">
               <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: c.text }}
                 tickFormatter={v => `${v}%`} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="domain" width={110}
@@ -1120,7 +1191,7 @@ const AssessmentsTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> 
                 }}
               />
               {/* Achieved bar */}
-              <Bar dataKey="score" name="Achieved" radius={[0, 5, 5, 0]} maxBarSize={14}>
+              <Bar dataKey="score" name="Achieved" radius={[0, 5, 5, 0]} maxBarSize={10}>
                 {barData.map((d, i) => (
                   <Cell key={i} fill={
                     d.threshold > 0
@@ -1133,7 +1204,7 @@ const AssessmentsTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> 
               </Bar>
               {/* Required bar — thin amber bar when threshold data exists */}
               {avgThreshold > 0 && (
-                <Bar dataKey="threshold" name="Required" radius={[0, 4, 4, 0]} maxBarSize={7} fill={c.warning} fillOpacity={0.55}>
+                <Bar dataKey="threshold" name="Required" radius={[0, 4, 4, 0]} maxBarSize={4} fill={c.warning} fillOpacity={0.55}>
                   <LabelList dataKey="threshold" position="right"
                     formatter={(v: number) => v > 0 ? `${v}%` : ''}
                     style={{ fontSize: 9, fill: c.warning }} />
@@ -1166,47 +1237,242 @@ const AssessmentsTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> 
         </div>
       </div>
 
-      {/* Domain progress cards */}
-      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        {barData.map(({ domain, fullDomain, score, threshold, meets }) => {
-          const barColor = threshold > 0
-            ? (meets ? c.success : c.danger)
-            : (score >= 75 ? c.success : score >= 40 ? c.warning : c.danger);
-          return (
-            <div key={domain} className="card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold truncate pr-2" style={{ color: 'rgb(var(--text-1))' }} title={fullDomain}>
-                  {domain}
+      {/* Full competency progress */}
+      {competencyRows.length > 0 && (
+        <div className="card p-5">
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-2))' }}>
+                  All Competencies
                 </p>
-                <div className="flex items-center gap-1 shrink-0">
-                  <span className="text-xs font-bold" style={{ color: barColor }}>{score}%</span>
-                  {threshold > 0 && (
-                    <span className="text-xs" style={{ color: 'rgb(var(--text-3))' }}>/ {threshold}%</span>
-                  )}
-                </div>
+                <InfoTip text="Shows every competency for the selected target grade, including zero scores." />
               </div>
-              <div className="h-2 rounded-full relative" style={{ backgroundColor: 'rgb(var(--surface-3))' }}>
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${Math.min(score, 100)}%`, backgroundColor: barColor }}
-                />
-                {threshold > 0 && (
-                  <div
-                    className="absolute top-0 bottom-0 w-0.5 rounded-full"
-                    style={{ left: `${Math.min(threshold, 100)}%`, backgroundColor: c.warning, transform: 'translateX(-50%)' }}
-                    title={`Required: ${threshold}%`}
-                  />
-                )}
-              </div>
-              {threshold > 0 && (
-                <p className="text-xs mt-1" style={{ color: meets ? c.success : c.danger }}>
-                  {meets ? '✓ Meets target' : `✗ Gap: ${threshold - score}%`}
-                </p>
+              <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
+                Complete competency-level view for the selected resource.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <span className="text-xs font-bold rounded-full px-2.5 py-1 shrink-0"
+                style={{ color: 'rgb(var(--accent-txt))', backgroundColor: 'rgb(var(--accent-soft))' }}>
+                {filteredCompetencyRows.length} / {competencyRows.length}
+              </span>
+              {promoRow && (
+                <span className="text-xs font-bold rounded-full px-2.5 py-1 shrink-0"
+                  style={{ color: 'rgb(var(--success))', backgroundColor: 'rgb(var(--success-soft))' }}>
+                  {promoRow.meets_count} / {promoRow.total_competencies} met
+                </span>
               )}
             </div>
-          );
-        })}
-      </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+            <div className="md:col-span-2 flex items-center gap-2 rounded-lg px-3 py-2 border"
+              style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
+              <Search size={14} style={{ color: 'rgb(var(--text-3))' }} />
+              <input
+                value={competencySearch}
+                onChange={e => setCompetencySearch(e.target.value)}
+                placeholder="Search competencies..."
+                className="bg-transparent text-sm outline-none flex-1 min-w-0"
+                style={{ color: 'rgb(var(--text-1))' }}
+              />
+              {competencySearch && (
+                <button onClick={() => setCompetencySearch('')} className="text-xs px-1.5 py-0.5 rounded"
+                  style={{ color: 'rgb(var(--text-3))' }}>x</button>
+              )}
+            </div>
+            <select
+              value={competencyDomainFilter}
+              onChange={e => setCompetencyDomainFilter(e.target.value)}
+              className="text-sm rounded-lg px-3 py-2 border outline-none"
+              style={{ background: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
+            >
+              <option value="all">All skill areas</option>
+              {competencyDomains.map(domain => <option key={domain} value={domain}>{domain}</option>)}
+            </select>
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={competencyStatusFilter}
+                onChange={e => setCompetencyStatusFilter(e.target.value)}
+                className="text-sm rounded-lg px-3 py-2 border outline-none"
+                style={{ background: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
+              >
+                <option value="all">All statuses</option>
+                <option value="assessed">Assessed</option>
+                <option value="unassessed">Unassessed</option>
+                <option value="meets">Meets</option>
+                <option value="below">Below</option>
+                <option value="no-target">No target</option>
+              </select>
+              <select
+                value={competencyCriticalFilter}
+                onChange={e => setCompetencyCriticalFilter(e.target.value)}
+                className="text-sm rounded-lg px-3 py-2 border outline-none"
+                style={{ background: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
+              >
+                <option value="all">All types</option>
+                <option value="critical">Critical</option>
+                <option value="standard">Standard</option>
+              </select>
+            </div>
+          </div>
+          {hasCompetencyFilters && (
+            <div className="flex justify-end mb-4">
+              <button
+                className="btn-ghost text-xs px-3 py-1.5"
+                onClick={() => {
+                  setCompetencySearch('');
+                  setCompetencyDomainFilter('all');
+                  setCompetencyStatusFilter('all');
+                  setCompetencyCriticalFilter('all');
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+
+          {filteredSkillDomainScores.length > 0 && (
+            <div className="mb-4 grid gap-2.5"
+              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
+              {filteredSkillDomainScores.map((domainScore, idx) => {
+                const meetsDomain = domainScore.threshold > 0 && domainScore.score >= domainScore.threshold;
+                const nearDomain = domainScore.threshold > 0 && !meetsDomain && domainScore.threshold - domainScore.score <= 10;
+                const color = domainScore.threshold > 0
+                  ? (meetsDomain ? c.success : nearDomain ? c.warning : c.danger)
+                  : c.domains[idx % c.domains.length];
+                const statusLabel = domainScore.requiredCount > 0
+                  ? `${domainScore.meetsCount}/${domainScore.requiredCount} met`
+                  : `${domainScore.count} comp${domainScore.count !== 1 ? 's' : ''}`;
+                const statusBg = domainScore.threshold > 0
+                  ? (meetsDomain ? 'rgb(var(--success-soft))' : nearDomain ? 'rgb(var(--warning-soft))' : 'rgb(var(--danger-soft))')
+                  : 'rgb(var(--surface-3))';
+                return (
+                  <div key={domainScore.domain} className="rounded-lg border px-3 py-2.5 min-h-[82px]"
+                    style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
+                    <div className="flex items-start justify-between gap-2">
+                      <p
+                        className="text-xs font-semibold leading-snug min-w-0"
+                        style={{
+                          color: 'rgb(var(--text-1))',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                        title={domainScore.domain}
+                      >
+                        {domainScore.domain}
+                      </p>
+                      <span className="text-[10px] font-bold rounded-full px-2 py-0.5 shrink-0"
+                        style={{ color, backgroundColor: statusBg }}>
+                        {statusLabel}
+                      </span>
+                    </div>
+                    <div className="mt-1">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-extrabold leading-none" style={{ color }}>
+                          {domainScore.score}%
+                        </span>
+                        {domainScore.threshold > 0 && (
+                          <>
+                            <span className="text-sm font-semibold" style={{ color: 'rgb(var(--text-2))' }}>/</span>
+                            <span className="text-sm font-semibold" style={{ color: 'rgb(var(--text-2))' }}>
+                              {domainScore.threshold}%
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <div className="mt-0.5 text-[11px] font-medium leading-snug">
+                        <span style={{ color: 'rgb(var(--text-2))' }}>
+                          {domainScore.threshold > 0 ? 'Achieved / Required' : 'Achieved'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 rounded-full mt-2 overflow-hidden" style={{ backgroundColor: 'rgb(var(--surface-3))' }}>
+                      <div className="h-full rounded-full" style={{ width: `${Math.min(domainScore.score, 100)}%`, backgroundColor: color }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px] text-sm">
+              <thead>
+                <tr style={{ color: 'rgb(var(--text-3))' }}>
+                  <th className="text-left text-xs font-semibold uppercase tracking-wide py-2 pr-3">Competency</th>
+                  <th className="text-left text-xs font-semibold uppercase tracking-wide py-2 px-3">Skill Area</th>
+                  <th className="text-right text-xs font-semibold uppercase tracking-wide py-2 px-3">Achieved</th>
+                  <th className="text-right text-xs font-semibold uppercase tracking-wide py-2 px-3">Required</th>
+                  <th className="text-right text-xs font-semibold uppercase tracking-wide py-2 px-3">Gap</th>
+                  <th className="text-left text-xs font-semibold uppercase tracking-wide py-2 pl-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCompetencyRows.map((row) => {
+                  const rowColor = row.hasRequirement
+                    ? (row.meets ? c.success : c.danger)
+                    : c.text;
+                  return (
+                    <tr key={row.name} className="border-t" style={{ borderColor: 'rgb(var(--border))' }}>
+                      <td className="py-3 pr-3 align-top">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-medium truncate" style={{ color: 'rgb(var(--text-1))' }} title={row.name}>
+                            {row.name}
+                          </span>
+                          {row.isCritical && (
+                            <span className="text-[10px] font-bold uppercase rounded-full px-1.5 py-0.5 shrink-0"
+                              style={{ color: c.warning, backgroundColor: 'rgb(var(--warning-soft))' }}>
+                              Critical
+                            </span>
+                          )}
+                        </div>
+                        <div className="h-1.5 rounded-full mt-2 overflow-hidden" style={{ backgroundColor: 'rgb(var(--surface-3))' }}>
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${Math.min(row.score, 100)}%`, backgroundColor: rowColor }}
+                          />
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 align-top" style={{ color: 'rgb(var(--text-2))' }}>
+                        {row.domain}
+                      </td>
+                      <td className="py-3 px-3 text-right align-top font-semibold" style={{ color: rowColor }}>
+                        {row.score}%
+                      </td>
+                      <td className="py-3 px-3 text-right align-top" style={{ color: row.hasRequirement ? c.warning : 'rgb(var(--text-3))' }}>
+                        {row.hasRequirement ? `${row.threshold}%` : 'N/A'}
+                      </td>
+                      <td className="py-3 px-3 text-right align-top" style={{ color: row.gap > 0 ? c.danger : 'rgb(var(--text-3))' }}>
+                        {row.hasRequirement ? `${row.gap}%` : 'N/A'}
+                      </td>
+                      <td className="py-3 pl-3 align-top">
+                        <span className="text-xs font-semibold rounded-full px-2 py-1"
+                          style={{
+                            color: row.hasRequirement ? (row.meets ? c.success : c.danger) : 'rgb(var(--text-3))',
+                            backgroundColor: row.hasRequirement
+                              ? (row.meets ? 'rgb(var(--success-soft))' : 'rgb(var(--danger-soft))')
+                              : 'rgb(var(--surface-2))',
+                          }}>
+                          {!row.hasRequirement ? 'No target' : row.meets ? 'Meets' : 'Below'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {filteredCompetencyRows.length === 0 && (
+              <div className="py-8 text-center text-sm" style={{ color: 'rgb(var(--text-3))' }}>
+                No competencies match the selected filters.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Engineers: manage their own skill list */}
       {!isPrivileged && user?.empCode && (

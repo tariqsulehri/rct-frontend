@@ -85,6 +85,170 @@ export interface ConfigTechnology {
   };
 }
 
+export interface ConfigAssessmentType {
+  id: number;
+  code: 'Primary' | 'Secondary' | 'Tertiary' | string;
+  label: string;
+  weight: number;
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
+  updated_at: string;
+}
+
+export interface ConfigAssessmentLevel {
+  id: number;
+  code: string;
+  label: string;
+  weight: number;
+  threshold: number | null;
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
+  updated_at: string;
+}
+
+export interface ConfigAssessmentStatus {
+  id: number;
+  code: string;
+  label: string;
+  description: string | null;
+  counts_toward_score: boolean;
+  is_terminal: boolean;
+  sort_order: number;
+  is_active: boolean;
+  updated_at: string;
+}
+
+export interface ConfigAssessmentProject {
+  id: number;
+  project_count: number;
+  label: string;
+  description: string | null;
+  duration_months_min: number | null;
+  duration_months_max: number | null;
+  credit: number;
+  threshold: number | null;
+  sort_order: number;
+  is_active: boolean;
+  updated_at: string;
+}
+
+// ── Assessment Types ─────────────────────────────────────────────────────────
+
+export const useConfigAssessmentTypes = () =>
+  useQuery({
+    queryKey: ['config', 'assessment-types'],
+    queryFn: async () => {
+      const res = await apiClient.get<{ success: boolean; data: ConfigAssessmentType[] }>('/config/assessment-types');
+      return res.data.data;
+    },
+  });
+
+export const useUpdateAssessmentType = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<{ label: string; weight: number; description: string | null; sort_order: number; is_active: boolean }>;
+    }) => {
+      const res = await apiClient.patch<{ success: boolean; data: ConfigAssessmentType }>(`/config/assessment-types/${id}`, data);
+      return res.data.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'assessment-types'] }),
+  });
+};
+
+export const useConfigAssessmentLevels = () =>
+  useQuery({
+    queryKey: ['config', 'assessment-levels'],
+    queryFn: async () => {
+      const res = await apiClient.get<{ success: boolean; data: ConfigAssessmentLevel[] }>('/config/assessment-levels');
+      return res.data.data;
+    },
+  });
+
+export const useUpdateAssessmentLevel = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<{ label: string; weight: number; threshold: number | null; description: string | null; sort_order: number; is_active: boolean }>;
+    }) => {
+      const res = await apiClient.patch<{ success: boolean; data: ConfigAssessmentLevel }>(`/config/assessment-levels/${id}`, data);
+      return res.data.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'assessment-levels'] }),
+  });
+};
+
+export const useConfigAssessmentStatuses = () =>
+  useQuery({
+    queryKey: ['config', 'assessment-statuses'],
+    queryFn: async () => {
+      const res = await apiClient.get<{ success: boolean; data: ConfigAssessmentStatus[] }>('/config/assessment-statuses');
+      return res.data.data;
+    },
+  });
+
+export const useUpdateAssessmentStatus = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<{ label: string; description: string | null; counts_toward_score: boolean; is_terminal: boolean; sort_order: number; is_active: boolean }>;
+    }) => {
+      const res = await apiClient.patch<{ success: boolean; data: ConfigAssessmentStatus }>(`/config/assessment-statuses/${id}`, data);
+      return res.data.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'assessment-statuses'] }),
+  });
+};
+
+export const useConfigAssessmentProjects = () =>
+  useQuery({
+    queryKey: ['config', 'assessment-projects'],
+    queryFn: async () => {
+      const res = await apiClient.get<{ success: boolean; data: ConfigAssessmentProject[] }>('/config/assessment-projects');
+      return res.data.data;
+    },
+  });
+
+export const useUpdateAssessmentProject = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<{
+        label: string;
+        description: string | null;
+        duration_months_min: number | null;
+        duration_months_max: number | null;
+        credit: number;
+        threshold: number | null;
+        sort_order: number;
+        is_active: boolean;
+      }>;
+    }) => {
+      const res = await apiClient.patch<{ success: boolean; data: ConfigAssessmentProject }>(`/config/assessment-projects/${id}`, data);
+      return res.data.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'assessment-projects'] }),
+  });
+};
+
 // ── Departments ───────────────────────────────────────────────────────────────
 
 export const useConfigDepartments = () =>

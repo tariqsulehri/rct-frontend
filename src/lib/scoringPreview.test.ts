@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { computeAssessmentScorePreview } from './scoringPreview';
 
 describe('scoring preview', () => {
-  it('computes assessment preview scores using type, project, and level weights', () => {
+  it('computes assessment preview scores using type, project, and level scoring values', () => {
     expect(computeAssessmentScorePreview('Primary', 3, 'Expert')).toBe(0.5);
     expect(computeAssessmentScorePreview('Secondary', 3, 'Advanced')).toBe(0.24);
     expect(computeAssessmentScorePreview('Tertiary', 3, 'Awareness')).toBe(0.04);
