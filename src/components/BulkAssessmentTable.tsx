@@ -78,10 +78,6 @@ const TYPE_OPTIONS = [
 ] as const;
 
 function createRowId() {
-  if (typeof globalThis.crypto?.randomUUID === 'function') {
-    return globalThis.crypto.randomUUID();
-  }
-
   return `row-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
