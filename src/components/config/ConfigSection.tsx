@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { X, Search, Building2, Users, Award, Layers, Cpu, Zap, User, Settings, Tag, Network } from 'lucide-react';
+import { X, Search, Building2, Users, Award, Layers, Cpu, Zap, User, Settings, Tag, Network, Save } from 'lucide-react';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -16,6 +16,7 @@ import {
   useConfigEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee,
   useConfigGrades, useCreateGrade, useUpdateGrade, useDeleteGrade,
   useConfigSkillDomains, useCreateSkillDomain, useUpdateSkillDomain, useDeleteSkillDomain,
+  useConfigCompetencyGradeThresholds, useBulkUpsertCompetencyGradeThresholds,
   useConfigCompetencies, useCreateCompetency, useUpdateCompetency, useDeleteCompetency,
   useConfigTechnologies, useCreateTechnology, useUpdateTechnology, useDeleteTechnology,
   useConfigCompetencyCategories, useCreateCompetencyCategory, useUpdateCompetencyCategory, useDeleteCompetencyCategory,
@@ -78,7 +79,7 @@ const AssessmentTypesSection: React.FC = () => {
   return (
     <>
       <TableShell tabKey="assessment-types" title="Assessment Types"
-        headers={['Type', 'Value', 'Description', 'Status']}
+        headers={['Type', 'Base Score', 'Description', 'Status']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
         {ts.paged.map((type, idx) => (
@@ -108,12 +109,12 @@ const AssessmentTypesSection: React.FC = () => {
       </TableShell>
 
       {editing && (
-        <Modal onClose={() => setEditing(null)}>
+        <Modal onClose={() => setEditing(null)} wide title="Edit Assessment Type">
           <div className="space-y-4">
             <div><label className={L}>Type</label><input className={F} value={editing.code} disabled /></div>
             <div><label className={L}>Label</label><input className={F} value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className={L}>Scoring Value</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /></div>
+              <div><label className={L}>Base Score</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /></div>
               <div><label className={L}>Sort Order</label><input type="number" min="0" className={F} value={form.sort_order} onChange={e => setForm({ ...form, sort_order: e.target.value })} /></div>
             </div>
             <div><label className={L}>Description</label><input className={F} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
@@ -173,7 +174,7 @@ const AssessmentLevelsSection: React.FC = () => {
   return (
     <>
       <TableShell tabKey="assessment-levels" title="Level Config"
-        headers={['Level', 'Weight', 'Threshold', 'Description', 'Status']}
+        headers={['Level', 'Score Factor', 'Minimum Target', 'Description', 'Status']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
         {ts.paged.map((levelConfig, idx) => (
@@ -189,13 +190,13 @@ const AssessmentLevelsSection: React.FC = () => {
       </TableShell>
 
       {editing && (
-        <Modal onClose={() => setEditing(null)}>
+        <Modal onClose={() => setEditing(null)} wide title="Edit Level Config">
           <div className="space-y-4">
             <div><label className={L}>Code</label><input className={F} value={editing.code} disabled /></div>
             <div><label className={L}>Label</label><input className={F} value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></div>
             <div className="grid grid-cols-3 gap-4">
-              <div><label className={L}>Weight</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /></div>
-              <div><label className={L}>Threshold</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.threshold} onChange={e => setForm({ ...form, threshold: e.target.value })} /></div>
+              <div><label className={L}>Score Factor</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /></div>
+              <div><label className={L}>Minimum Target</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.threshold} onChange={e => setForm({ ...form, threshold: e.target.value })} /></div>
               <div><label className={L}>Sort Order</label><input type="number" min="0" className={F} value={form.sort_order} onChange={e => setForm({ ...form, sort_order: e.target.value })} /></div>
             </div>
             <div><label className={L}>Description</label><input className={F} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
@@ -254,14 +255,14 @@ const AssessmentStatusesSection: React.FC = () => {
   return (
     <>
       <TableShell tabKey="assessment-statuses" title="Status Config"
-        headers={['Status', 'Counts', 'Terminal', 'Description', 'Active']}
+        headers={['Status', 'Affects Score', 'Review Complete', 'Description', 'Active']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
         {ts.paged.map((status, idx) => (
           <TR key={status.id} idx={idx}>
             <TD><span className="font-semibold">{status.label}</span></TD>
-            <TD><span className={status.counts_toward_score ? 'badge badge-success' : 'badge'}>{status.counts_toward_score ? 'Scores' : 'Ignored'}</span></TD>
-            <TD><span className={status.is_terminal ? 'badge badge-accent' : 'badge'}>{status.is_terminal ? 'Terminal' : 'Open'}</span></TD>
+            <TD><span className={status.counts_toward_score ? 'badge badge-success' : 'badge'}>{status.counts_toward_score ? 'Yes' : 'No'}</span></TD>
+            <TD><span className={status.is_terminal ? 'badge badge-accent' : 'badge'}>{status.is_terminal ? 'Yes' : 'No'}</span></TD>
             <TD muted small>{status.description ?? '—'}</TD>
             <TD><span className={status.is_active ? 'badge badge-success' : 'badge'}>{status.is_active ? 'Active' : 'Inactive'}</span></TD>
             <td className="px-4 py-3"><button onClick={() => openEdit(status)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button></td>
@@ -270,7 +271,7 @@ const AssessmentStatusesSection: React.FC = () => {
       </TableShell>
 
       {editing && (
-        <Modal onClose={() => setEditing(null)}>
+        <Modal onClose={() => setEditing(null)} wide title="Edit Status Config">
           <div className="space-y-4">
             <div><label className={L}>Code</label><input className={F} value={editing.code} disabled /></div>
             <div><label className={L}>Label</label><input className={F} value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></div>
@@ -278,11 +279,11 @@ const AssessmentStatusesSection: React.FC = () => {
             <div><label className={L}>Sort Order</label><input type="number" min="0" className={F} value={form.sort_order} onChange={e => setForm({ ...form, sort_order: e.target.value })} /></div>
             <label className="flex items-center gap-2.5 cursor-pointer">
               <input type="checkbox" checked={form.counts_toward_score} onChange={e => setForm({ ...form, counts_toward_score: e.target.checked })} className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
-              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Counts toward score</span>
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Affects score</span>
             </label>
             <label className="flex items-center gap-2.5 cursor-pointer">
               <input type="checkbox" checked={form.is_terminal} onChange={e => setForm({ ...form, is_terminal: e.target.checked })} className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
-              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Terminal status</span>
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Review complete</span>
             </label>
             <label className="flex items-center gap-2.5 cursor-pointer">
               <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
@@ -343,7 +344,7 @@ const AssessmentProjectsSection: React.FC = () => {
   return (
     <>
       <TableShell tabKey="assessment-projects" title="Project Config"
-        headers={['Projects', 'Credit', 'Duration', 'Threshold', 'Description', 'Status']}
+        headers={['Projects', 'Project Score', 'Duration', 'Minimum Target', 'Description', 'Status']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
         {ts.paged.map((project, idx) => (
@@ -364,15 +365,15 @@ const AssessmentProjectsSection: React.FC = () => {
       </TableShell>
 
       {editing && (
-        <Modal onClose={() => setEditing(null)} wide>
+        <Modal onClose={() => setEditing(null)} wide title="Edit Project Config">
           <div className="space-y-4">
             <div><label className={L}>Project Count</label><input className={F} value={editing.project_count === 3 ? '3+' : String(editing.project_count)} disabled /></div>
             <div><label className={L}>Label</label><input className={F} value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div><label className={L}>Min Months</label><input type="number" min="0" className={F} value={form.duration_months_min} onChange={e => setForm({ ...form, duration_months_min: e.target.value })} /></div>
               <div><label className={L}>Max Months</label><input type="number" min="0" className={F} value={form.duration_months_max} onChange={e => setForm({ ...form, duration_months_max: e.target.value })} /></div>
-              <div><label className={L}>Credit</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.credit} onChange={e => setForm({ ...form, credit: e.target.value })} /></div>
-              <div><label className={L}>Threshold</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.threshold} onChange={e => setForm({ ...form, threshold: e.target.value })} /></div>
+              <div><label className={L}>Project Score</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.credit} onChange={e => setForm({ ...form, credit: e.target.value })} /></div>
+              <div><label className={L}>Minimum Target</label><input type="number" min="0" max="1" step="0.01" className={F} value={form.threshold} onChange={e => setForm({ ...form, threshold: e.target.value })} /></div>
             </div>
             <div><label className={L}>Description</label><input className={F} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
             <div><label className={L}>Sort Order</label><input type="number" min="0" className={F} value={form.sort_order} onChange={e => setForm({ ...form, sort_order: e.target.value })} /></div>
@@ -574,7 +575,7 @@ const DepartmentsSection: React.FC = () => {
       </div>
 
       {modal && (
-        <Modal onClose={() => setModal(null)}>
+        <Modal onClose={() => setModal(null)} wide title={modal === 'create' ? 'Create Department' : 'Edit Department'}>
           <div className="space-y-4">
             <div><label className={L}>Name</label><input className={F} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
             <div><label className={L}>Description</label><input className={F} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
@@ -600,19 +601,29 @@ const UsersSection: React.FC = () => {
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigUser | null>(null);
   const [form, setForm] = useState({ username: '', password: '', role: 'ENGINEER', employee_id: '' });
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const openCreate = () => { setForm({ username: '', password: '', role: 'ENGINEER', employee_id: '' }); setEditing(null); setModal('create'); };
-  const openEdit = (u: ConfigUser) => { setForm({ username: u.username, password: '', role: u.role, employee_id: String(u.employee_id) }); setEditing(u); setModal('edit'); };
+  const openCreate = () => { setForm({ username: '', password: '', role: 'ENGINEER', employee_id: '' }); setEditing(null); setSaveError(null); setModal('create'); };
+  const openEdit = (u: ConfigUser) => { setForm({ username: u.username, password: '', role: u.role, employee_id: String(u.employee_id) }); setEditing(u); setSaveError(null); setModal('edit'); };
 
   const handleSave = async () => {
-    if (modal === 'create') {
-      await createUser.mutateAsync({ username: form.username, password: form.password, role: form.role as any, employee_id: Number(form.employee_id) });
-    } else if (editing) {
-      const data: any = { username: form.username, role: form.role };
-      if (form.password) data.password = form.password;
-      await updateUser.mutateAsync({ id: editing.id, data });
+    setSaveError(null);
+    try {
+      if (!form.employee_id) {
+        setSaveError('Please select an employee for this user account.');
+        return;
+      }
+      if (modal === 'create') {
+        await createUser.mutateAsync({ username: form.username, password: form.password, role: form.role as any, employee_id: Number(form.employee_id) });
+      } else if (editing) {
+        const data: any = { username: form.username, role: form.role, employee_id: Number(form.employee_id) };
+        if (form.password) data.password = form.password;
+        await updateUser.mutateAsync({ id: editing.id, data });
+      }
+      setModal(null);
+    } catch (err: any) {
+      setSaveError(err.response?.data?.error || err.response?.data?.message || 'Failed to save user. Please check the details and try again.');
     }
-    setModal(null);
   };
 
   const ROLE_BADGE: Record<string, string> = {
@@ -625,7 +636,15 @@ const UsersSection: React.FC = () => {
     (u.employee?.full_name ?? '').toLowerCase().includes(q),
     (a, b) => (a.employee?.full_name ?? a.username).localeCompare(b.employee?.full_name ?? b.username));
 
-  const empOptions = (employees ?? []).map(e => ({ value: String(e.id), label: e.full_name, sub: e.emp_code }));
+  const formatEmployeeSelection = (employee: Pick<ConfigEmployee, 'emp_code' | 'full_name' | 'department' | 'dept'>) => {
+    const departmentName = employee.dept?.name ?? employee.department;
+    return `${employee.emp_code} - ${employee.full_name} - ${departmentName || 'No department'}`;
+  };
+  const empOptions = (employees ?? []).map(e => ({
+    value: String(e.id),
+    label: formatEmployeeSelection(e),
+    sub: e.current_grade?.code && e.target_grade?.code ? `${e.current_grade.code} -> ${e.target_grade.code}` : undefined,
+  }));
 
   return (
     <>
@@ -638,7 +657,11 @@ const UsersSection: React.FC = () => {
           <TR key={u.id} idx={idx}>
             <TD><span className="font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{u.username}</span></TD>
             <TD><span className={ROLE_BADGE[u.role] ?? 'badge'}>{u.role}</span></TD>
-            <TD muted>{u.employee?.full_name ?? `#${u.employee_id}`}</TD>
+            <TD muted>
+              {u.employee
+                ? `${u.employee.emp_code} - ${u.employee.full_name} - ${u.employee.department || 'No department'}`
+                : `#${u.employee_id}`}
+            </TD>
             <TD>
               <span className={u.is_active ? 'badge badge-success' : 'badge'}>{u.is_active ? 'Active' : 'Inactive'}</span>
             </TD>
@@ -648,8 +671,18 @@ const UsersSection: React.FC = () => {
       </TableShell>
 
       {modal && (
-        <Modal onClose={() => setModal(null)}>
+        <Modal onClose={() => { setModal(null); setSaveError(null); }} wide title={modal === 'create' ? 'Create User' : 'Edit User'}>
           <div className="space-y-4">
+            {saveError && (
+              <div className="rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  borderColor: 'rgba(248, 113, 113, 0.35)',
+                  backgroundColor: 'rgba(127, 29, 29, 0.20)',
+                  color: 'rgb(var(--danger))',
+                }}>
+                {saveError}
+              </div>
+            )}
             <div><label className={L}>Username</label><input className={F} value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} /></div>
             <div>
               <label className={L}>Password {modal === 'edit' && <span style={{ color: 'rgb(var(--text-3))' }} className="font-normal normal-case">(leave blank to keep)</span>}</label>
@@ -935,7 +968,7 @@ const EmployeesSection: React.FC = () => {
       )}
 
       {modal && (
-        <Modal onClose={() => setModal(null)} wide>
+        <Modal onClose={() => setModal(null)} wide title={modal === 'create' ? 'Create Employee' : 'Edit Employee'}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><label className={L}>Employee Code</label><input className={F} value={form.emp_code} onChange={e => setForm({ ...form, emp_code: e.target.value })} /></div>
@@ -1025,7 +1058,7 @@ const GradesSection: React.FC = () => {
       </TableShell>
 
       {modal && (
-        <Modal onClose={() => setModal(null)}>
+        <Modal onClose={() => setModal(null)} wide title={modal === 'create' ? 'Create Grade' : 'Edit Grade'}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><label className={L}>Code</label><input className={F} value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} /></div>
@@ -1120,7 +1153,7 @@ const SkillDomainsSection: React.FC = () => {
       </TableShell>
 
       {modal && (
-        <Modal onClose={() => setModal(null)}>
+        <Modal onClose={() => setModal(null)} wide title={modal === 'create' ? 'Create Skill Area' : 'Edit Skill Area'}>
           <div className="space-y-4">
             <div><label className={L}>Name</label><input className={F} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
             <div><label className={L}>Description</label><input className={F} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
@@ -1142,6 +1175,241 @@ const SkillDomainsSection: React.FC = () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPETENCIES
 // ═══════════════════════════════════════════════════════════════════════════════
+const CompetencyThresholdMatrix: React.FC = () => {
+  const { data: departments } = useConfigDepartments();
+  const { data: grades } = useConfigGrades();
+  const { data: competencies } = useConfigCompetencies();
+  const [departmentId, setDepartmentId] = useState('');
+  const selectedDepartmentId = departmentId ? Number(departmentId) : null;
+  const { data: thresholds, isLoading, isError } = useConfigCompetencyGradeThresholds(selectedDepartmentId);
+  const saveThresholds = useBulkUpsertCompetencyGradeThresholds();
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [targetSearch, setTargetSearch] = useState('');
+  const [targetDomainId, setTargetDomainId] = useState('');
+
+  useEffect(() => {
+    if (departmentId || !departments?.length) return;
+    const devOps = departments.find((d) => d.name.toLowerCase() === 'devops');
+    setDepartmentId(String((devOps ?? departments[0]).id));
+  }, [departmentId, departments]);
+
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    for (const row of thresholds ?? []) {
+      next[`${row.competency_id}:${row.grade_id}`] = String(Math.round(row.threshold * 100));
+    }
+    setDraft(next);
+  }, [thresholds]);
+
+  const orderedGrades = useMemo(
+    () => [...(grades ?? [])].sort((a, b) => a.level - b.level),
+    [grades]
+  );
+
+  const orderedCompetencies = useMemo(
+    () => [...(competencies ?? [])].sort((a, b) => {
+      const ad = a.competency_domains?.find(d => d.is_primary)?.domain.name ?? a.competency_domains?.[0]?.domain.name ?? '';
+      const bd = b.competency_domains?.find(d => d.is_primary)?.domain.name ?? b.competency_domains?.[0]?.domain.name ?? '';
+      return ad.localeCompare(bd) || a.name.localeCompare(b.name);
+    }),
+    [competencies]
+  );
+
+  const domainFilterOptions = useMemo(() => {
+    const domainMap = new Map<number, { value: string; label: string }>();
+    for (const competency of competencies ?? []) {
+      for (const map of competency.competency_domains ?? []) {
+        domainMap.set(map.domain.id, { value: String(map.domain.id), label: map.domain.name });
+      }
+    }
+    return [...domainMap.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [competencies]);
+
+  const filteredCompetencies = useMemo(() => {
+    const q = targetSearch.trim().toLowerCase();
+    return orderedCompetencies.filter((competency) => {
+      const domainsForCompetency = competency.competency_domains ?? [];
+      const matchesDomain = !targetDomainId || domainsForCompetency.some((map) => String(map.domain.id) === targetDomainId);
+      if (!matchesDomain) return false;
+      if (!q) return true;
+      const domainText = domainsForCompetency.map((map) => map.domain.name).join(' ').toLowerCase();
+      return competency.name.toLowerCase().includes(q) || domainText.includes(q);
+    });
+  }, [orderedCompetencies, targetDomainId, targetSearch]);
+
+  const hasTargetFilters = targetSearch.trim().length > 0 || targetDomainId !== '';
+
+  const departmentOptions = (departments ?? []).map((d) => ({
+    value: String(d.id),
+    label: d.name,
+    sub: d.description ?? undefined,
+  }));
+
+  const handleDraftChange = (competencyId: number, gradeId: number, value: string) => {
+    if (value === '') {
+      setDraft((prev) => ({ ...prev, [`${competencyId}:${gradeId}`]: '' }));
+      return;
+    }
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return;
+    const clamped = Math.max(0, Math.min(100, numeric));
+    setDraft((prev) => ({ ...prev, [`${competencyId}:${gradeId}`]: String(clamped) }));
+  };
+
+  const handleSaveThresholds = async () => {
+    if (!selectedDepartmentId) return;
+    const payload = orderedCompetencies.flatMap((competency) =>
+      orderedGrades.flatMap((grade) => {
+        const raw = draft[`${competency.id}:${grade.id}`];
+        if (raw === undefined || raw === '') return [];
+        return [{
+          competency_id: competency.id,
+          grade_id: grade.id,
+          threshold: Number(raw) / 100,
+        }];
+      })
+    );
+    if (payload.length === 0) return;
+    await saveThresholds.mutateAsync({ department_id: selectedDepartmentId, thresholds: payload });
+  };
+
+  return (
+    <div className="card p-0 overflow-hidden">
+      <div className="px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+        style={{ borderBottom: '1px solid rgb(var(--border))' }}>
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'rgb(var(--text-1))' }}>
+            Department Skill Targets
+          </h3>
+          <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-2))' }}>
+            Select a department, then set the minimum score required for each skill at each target grade.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="w-full md:w-72">
+            <SearchableSelect
+              value={departmentId}
+              onChange={setDepartmentId}
+              placeholder="Select department..."
+              options={departmentOptions}
+            />
+          </div>
+          <button
+            onClick={handleSaveThresholds}
+            disabled={!selectedDepartmentId || saveThresholds.isPending}
+            className="btn-primary h-10 px-4 rounded-lg flex items-center gap-2 text-sm font-semibold whitespace-nowrap disabled:opacity-60"
+          >
+            <Save size={15} />
+            {saveThresholds.isPending ? 'Saving' : 'Save Targets'}
+          </button>
+        </div>
+      </div>
+
+      <div className="px-5 py-3 flex flex-col lg:flex-row lg:items-center gap-3"
+        style={{ borderBottom: '1px solid rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2) / 0.35)' }}>
+        <div className="flex items-center gap-2 flex-1 min-w-0 rounded-lg px-3 h-10"
+          style={{ backgroundColor: 'rgb(var(--surface-1))', border: '1px solid rgb(var(--border))' }}>
+          <Search size={15} style={{ color: 'rgb(var(--text-3))' }} />
+          <input
+            value={targetSearch}
+            onChange={(e) => setTargetSearch(e.target.value)}
+            placeholder="Search skills or skill areas..."
+            className="bg-transparent outline-none text-sm w-full"
+            style={{ color: 'rgb(var(--text-1))' }}
+          />
+        </div>
+        <div className="w-full lg:w-64">
+          <SearchableSelect
+            value={targetDomainId}
+            onChange={setTargetDomainId}
+            placeholder="All skill areas"
+            options={domainFilterOptions}
+          />
+        </div>
+        <div className="flex items-center justify-between lg:justify-start gap-3">
+          <span className="text-xs whitespace-nowrap" style={{ color: 'rgb(var(--text-2))' }}>
+            {filteredCompetencies.length} / {orderedCompetencies.length} skills
+          </span>
+          {hasTargetFilters && (
+            <button
+              onClick={() => { setTargetSearch(''); setTargetDomainId(''); }}
+              className="btn-ghost h-9 px-3 rounded-lg text-xs font-semibold"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      {!selectedDepartmentId ? (
+        <div className="p-6 text-sm" style={{ color: 'rgb(var(--text-3))' }}>Select a department to configure skill targets.</div>
+      ) : isError ? (
+        <div className="p-6 text-sm" style={{ color: 'rgb(var(--danger))' }}>Failed to load department skill targets.</div>
+      ) : (
+        <div className="overflow-auto">
+          <table className="w-full min-w-[920px]">
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgb(var(--border))' }}>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase" style={{ color: 'rgb(var(--text-2))' }}>Skill</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase" style={{ color: 'rgb(var(--text-2))' }}>Skill Area</th>
+                {orderedGrades.map((grade) => (
+                  <th key={grade.id} className="px-3 py-3 text-center text-xs font-bold uppercase" style={{ color: 'rgb(var(--text-2))' }}>
+                    {grade.code}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={orderedGrades.length + 2} className="px-4 py-8 text-center text-sm" style={{ color: 'rgb(var(--text-3))' }}>Loading targets...</td></tr>
+              ) : filteredCompetencies.length === 0 ? (
+                <tr><td colSpan={orderedGrades.length + 2} className="px-4 py-8 text-center text-sm" style={{ color: 'rgb(var(--text-3))' }}>No skills match the selected filters.</td></tr>
+              ) : filteredCompetencies.map((competency, idx) => {
+                const primaryDomain = competency.competency_domains?.find(d => d.is_primary)?.domain ?? competency.competency_domains?.[0]?.domain;
+                return (
+                  <tr key={competency.id}
+                    style={{
+                      borderBottom: '1px solid rgb(var(--border))',
+                      backgroundColor: idx % 2 === 0 ? 'transparent' : 'rgb(var(--surface-2) / 0.45)',
+                    }}>
+                    <td className="px-4 py-3 min-w-[220px]">
+                      <div className="font-semibold text-sm" style={{ color: 'rgb(var(--text-1))' }}>{competency.name}</div>
+                      {competency.is_critical && <span className="badge badge-danger mt-1">Important</span>}
+                    </td>
+                    <td className="px-4 py-3 text-sm" style={{ color: 'rgb(var(--text-2))' }}>
+                      {primaryDomain?.name ?? 'No skill area'}
+                    </td>
+                    {orderedGrades.map((grade) => {
+                      const key = `${competency.id}:${grade.id}`;
+                      return (
+                        <td key={grade.id} className="px-2 py-2">
+                          <div className="flex items-center justify-center gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="1"
+                              value={draft[key] ?? ''}
+                              onChange={(e) => handleDraftChange(competency.id, grade.id, e.target.value)}
+                              className="field text-center font-mono"
+                              style={{ width: 70, height: 34, padding: '0 8px' }}
+                            />
+                            <span className="text-xs" style={{ color: 'rgb(var(--text-3))' }}>%</span>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CompetenciesSection: React.FC = () => {
   const { data: competencies, isLoading, isError } = useConfigCompetencies();
   const { data: domains } = useConfigSkillDomains();
@@ -1207,6 +1475,9 @@ const CompetenciesSection: React.FC = () => {
   return (
     <>
       {confirmDialog}
+      <div className="mb-5">
+        <CompetencyThresholdMatrix />
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
       <TableShell tabKey="competencies" title="Skills" onAdd={openCreate} addLabel="Add Skill"
@@ -1334,7 +1605,7 @@ const CompetenciesSection: React.FC = () => {
       </div>
 
       {modal && (
-        <Modal onClose={() => setModal(null)}>
+        <Modal onClose={() => setModal(null)} wide title={modal === 'create' ? 'Create Skill' : 'Edit Skill'}>
           <div className="space-y-4">
             <div><label className={L}>Name</label><input className={F} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
             <div><label className={L}>Category (skill type)</label>
@@ -1446,7 +1717,7 @@ const TechnologiesSection: React.FC = () => {
       </TableShell>
 
       {modal && (
-        <Modal onClose={() => setModal(null)}>
+        <Modal onClose={() => setModal(null)} wide title={modal === 'create' ? 'Create Technology' : 'Edit Technology'}>
           <div className="space-y-4">
             <div><label className={L}>Name</label><input className={F} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
             <div><label className={L}>Skill</label>
@@ -1541,7 +1812,7 @@ const CategoriesSection: React.FC = () => {
       </TableShell>
 
       {modal && (
-        <Modal onClose={() => setModal(null)}>
+        <Modal onClose={() => setModal(null)} wide title={modal === 'create' ? 'Create Category' : 'Edit Category'}>
           <div className="space-y-4">
             <div><label className={L}>Name</label><input className={F} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Cloud, DevSecOps…" /></div>
             <div><label className={L}>Description (optional)</label><input className={F} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="What this category covers…" /></div>

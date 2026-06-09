@@ -52,7 +52,7 @@ export interface ConfigSkillDomain {
   description: string | null;
   color: string | null;
   grade_weights?: { grade_id: number; weight: number }[];
-  competency_domains?: { competency: { id: number; name: string } }[];
+  competency_domains?: { department_id: number; competency: { id: number; name: string } }[];
 }
 
 export interface ConfigCompetencyCategory {
@@ -70,7 +70,7 @@ export interface ConfigCompetency {
   is_critical: boolean;
   category_id: number;
   competency_category?: { id: number; name: string; color: string | null } | null;
-  competency_domains?: { is_primary: boolean; domain: { id: number; name: string; color: string | null } }[];
+  competency_domains?: { department_id: number; is_primary: boolean; domain: { id: number; name: string; color: string | null } }[];
   technologies?: { id: number; name: string }[];
 }
 
@@ -81,7 +81,7 @@ export interface ConfigTechnology {
   competency?: {
     id: number;
     name: string;
-    competency_domains?: { is_primary: boolean; domain: { name: string } }[];
+    competency_domains?: { department_id: number; is_primary: boolean; domain: { name: string } }[];
   };
 }
 
@@ -390,7 +390,7 @@ export const useUpdateUser = () => {
       data,
     }: {
       id: number;
-      data: Partial<{ username: string; password: string; role: 'ADMIN' | 'MANAGER' | 'ENGINEER'; is_active: boolean }>;
+      data: Partial<{ username: string; password: string; role: 'ADMIN' | 'MANAGER' | 'ENGINEER'; employee_id: number; is_active: boolean }>;
     }) => {
       const res = await apiClient.patch<{ success: boolean; data: ConfigUser }>(`/config/users/${id}`, data);
       return res.data.data;
@@ -623,6 +623,50 @@ export const useDeleteDomainGradeWeight = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['config', 'domain-grade-weights'] });
       queryClient.invalidateQueries({ queryKey: ['config', 'skill-domains'] });
+    },
+  });
+};
+
+export interface ConfigCompetencyGradeThreshold {
+  id: number;
+  department_id: number;
+  grade_id: number;
+  competency_id: number;
+  threshold: number;
+  department: { id: number; name: string };
+  grade: { id: number; code: string; title: string; level: number };
+  competency: ConfigCompetency;
+}
+
+export const useConfigCompetencyGradeThresholds = (departmentId: number | null) =>
+  useQuery({
+    queryKey: ['config', 'competency-grade-thresholds', departmentId],
+    queryFn: async () => {
+      const qs = departmentId ? `?department_id=${departmentId}` : '';
+      const res = await apiClient.get<{ success: boolean; data: ConfigCompetencyGradeThreshold[] }>(`/config/competency-grade-thresholds${qs}`);
+      return res.data.data;
+    },
+    enabled: !!departmentId,
+  });
+
+export const useBulkUpsertCompetencyGradeThresholds = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      department_id,
+      thresholds,
+    }: {
+      department_id: number;
+      thresholds: Array<{ grade_id: number; competency_id: number; threshold: number }>;
+    }) => {
+      const res = await apiClient.put<{ success: boolean; data: ConfigCompetencyGradeThreshold[] }>('/config/competency-grade-thresholds/bulk', {
+        department_id,
+        thresholds,
+      });
+      return res.data.data;
+    },
+    onSuccess: (_d, { department_id }) => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'competency-grade-thresholds', department_id] });
     },
   });
 };

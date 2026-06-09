@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Search } from 'lucide-react';
 
 export interface SearchableSelectOption {
@@ -22,15 +23,39 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [menuRect, setMenuRect] = useState<DOMRect | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (
+        ref.current &&
+        !ref.current.contains(target) &&
+        menuRef.current &&
+        !menuRef.current.contains(target)
+      ) {
+        setOpen(false);
+      }
     };
     document.addEventListener('mousedown', handlePointerDown);
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const updateRect = () => {
+      if (ref.current) setMenuRect(ref.current.getBoundingClientRect());
+    };
+    updateRect();
+    window.addEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect, true);
+    return () => {
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect, true);
+    };
+  }, [open]);
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -58,13 +83,14 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         <span style={{ color: 'rgb(var(--text-3))' }}>▾</span>
       </button>
 
-      {open && (
+      {open && menuRect && createPortal(
         <div
+          ref={menuRef}
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            left: 0,
-            right: 0,
+            position: 'fixed',
+            top: menuRect.bottom + 4,
+            left: menuRect.left,
+            width: menuRect.width,
             zIndex: 10000,
             borderRadius: '10px',
             backgroundColor: 'rgb(var(--surface))',
@@ -147,7 +173,8 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
               </p>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

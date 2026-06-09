@@ -19,19 +19,33 @@ import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
 import { ConfigSection } from '@/components/config/ConfigSection';
 import { ReportsSection } from '@/components/reports/ReportsSection';
 import { usePromotionReadiness, useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
+import {
+  useConfigAssessmentLevels,
+  useConfigAssessmentProjects,
+  useConfigAssessmentStatuses,
+  useConfigAssessmentTypes,
+  useConfigCompetencies,
+  useConfigDepartments,
+  useConfigEmployees,
+  useConfigGrades,
+  useConfigSkillDomains,
+  useConfigTechnologies,
+  useConfigUsers,
+} from '@/hooks/useConfig';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { queryClient } from '@/lib/queryClient';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
-type TabType = 'overview' | 'team' | 'assessments' | 'ai' | 'reports' | 'config';
+type TabType = 'admin' | 'overview' | 'team' | 'assessments' | 'ai' | 'reports' | 'config';
 
 const NAV: Array<{ id: TabType; label: string; icon: React.ElementType; roles: string[] }> = [
-  { id: 'overview',    label: 'Overview',     icon: LayoutDashboard, roles: ['ADMIN','MANAGER','ENGINEER'] },
-  { id: 'team',        label: 'Team Roster',  icon: Users,           roles: ['ADMIN','MANAGER'] },
-  { id: 'assessments', label: 'Assessments',  icon: ClipboardCheck,  roles: ['ADMIN','MANAGER','ENGINEER'] },
-  { id: 'ai',          label: 'AI Insights',   icon: Bot,             roles: ['ADMIN','MANAGER'] },
-  { id: 'reports',     label: 'Reports',      icon: BarChart2,       roles: ['ADMIN','MANAGER'] },
+  { id: 'admin',       label: 'Admin Dashboard', icon: LayoutDashboard, roles: ['ADMIN'] },
+  { id: 'overview',    label: 'Overview',     icon: LayoutDashboard, roles: ['MANAGER','ENGINEER'] },
+  { id: 'team',        label: 'Team Roster',  icon: Users,           roles: ['MANAGER'] },
+  { id: 'assessments', label: 'Assessments',  icon: ClipboardCheck,  roles: ['MANAGER','ENGINEER'] },
+  { id: 'ai',          label: 'AI Insights',   icon: Bot,             roles: ['MANAGER'] },
+  { id: 'reports',     label: 'Reports',      icon: BarChart2,       roles: ['MANAGER'] },
   { id: 'config',      label: 'Configuration',icon: Settings2,       roles: ['ADMIN'] },
 ];
 
@@ -52,6 +66,10 @@ const CURRENT_ORGANIZATION = {
   logoUrl: '/assets/organizations/tkxel-logo.svg',
   baseUrl: 'https://tkxel.com',
 };
+
+const defaultDashboardTabForRole = (role?: string | null): TabType => (
+  role === 'ADMIN' ? 'admin' : 'overview'
+);
 
 const InfoTip: React.FC<{ text: string }> = ({ text }) => (
   <button
@@ -594,6 +612,138 @@ const TeamHealthCharts: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNa
       </div>
       </>
       )}
+    </div>
+  );
+};
+
+/* ── Admin Dashboard ────────────────────────────────────────────────────── */
+
+const AdminDashboardTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavigate }) => {
+  const { data: users, isLoading: usersLoading, isError: usersError } = useConfigUsers();
+  const { data: employees, isLoading: employeesLoading, isError: employeesError } = useConfigEmployees();
+  const { data: departments, isLoading: departmentsLoading, isError: departmentsError } = useConfigDepartments();
+  const { data: grades, isLoading: gradesLoading, isError: gradesError } = useConfigGrades();
+  const { data: skillDomains, isLoading: domainsLoading, isError: domainsError } = useConfigSkillDomains();
+  const { data: competencies, isLoading: competenciesLoading, isError: competenciesError } = useConfigCompetencies();
+  const { data: technologies, isLoading: technologiesLoading, isError: technologiesError } = useConfigTechnologies();
+  const { data: assessmentTypes, isLoading: typesLoading, isError: typesError } = useConfigAssessmentTypes();
+  const { data: assessmentLevels, isLoading: levelsLoading, isError: levelsError } = useConfigAssessmentLevels();
+  const { data: assessmentStatuses, isLoading: statusesLoading, isError: statusesError } = useConfigAssessmentStatuses();
+  const { data: assessmentProjects, isLoading: projectsLoading, isError: projectsError } = useConfigAssessmentProjects();
+
+  const loading = usersLoading || employeesLoading || departmentsLoading || gradesLoading ||
+    domainsLoading || competenciesLoading || technologiesLoading || typesLoading ||
+    levelsLoading || statusesLoading || projectsLoading;
+  const hasError = usersError || employeesError || departmentsError || gradesError ||
+    domainsError || competenciesError || technologiesError || typesError ||
+    levelsError || statusesError || projectsError;
+
+  const activeUsers = (users ?? []).filter((user) => user.is_active).length;
+  const inactiveUsers = Math.max(0, (users?.length ?? 0) - activeUsers);
+  const unassignedEmployees = (employees ?? []).filter((employee) => !employee.department_id).length;
+  const scoringRows = (assessmentTypes?.length ?? 0) + (assessmentLevels?.length ?? 0) +
+    (assessmentStatuses?.length ?? 0) + (assessmentProjects?.length ?? 0);
+
+  const statCards = [
+    { label: 'Active Users', value: String(activeUsers), detail: `${inactiveUsers} inactive`, icon: Users, color: 'from-violet-500 to-purple-600' },
+    { label: 'Employees', value: String(employees?.length ?? 0), detail: `${unassignedEmployees} without department`, icon: ClipboardCheck, color: 'from-blue-500 to-indigo-600' },
+    { label: 'Departments', value: String(departments?.length ?? 0), detail: 'resource groups', icon: Settings2, color: 'from-emerald-500 to-teal-600' },
+    { label: 'Scoring Rules', value: String(scoringRows), detail: 'types, levels, statuses, projects', icon: Target, color: 'from-amber-500 to-orange-600' },
+  ];
+
+  const setupGroups = [
+    { label: 'People Setup', value: `${users?.length ?? 0} users / ${employees?.length ?? 0} employees`, ready: (users?.length ?? 0) > 0 && (employees?.length ?? 0) > 0 },
+    { label: 'Organization Setup', value: `${departments?.length ?? 0} departments / ${grades?.length ?? 0} grades`, ready: (departments?.length ?? 0) > 0 && (grades?.length ?? 0) > 0 },
+    { label: 'Skill Taxonomy', value: `${skillDomains?.length ?? 0} areas / ${competencies?.length ?? 0} skills / ${technologies?.length ?? 0} technologies`, ready: (skillDomains?.length ?? 0) > 0 && (competencies?.length ?? 0) > 0 },
+    { label: 'Scoring Configuration', value: `${scoringRows} rows configured`, ready: scoringRows > 0 },
+  ];
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="section-title">Admin Dashboard</h2>
+          <p className="section-desc">
+            System setup health, master-data coverage, and configuration shortcuts.
+          </p>
+        </div>
+        <button onClick={() => onNavigate('config')} className="btn-primary text-sm">
+          Open Configuration <ChevronRight size={14} />
+        </button>
+      </div>
+
+      {hasError && (
+        <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: 'rgb(var(--danger-soft))', color: 'rgb(var(--danger))' }}>
+          Some admin configuration data could not be loaded. Check backend config APIs and database migrations.
+        </div>
+      )}
+
+      {loading && (
+        <div className="card p-5 flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
+          <span className="text-sm" style={{ color: 'rgb(var(--text-2))' }}>Loading admin setup data...</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {statCards.map(({ label, value, detail, icon: Icon, color }) => (
+          <div key={label} className="card p-5 flex items-center gap-4">
+            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shrink-0`}>
+              <Icon size={18} color="white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>{label}</p>
+              <p className="text-2xl font-bold leading-tight mt-0.5" style={{ color: 'rgb(var(--text-1))' }}>{value}</p>
+              <p className="text-xs mt-1 truncate" style={{ color: 'rgb(var(--text-2))' }}>{detail}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-4">
+        <div className="card p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Setup Checklist</h3>
+              <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Admin-level readiness for running the platform.</p>
+            </div>
+            <span className="badge badge-accent">{setupGroups.filter((group) => group.ready).length} / {setupGroups.length} ready</span>
+          </div>
+          <div className="space-y-3">
+            {setupGroups.map((group) => (
+              <div key={group.label} className="flex items-center justify-between gap-3 rounded-xl border p-3" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{group.label}</p>
+                  <p className="text-xs mt-0.5 truncate" style={{ color: 'rgb(var(--text-2))' }}>{group.value}</p>
+                </div>
+                <span className={group.ready ? 'badge badge-success' : 'badge'}>{group.ready ? 'Ready' : 'Needs setup'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card p-5">
+          <h3 className="text-sm font-bold mb-4" style={{ color: 'rgb(var(--text-1))' }}>Admin Shortcuts</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3">
+            {[
+              { title: 'Users & Roles', desc: 'Create accounts and set access roles.' },
+              { title: 'Employees & Departments', desc: 'Maintain people, grades, managers, and departments.' },
+              { title: 'Skill Taxonomy', desc: 'Manage skill areas, skills, and technologies.' },
+              { title: 'Scoring Rules', desc: 'Tune base scores, level factors, statuses, and project rules.' },
+            ].map((item) => (
+              <button
+                key={item.title}
+                onClick={() => onNavigate('config')}
+                className="rounded-xl border p-3 text-left transition-all hover:scale-[1.01]"
+                style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}
+              >
+                <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{item.title}</p>
+                <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-2))' }}>{item.desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1894,10 +2044,15 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
 
 export const DashboardPage: React.FC = () => {
   const { user, logout } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>(() => defaultDashboardTabForRole(user?.role));
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const visibleNav = NAV.filter(n => n.roles.includes(user?.role || ''));
+
+  useEffect(() => {
+    const canSeeActiveTab = visibleNav.some((item) => item.id === activeTab);
+    if (!canSeeActiveTab) setActiveTab(defaultDashboardTabForRole(user?.role));
+  }, [activeTab, user?.role, visibleNav]);
 
   const handleLogout = () => {
     logout();
@@ -2076,6 +2231,10 @@ export const DashboardPage: React.FC = () => {
         {/* ── Main Content ──────────────────────────────────────────── */}
         <main className={`flex-1 ${isTeamTab ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           <div className={isTeamTab ? 'h-full w-full p-6' : 'max-w-6xl mx-auto p-6'}>
+
+            {activeTab === 'admin' && user?.role === 'ADMIN' && (
+              <AdminDashboardTab onNavigate={setActiveTab} />
+            )}
 
             {activeTab === 'overview' && (
               <OverviewTab user={user} onNavigate={setActiveTab} />

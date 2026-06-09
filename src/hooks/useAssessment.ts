@@ -28,7 +28,7 @@ export interface TechOption {
   competency: {
     id: number;
     name: string;
-    competency_domains: { is_primary: boolean; domain: { id: number; name: string } }[];
+    competency_domains: { department_id: number; is_primary: boolean; domain: { id: number; name: string } }[];
   };
 }
 

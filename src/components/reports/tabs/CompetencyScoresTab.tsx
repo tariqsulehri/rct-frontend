@@ -27,6 +27,9 @@ const rotatedHeaderTextStyle: React.CSSProperties = {
   wordBreak: 'normal',
   overflowWrap: 'normal',
   hyphens: 'none',
+  lineHeight: 1.18,
+  letterSpacing: '0.1px',
+  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
 
 export const CompetencyScoresTab: React.FC = () => {
@@ -519,7 +522,7 @@ export const CompetencyScoresTab: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: 'collapse', fontSize: '10px' }}>
               <thead>
-                <tr style={{ backgroundColor: 'rgb(var(--accent-soft))', borderBottom: '1px solid rgb(var(--accent))', height: 132 }}>
+                <tr style={{ backgroundColor: 'rgb(var(--accent-soft))', borderBottom: '1px solid rgb(var(--accent))', height: 136 }}>
                   <th className="px-2 py-2 text-left sticky left-0 z-20"
                     style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))', minWidth: 132, maxWidth: 132, boxShadow: 'inset -1px 0 0 rgb(var(--accent))' }}>
                     Resource ({visibleEmps.length})
@@ -529,16 +532,16 @@ export const CompetencyScoresTab: React.FC = () => {
                     Grade
                   </th>
                   {visibleComps.map((comp, ci) => (
-                    <th key={comp.name} className="px-0.5 py-1.5 text-center font-semibold align-top"
-                      style={{ color: 'rgb(var(--accent-txt))', minWidth: 64, maxWidth: 64, borderLeft: ci === 0 ? '2px solid rgb(var(--accent))' : '1px solid rgb(var(--accent) / 0.55)' }}>
-                      <div className="flex h-full items-center justify-center" style={{ minHeight: 118 }}>
-                        <div style={{ transform: 'rotate(-90deg)', transformOrigin: 'center center', whiteSpace: 'normal', width: 112, maxWidth: 112, textAlign: 'center', fontSize: 9, lineHeight: 1.12, fontWeight: 800 }}>
-                          <div className="flex flex-col items-center justify-center gap-0.5">
-                            <span style={{ transform: 'rotate(90deg)', display: 'inline-block', fontSize: 10, lineHeight: 1, color: comp.is_critical ? '#92400e' : 'rgb(var(--accent-txt))' }}>
-                              {comp.is_critical ? '⚡' : '•'}
+                    <th key={comp.name} className="px-0 py-1 text-center font-semibold align-top"
+                      style={{ color: 'rgb(var(--accent-txt))', minWidth: 58, maxWidth: 58, borderLeft: ci === 0 ? '2px solid rgb(var(--accent))' : '1px solid rgb(var(--accent) / 0.55)' }}>
+                      <div className="flex h-full items-center justify-center" style={{ minHeight: 122 }}>
+                        <div style={{ transform: 'rotate(-90deg)', transformOrigin: 'center center', whiteSpace: 'normal', width: 120, maxWidth: 120, textAlign: 'center', fontSize: 9.8, fontWeight: 850 }}>
+                          <span style={rotatedHeaderTextStyle}>
+                            <span style={{ color: comp.is_critical ? '#f59e0b' : 'rgb(var(--accent-txt))', fontWeight: 900 }}>
+                              {comp.is_critical ? '⚡ ' : '• '}
                             </span>
-                            <span style={rotatedHeaderTextStyle}>{comp.name}</span>
-                          </div>
+                            {comp.name}
+                          </span>
                         </div>
                       </div>
                     </th>

@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList, Legend, ReferenceLine } from 'recharts';
-import { useConfigEmployees } from '@/hooks/useConfig';
 import { useGapAnalysis, usePromotionReadiness, useCompetencyScores } from '@/hooks/useReports';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { Empty, GapResult, InfoTip, Loading } from '../shared';
@@ -11,11 +10,33 @@ import { Empty, GapResult, InfoTip, Loading } from '../shared';
 // ─────────────────────────────────────────────────────────────────────────────
 export const EmployeeResultSheetTab: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { data: employees, isLoading: empLoading } = useConfigEmployees();
   const { data: gapData, isLoading: gapLoading, isError: gapError } = useGapAnalysis(selectedId);
   const { data: promoData, isLoading: promoLoading } = usePromotionReadiness();
   const { data: compData, isLoading: compLoading } = useCompetencyScores();
   const c = useChartColors();
+
+  const personOptions = useMemo(() => {
+    const people = new Map<string, { emp_code: string; full_name: string; current_grade?: string; target_grade?: string }>();
+    for (const row of promoData ?? []) {
+      people.set(row.emp_code, {
+        emp_code: row.emp_code,
+        full_name: row.full_name,
+        current_grade: row.current_grade,
+        target_grade: row.target_grade,
+      });
+    }
+    for (const row of compData ?? []) {
+      if (!people.has(row.emp_code)) {
+        people.set(row.emp_code, {
+          emp_code: row.emp_code,
+          full_name: row.full_name,
+          current_grade: row.current_grade,
+          target_grade: row.target_grade,
+        });
+      }
+    }
+    return [...people.values()].sort((a, b) => a.full_name.localeCompare(b.full_name));
+  }, [compData, promoData]);
 
   const gapResult = gapData as GapResult | undefined;
   const promoRow = (promoData ?? []).find(r => r.emp_code === selectedId);
@@ -271,13 +292,21 @@ export const EmployeeResultSheetTab: React.FC = () => {
             className="field max-w-md"
             value={selectedId ?? ''}
             onChange={e => setSelectedId(e.target.value || null)}
-            disabled={empLoading}
+            disabled={promoLoading || compLoading}
           >
-            <option value="">— Select an employee —</option>
-            {(employees ?? []).map(emp => (
-              <option key={emp.emp_code} value={emp.emp_code}>{emp.full_name} ({emp.emp_code})</option>
+            <option value="">— Select a person —</option>
+            {personOptions.map(person => (
+              <option key={person.emp_code} value={person.emp_code}>
+                {person.full_name} ({person.emp_code})
+                {person.current_grade && person.target_grade ? ` - ${person.current_grade} -> ${person.target_grade}` : ''}
+              </option>
             ))}
           </select>
+          {!promoLoading && !compLoading && personOptions.length === 0 && (
+            <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
+              No people are available in your manager scope.
+            </p>
+          )}
         </div>
         <button
           onClick={handleDownloadPdf}
