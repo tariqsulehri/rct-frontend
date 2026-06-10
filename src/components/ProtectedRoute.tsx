@@ -1,10 +1,11 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
+import type { RoleCode } from '@/types/rbac';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRoles?: Array<'ADMIN' | 'MANAGER' | 'ENGINEER'>;
+  requiredRoles?: RoleCode[];
 }
 
 // By the time this renders, App.tsx's HydrationGate has already confirmed that

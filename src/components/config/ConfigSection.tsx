@@ -12,6 +12,7 @@ import {
   useConfigAssessmentLevels, useUpdateAssessmentLevel,
   useConfigAssessmentStatuses, useUpdateAssessmentStatus,
   useConfigAssessmentProjects, useUpdateAssessmentProject,
+  useConfigRoles,
   useConfigDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment,
   useConfigUsers, useCreateUser, useUpdateUser, useDeleteUser,
   useConfigEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee,
@@ -26,6 +27,7 @@ import {
 } from '@/hooks/useConfig';
 import { useCompetencyScores, useGapMatrix, usePromotionReadiness } from '@/hooks/useReports';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
+import { ROLE_CODES } from '@/types/rbac';
 import SkillTaxonomyView from './SkillTaxonomyView';
 import {
   ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -632,6 +634,7 @@ const DepartmentsSection: React.FC = () => {
 const UsersSection: React.FC = () => {
   const { data: users, isLoading, isError } = useConfigUsers();
   const { data: employees } = useConfigEmployees();
+  const { data: roles } = useConfigRoles();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
@@ -675,8 +678,20 @@ const UsersSection: React.FC = () => {
   };
 
   const ROLE_BADGE: Record<string, string> = {
-    ADMIN: 'badge badge-accent', MANAGER: 'badge', ENGINEER: 'badge badge-success',
+    ADMIN: 'badge badge-accent',
+    TOP_MANAGEMENT: 'badge badge-accent',
+    MANAGER: 'badge',
+    LINE_MANAGER: 'badge',
+    ENGINEER: 'badge badge-success',
   };
+  const roleOptions = (roles?.length ? roles.filter(r => r.is_active).map(r => ({
+    value: r.code,
+    label: r.name || r.code,
+    sub: r.description ?? undefined,
+  })) : ROLE_CODES.map(role => ({
+    value: role,
+    label: role.replace(/_/g, ' '),
+  })));
 
   const ts = useTableState(users, (u, q) =>
     u.username.toLowerCase().includes(q) ||
@@ -739,7 +754,7 @@ const UsersSection: React.FC = () => {
             <div><label className={L}>Role</label>
               <SearchableSelect value={form.role} onChange={v => setForm({ ...form, role: v })}
                 placeholder="Select role…"
-                options={[{ value: 'ADMIN', label: 'ADMIN' }, { value: 'MANAGER', label: 'MANAGER' }, { value: 'ENGINEER', label: 'ENGINEER' }]} />
+                options={roleOptions} />
             </div>
             <div><label className={L}>Employee</label>
               <SearchableSelect value={form.employee_id} onChange={v => setForm({ ...form, employee_id: v })}

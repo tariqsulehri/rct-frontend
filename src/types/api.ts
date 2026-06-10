@@ -1,3 +1,5 @@
+import type { RoleCode } from '@/types/rbac';
+
 // API response and request types
 
 export interface User {
@@ -5,7 +7,7 @@ export interface User {
   employeeId: string;
   username: string;
   email: string;
-  role: 'admin' | 'manager' | 'employee';
+  role: RoleCode;
 }
 
 export interface AuthTokens {

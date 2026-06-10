@@ -1,16 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api';
+import type { RoleCode } from '@/types/rbac';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
 export interface ConfigUser {
   id: number;
   username: string;
-  role: 'ADMIN' | 'MANAGER' | 'ENGINEER';
+  role: RoleCode;
   is_active: boolean;
   employee_id: number;
   created_at: string;
   employee?: { full_name: string; emp_code: string; department: string };
+}
+
+export interface ConfigRole {
+  id: number;
+  code: RoleCode;
+  name: string;
+  description: string | null;
+  is_system: boolean;
+  is_active: boolean;
+  sort_order: number;
 }
 
 export interface ConfigDepartment {
@@ -366,13 +377,22 @@ export const useConfigUsers = () =>
     },
   });
 
+export const useConfigRoles = () =>
+  useQuery({
+    queryKey: ['config', 'roles'],
+    queryFn: async () => {
+      const res = await apiClient.get<{ success: boolean; data: ConfigRole[] }>('/config/roles');
+      return res.data.data;
+    },
+  });
+
 export const useCreateUser = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: {
       username: string;
       password: string;
-      role: 'ADMIN' | 'MANAGER' | 'ENGINEER';
+      role: RoleCode;
       employee_id: number;
     }) => {
       const res = await apiClient.post<{ success: boolean; data: ConfigUser }>('/config/users', data);
@@ -390,7 +410,7 @@ export const useUpdateUser = () => {
       data,
     }: {
       id: number;
-      data: Partial<{ username: string; password: string; role: 'ADMIN' | 'MANAGER' | 'ENGINEER'; employee_id: number; is_active: boolean }>;
+      data: Partial<{ username: string; password: string; role: RoleCode; employee_id: number; is_active: boolean }>;
     }) => {
       const res = await apiClient.patch<{ success: boolean; data: ConfigUser }>(`/config/users/${id}`, data);
       return res.data.data;

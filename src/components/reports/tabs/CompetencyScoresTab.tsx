@@ -4,6 +4,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLin
 import { useCompetencyMatrix, useGapMatrix, type CompetencyMatrixEmployee, type CompetencyMatrixResult } from '@/hooks/useReports';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { useAuthStore } from '@/store/authStore';
+import { isLeaderRole } from '@/types/rbac';
 import { Empty, InfoTip, Loading } from '../shared';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ export const CompetencyScoresTab: React.FC = () => {
   const { data: gapData } = useGapMatrix();
   const c = useChartColors();
   const user = useAuthStore((s) => s.user);
-  const isManager = user?.role === 'MANAGER' || user?.role === 'ADMIN';
+  const isManager = isLeaderRole(user?.role);
 
   const [domainFilter,    setDomainFilter]    = useState<string>('All');
   const [gradeFilter,     setGradeFilter]     = useState<string>('all');

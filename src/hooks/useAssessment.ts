@@ -203,7 +203,7 @@ export const useEmployeeAssessments = (empCode: string) => {
 };
 
 export const useTeamRoster = (department?: string) => {
-  const enabled = useProtectedQueryEnabled(['ADMIN', 'MANAGER']);
+  const enabled = useProtectedQueryEnabled(['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER']);
   return useQuery({
     queryKey: ['teamRoster', department],
     queryFn: async () => {
@@ -219,7 +219,7 @@ export const useTeamRoster = (department?: string) => {
 };
 
 export const useAllEmployees = (department?: string) => {
-  const enabled = useProtectedQueryEnabled(['ADMIN']);
+  const enabled = useProtectedQueryEnabled(['ADMIN', 'TOP_MANAGEMENT']);
   return useQuery({
     queryKey: ['employees', department],
     queryFn: async () => {

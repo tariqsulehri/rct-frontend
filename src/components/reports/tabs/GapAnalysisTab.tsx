@@ -3,6 +3,7 @@ import { Download } from 'lucide-react';
 import { ResponsiveContainer, Bar, XAxis, YAxis, Tooltip, ComposedChart, CartesianGrid, Line } from 'recharts';
 import { useGapMatrix, type GapMatrixEmployee, type GapMatrixResult } from '@/hooks/useReports';
 import { useAuthStore } from '@/store/authStore';
+import { isLeaderRole } from '@/types/rbac';
 import { Empty, InfoTip, Loading } from '../shared';
 import { starRatingDisplay } from '../reportDisplay';
 
@@ -51,7 +52,7 @@ interface GapHeader {
 export const GapAnalysisTab: React.FC = () => {
   const { data, isLoading, isError } = useGapMatrix();
   const user = useAuthStore((s) => s.user);
-  const isManager = user?.role === 'MANAGER' || user?.role === 'ADMIN';
+  const isManager = isLeaderRole(user?.role);
 
   const [gradeFilter,     setGradeFilter]     = useState<string>('all');
   const [selectedEmpCode, setSelectedEmpCode] = useState<string>('all');

@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { RoleCode } from '@/types/rbac';
 
 export interface User {
   id: number;
   empCode: string;     // Real employee code e.g. "1818" — use this for all employee identification
   username: string;
-  role: 'ADMIN' | 'MANAGER' | 'ENGINEER';
+  role: RoleCode;
 }
 
 interface AuthStore {

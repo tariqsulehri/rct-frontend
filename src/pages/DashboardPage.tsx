@@ -34,18 +34,21 @@ import {
 } from '@/hooks/useConfig';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { queryClient } from '@/lib/queryClient';
+import { isLeaderRole, type RoleCode } from '@/types/rbac';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
 type TabType = 'admin' | 'overview' | 'team' | 'assessments' | 'ai' | 'reports' | 'config';
 
-const NAV: Array<{ id: TabType; label: string; icon: React.ElementType; roles: string[] }> = [
+const LEADERS: RoleCode[] = ['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER'];
+
+const NAV: Array<{ id: TabType; label: string; icon: React.ElementType; roles: RoleCode[] }> = [
   { id: 'admin',       label: 'Admin Dashboard', icon: LayoutDashboard, roles: ['ADMIN'] },
-  { id: 'overview',    label: 'Overview',     icon: LayoutDashboard, roles: ['MANAGER','ENGINEER'] },
-  { id: 'team',        label: 'Team Roster',  icon: Users,           roles: ['MANAGER'] },
-  { id: 'assessments', label: 'Assessments',  icon: ClipboardCheck,  roles: ['MANAGER','ENGINEER'] },
-  { id: 'ai',          label: 'AI Insights',   icon: Bot,             roles: ['MANAGER'] },
-  { id: 'reports',     label: 'Reports',      icon: BarChart2,       roles: ['MANAGER'] },
+  { id: 'overview',    label: 'Overview',     icon: LayoutDashboard, roles: ['TOP_MANAGEMENT','MANAGER','LINE_MANAGER','ENGINEER'] },
+  { id: 'team',        label: 'Team Roster',  icon: Users,           roles: LEADERS },
+  { id: 'assessments', label: 'Assessments',  icon: ClipboardCheck,  roles: ['ADMIN','TOP_MANAGEMENT','MANAGER','LINE_MANAGER','ENGINEER'] },
+  { id: 'ai',          label: 'AI Insights',   icon: Bot,             roles: LEADERS },
+  { id: 'reports',     label: 'Reports',      icon: BarChart2,       roles: LEADERS },
   { id: 'config',      label: 'Configuration',icon: Settings2,       roles: ['ADMIN'] },
 ];
 
@@ -57,7 +60,9 @@ const THEMES: Array<{ id: Theme; label: string; icon: React.ElementType; desc: s
 
 const ROLE_GRADIENT: Record<string, string> = {
   ADMIN:    'from-violet-500 to-purple-600',
+  TOP_MANAGEMENT: 'from-sky-500 to-blue-600',
   MANAGER:  'from-blue-500 to-indigo-600',
+  LINE_MANAGER: 'from-cyan-500 to-teal-600',
   ENGINEER: 'from-emerald-500 to-teal-600',
 };
 
@@ -147,7 +152,7 @@ const ThemeSwitcher: React.FC = () => {
   );
 };
 
-/* ── Team Health Charts (ADMIN / MANAGER only) ─────────────────────────── */
+/* ── Team Health Charts (leader roles only) ─────────────────────────────── */
 
 const RANK_MEDALS = ['🥇','🥈','🥉'];
 
@@ -754,7 +759,7 @@ const OverviewTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => voi
   const { data: overviewPromoData } = usePromotionReadiness();
   const { data: overviewCompData } = useCompetencyScores();
   const { data: overviewGapData } = useGapMatrix();
-  const isLeader = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const isLeader = isLeaderRole(user?.role);
 
   const leaderRows = overviewPromoData ?? [];
   const assessedLeaderRows = leaderRows.filter(r => r.overall_score > 0);
@@ -792,10 +797,10 @@ const OverviewTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => voi
       ];
 
   const features = [
-    { id: 'team' as TabType,        icon: '👥', title: 'Team Roster',   desc: 'View people, grades, current score, required score, and gaps.', roles: ['ADMIN','MANAGER'] },
-    { id: 'ai' as TabType,          icon: '🤖', title: 'AI Insights',    desc: 'Find people and skill areas that need management attention.', roles: ['ADMIN','MANAGER'] },
-    { id: 'reports' as TabType,     icon: '📊', title: 'Reports',       desc: 'Answer who is ready, what is missing, and what to improve.', roles: ['ADMIN','MANAGER'] },
-    { id: 'assessments' as TabType, icon: '📝', title: 'Assessments',   desc: 'Review skill progress against the target grade.',   roles: ['ADMIN','MANAGER','ENGINEER'] },
+    { id: 'team' as TabType,        icon: '👥', title: 'Team Roster',   desc: 'View people, grades, current score, required score, and gaps.', roles: LEADERS },
+    { id: 'ai' as TabType,          icon: '🤖', title: 'AI Insights',    desc: 'Find people and skill areas that need management attention.', roles: LEADERS },
+    { id: 'reports' as TabType,     icon: '📊', title: 'Reports',       desc: 'Answer who is ready, what is missing, and what to improve.', roles: LEADERS },
+    { id: 'assessments' as TabType, icon: '📝', title: 'Assessments',   desc: 'Review skill progress against the target grade.',   roles: ['ADMIN','TOP_MANAGEMENT','MANAGER','LINE_MANAGER','ENGINEER'] },
     { id: 'config' as TabType,      icon: '⚙️', title: 'Setup',         desc: 'Manage people, grades, skill groups, skills, and technologies.',       roles: ['ADMIN'] },
   ].filter(f => f.roles.includes(user?.role || ''));
 
@@ -920,7 +925,7 @@ const OverviewTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => voi
         </div>
       </div>
 
-      {/* Team health charts — ADMIN / MANAGER only */}
+      {/* Team health charts — leader roles only */}
       {isLeader && <TeamHealthCharts onNavigate={onNavigate} />}
 
       {/* Feature nav cards */}
@@ -972,7 +977,7 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
   const { data: promoData }           = usePromotionReadiness();
   const { data: gapData }             = useGapMatrix();
   const c = useChartColors();
-  const isPrivileged = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const isPrivileged = isLeaderRole(user?.role);
   const [showSkillEditor, setShowSkillEditor] = React.useState(false);
   const [competencySearch, setCompetencySearch] = React.useState('');
   const [competencyDomainFilter, setCompetencyDomainFilter] = React.useState('all');
@@ -2049,7 +2054,7 @@ export const DashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(() => defaultDashboardTabForRole(user?.role));
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const visibleNav = NAV.filter(n => n.roles.includes(user?.role || ''));
+  const visibleNav = NAV.filter(n => user?.role && n.roles.includes(user.role));
 
   useEffect(() => {
     const canSeeActiveTab = visibleNav.some((item) => item.id === activeTab);
@@ -2064,7 +2069,7 @@ export const DashboardPage: React.FC = () => {
 
   const initials = user?.username?.slice(0, 2).toUpperCase() ?? '??';
   const gradient = ROLE_GRADIENT[user?.role ?? ''] ?? 'from-gray-500 to-gray-600';
-  const isTeamTab = activeTab === 'team' && (user?.role === 'ADMIN' || user?.role === 'MANAGER');
+  const isTeamTab = activeTab === 'team' && isLeaderRole(user?.role);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'rgb(var(--bg))' }}>
@@ -2242,7 +2247,7 @@ export const DashboardPage: React.FC = () => {
               <OverviewTab user={user} onNavigate={setActiveTab} />
             )}
 
-            {activeTab === 'team' && (user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+            {activeTab === 'team' && isLeaderRole(user?.role) && (
               <div className="card p-6 h-full w-full animate-slide-up flex flex-col overflow-hidden">
                 <TeamRoster />
               </div>
@@ -2250,11 +2255,11 @@ export const DashboardPage: React.FC = () => {
 
             {activeTab === 'assessments' && <AssessmentsTab user={user} onNavigate={setActiveTab} />}
 
-            {activeTab === 'ai' && (user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+            {activeTab === 'ai' && isLeaderRole(user?.role) && (
               <AIInsightsTab onNavigate={setActiveTab} />
             )}
 
-            {activeTab === 'reports' && (user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+            {activeTab === 'reports' && isLeaderRole(user?.role) && (
               <div className="animate-slide-up">
                 <ReportsSection />
               </div>

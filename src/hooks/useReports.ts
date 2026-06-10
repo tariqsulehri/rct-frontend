@@ -41,7 +41,7 @@ export const useGapAnalysis = (empCode: string | null) => {
 };
 
 export const usePromotionReadiness = () => {
-  const enabled = useProtectedQueryEnabled(['ADMIN', 'MANAGER']);
+  const enabled = useProtectedQueryEnabled(['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER']);
   return useQuery<PromotionRow[]>({
     queryKey: ['reports', 'promotion-readiness'],
     queryFn: async () => {
@@ -80,7 +80,7 @@ export interface CompetencyMatrixResult {
 }
 
 export const useCompetencyMatrix = () => {
-  const enabled = useProtectedQueryEnabled(['ADMIN', 'MANAGER']);
+  const enabled = useProtectedQueryEnabled(['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER']);
   return useQuery<CompetencyMatrixResult>({
     queryKey: ['reports', 'competency-matrix'],
     queryFn: async () => {
@@ -119,7 +119,7 @@ export const useGapMatrix = () => {
 };
 
 export const useAssessmentHistory = (page = 1, limit = 20) => {
-  const enabled = useProtectedQueryEnabled(['ADMIN', 'MANAGER']);
+  const enabled = useProtectedQueryEnabled(['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER']);
   return useQuery({
     queryKey: ['reports', 'assessment-history', page, limit],
     queryFn: async () => {
