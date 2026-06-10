@@ -99,6 +99,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          platforms: linux/amd64
           push: true
           build-args: |
             VITE_API_URL=/api/v1
