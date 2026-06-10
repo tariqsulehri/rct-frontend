@@ -1,16 +1,21 @@
+# Development frontend image.
+# Uses the dev server instead of nginx so Vite hot reload works inside Docker.
 FROM cgr.dev/chainguard/node:20-dev
 WORKDIR /app
 
+# Install dependencies once in the image. Source code is mounted by compose.
 COPY package.json package-lock.json* ./
 RUN npm ci
 
 COPY tsconfig.json vite.config.ts tailwind.config.ts postcss.config.js* ./
-# Source is volume-mounted in docker-compose.dev.yml for hot-reload.
-# This COPY ensures the image works standalone (e.g. CI smoke tests).
+
+# Compose mounts src/public for day-to-day development. These COPY commands let
+# the image still run by itself when used for smoke tests or debugging.
 COPY src ./src
 COPY public ./public
 
+# Vite serves the app on this port.
 EXPOSE 5173
 
-# --host exposes the dev server outside the container (required in Docker)
+# --host binds to 0.0.0.0 so the host browser can reach the container.
 CMD ["npm", "run", "dev", "--", "--host"]
