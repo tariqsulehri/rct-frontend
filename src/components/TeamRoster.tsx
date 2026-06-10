@@ -35,16 +35,37 @@ const percentText = (value: number | null) => value === null ? "N/A" : `${value}
 
 export const TeamRoster: React.FC = () => {
   const [modal, setModal] = useState<AssessmentModalState>({ isOpen: false, employeeId: null, employeeName: null });
-  const [department, setDepartment] = useState<string | undefined>();
+  const [teamSearch, setTeamSearch] = useState("");
   const [selectedGrade, setSelectedGrade] = useState<string>("all");
   const { user } = useAuthStore();
-  const { data: roster, isLoading, error } = useTeamRoster(department);
+  const { data: roster, isLoading, error } = useTeamRoster();
   const { data: promotionRows } = usePromotionReadiness();
 
   const rosterRows = roster ?? [];
   const gradeOptions = Array.from(new Set(rosterRows.map((member) => member.current_grade.code)))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  const filteredRoster = rosterRows.filter((member) => selectedGrade === "all" || member.current_grade.code === selectedGrade);
+  const normalizedSearch = teamSearch.trim().toLowerCase();
+  const filteredRoster = rosterRows.filter((member) => {
+    const matchesGrade = selectedGrade === "all" || member.current_grade.code === selectedGrade;
+    if (!matchesGrade) return false;
+    if (!normalizedSearch) return true;
+
+    const searchableText = [
+      member.full_name,
+      member.emp_code,
+      member.email,
+      member.department,
+      member.current_grade.code,
+      member.current_grade.title,
+      member.target_grade.code,
+      member.target_grade.title,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return searchableText.includes(normalizedSearch);
+  });
 
   const promoByEmployeeId = new Map((promotionRows ?? []).map((row) => [row.employee_id, row]));
   const filteredPromotions = filteredRoster
@@ -114,16 +135,16 @@ export const TeamRoster: React.FC = () => {
             <Search size={13} style={{ color: "rgb(var(--text-3))" }} />
             <input
               type="text"
-              placeholder="Search department…"
-              value={department || ""}
-              onChange={(e) => setDepartment(e.target.value || undefined)}
-              className="bg-transparent text-sm outline-none w-48"
+              placeholder="Search name, code, department…"
+              value={teamSearch}
+              onChange={(e) => setTeamSearch(e.target.value)}
+              className="bg-transparent text-sm outline-none w-64"
               style={{ color: "rgb(var(--text-1))" }}
             />
-            {department && (
+            {teamSearch && (
               <button
                 type="button"
-                onClick={() => setDepartment(undefined)}
+                onClick={() => setTeamSearch("")}
                 className="text-xs font-semibold"
                 style={{ color: "rgb(var(--accent))" }}
               >
@@ -237,7 +258,7 @@ export const TeamRoster: React.FC = () => {
 
       {!isLoading && rosterRows.length > 0 && filteredRoster.length === 0 && (
         <div className="text-center py-12 text-sm" style={{ color: "rgb(var(--text-2))" }}>
-          No team members match the selected grade filter.
+          No team members match the selected filters.
         </div>
       )}
 

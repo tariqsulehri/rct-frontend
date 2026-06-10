@@ -587,6 +587,7 @@ export const useCreateUser = () => {
       password: string;
       role: RoleCode;
       employee_id: number;
+      is_active?: boolean;
     }) => {
       const res = await apiClient.post<{ success: boolean; data: ConfigUser }>('/config/users', data);
       return res.data.data;

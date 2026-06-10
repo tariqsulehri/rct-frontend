@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
 import { getConfigTablePageSize, HEADER_GRADIENTS } from './ConfigTableState';
+import { PanelHeader } from '@/components/ui/PanelHeader';
 
 const Pagination: React.FC<{ page: number; total: number; pageSize: number; onChange: (p: number) => void }> = ({
   page, total, pageSize, onChange,
@@ -69,10 +70,12 @@ export const TableShell: React.FC<{
   onPage: (p: number) => void;
 }> = ({ tabKey, title, onAdd, addLabel, headers, children, loading, error, q, onSearch, page, total, onPage }) => (
   <div className="card p-0 overflow-hidden">
-    <div className="flex items-center justify-between px-5 py-4"
-      style={{ background: HEADER_GRADIENTS[tabKey] }}>
-      <h2 className="text-sm font-bold text-white">{title}</h2>
-      {onAdd && addLabel && (
+    <PanelHeader
+      title={title}
+      background={HEADER_GRADIENTS[tabKey]}
+      dense
+      highContrast
+      action={onAdd && addLabel ? (
         <button onClick={onAdd}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
           style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', backdropFilter: 'blur(4px)' }}
@@ -80,8 +83,8 @@ export const TableShell: React.FC<{
           onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)')}>
           <Plus size={13} /> {addLabel}
         </button>
-      )}
-    </div>
+      ) : undefined}
+    />
 
     <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgb(var(--border))' }}>
       <Search size={14} style={{ color: 'rgb(var(--text-3))' }} />

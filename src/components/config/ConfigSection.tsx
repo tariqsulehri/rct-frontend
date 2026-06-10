@@ -4,6 +4,8 @@ import { X, Search, Building2, Users, Award, Layers, Cpu, Zap, User, Settings, T
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { SearchableMultiSelect } from '@/components/ui/SearchableMultiSelect';
+import { PanelHeader } from '@/components/ui/PanelHeader';
 import { getApiErrorMessage } from '@/lib/apiError';
 import { ActionBtns, TableShell, TD, TR } from './ConfigTable';
 import { HEADER_GRADIENTS, useTableState } from './ConfigTableState';
@@ -47,6 +49,7 @@ type UserPayload = {
   password?: string;
   role: UserRole;
   employee_id: number;
+  is_active: boolean;
 };
 type EmployeePayload = {
   emp_code: string;
@@ -533,20 +536,18 @@ const DepartmentsSection: React.FC = () => {
 
         {/* Department detail panel */}
         <div className="card p-0 overflow-hidden flex flex-col" style={{ maxHeight: '540px' }}>
-          {/* Header */}
-          <div className="px-4 py-3 shrink-0" style={{ background: HEADER_GRADIENTS['departments'] }}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white">
-                {selectedDept ? `${selectedDept.name} Members` : 'Select a Department'}
-              </h3>
-              {selectedDept && deptEmployees.length > 0 && (
-                <span className="text-xs font-medium px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
-                  {deptEmployees.length}
-                </span>
-              )}
-            </div>
-          </div>
+          <PanelHeader
+            title={selectedDept ? `${selectedDept.name} Members` : 'Select a Department'}
+            background={HEADER_GRADIENTS['departments']}
+            dense
+            highContrast
+            action={selectedDept && deptEmployees.length > 0 ? (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full"
+                style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                {deptEmployees.length}
+              </span>
+            ) : undefined}
+          />
 
           {!selectedDept ? (
             <div className="p-6 text-center flex-1">
@@ -646,11 +647,12 @@ const UsersSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigUser | null>(null);
-  const [form, setForm] = useState({ username: '', password: '', role: 'ENGINEER', employee_id: '' });
+  const [form, setForm] = useState({ username: '', password: '', role: 'ENGINEER', employee_id: '', is_active: true });
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const openCreate = () => { setForm({ username: '', password: '', role: 'ENGINEER', employee_id: '' }); setEditing(null); setSaveError(null); setModal('create'); };
-  const openEdit = (u: ConfigUser) => { setForm({ username: u.username, password: '', role: u.role, employee_id: String(u.employee_id) }); setEditing(u); setSaveError(null); setModal('edit'); };
+  const openCreate = () => { setForm({ username: '', password: '', role: 'ENGINEER', employee_id: '', is_active: true }); setEditing(null); setSaveError(null); setModal('create'); };
+  const openEdit = (u: ConfigUser) => { setForm({ username: u.username, password: '', role: u.role, employee_id: String(u.employee_id), is_active: u.is_active }); setEditing(u); setSaveError(null); setModal('edit'); };
 
   const handleSave = async () => {
     setSaveError(null);
@@ -665,12 +667,14 @@ const UsersSection: React.FC = () => {
           password: form.password,
           role: form.role as UserRole,
           employee_id: Number(form.employee_id),
+          is_active: form.is_active,
         });
       } else if (editing) {
         const data: Partial<UserPayload> = {
           username: form.username,
           role: form.role as UserRole,
           employee_id: Number(form.employee_id),
+          is_active: form.is_active,
         };
         if (form.password) data.password = form.password;
         await updateUser.mutateAsync({ id: editing.id, data });
@@ -697,7 +701,13 @@ const UsersSection: React.FC = () => {
     label: role.replace(/_/g, ' '),
   })));
 
-  const ts = useTableState(users, (u, q) =>
+  const filteredUsers = useMemo(() => (users ?? []).filter(user => {
+    if (statusFilter === 'active') return user.is_active;
+    if (statusFilter === 'inactive') return !user.is_active;
+    return true;
+  }), [users, statusFilter]);
+
+  const ts = useTableState(filteredUsers, (u, q) =>
     u.username.toLowerCase().includes(q) ||
     u.role.toLowerCase().includes(q) ||
     (u.employee?.full_name ?? '').toLowerCase().includes(q),
@@ -716,6 +726,23 @@ const UsersSection: React.FC = () => {
   return (
     <>
       {confirmDialog}
+      <div className="flex items-center justify-end gap-2 mb-3">
+        {(['active', 'inactive', 'all'] as const).map(status => (
+          <button
+            key={status}
+            type="button"
+            onClick={() => setStatusFilter(status)}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors"
+            style={{
+              backgroundColor: statusFilter === status ? 'rgb(var(--accent))' : 'rgb(var(--surface-2))',
+              border: '1px solid rgb(var(--border))',
+              color: statusFilter === status ? 'white' : 'rgb(var(--text-1))',
+            }}
+          >
+            {status}
+          </button>
+        ))}
+      </div>
       <TableShell tabKey="users" title="Users" onAdd={openCreate} addLabel="Add User"
         headers={['Username', 'Role', 'Employee', 'Status']}
         loading={isLoading} error={isError}
@@ -764,6 +791,16 @@ const UsersSection: React.FC = () => {
               <SearchableSelect value={form.employee_id} onChange={v => setForm({ ...form, employee_id: v })}
                 placeholder="Select employee…" options={empOptions} />
             </div>
+            <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}>
+              <input
+                type="checkbox"
+                checked={form.is_active}
+                onChange={e => setForm({ ...form, is_active: e.target.checked })}
+                className="w-4 h-4 rounded"
+                style={{ accentColor: 'rgb(var(--accent))' }}
+              />
+              Active user
+            </label>
             <FormFooter onSave={handleSave} onCancel={() => setModal(null)} saving={createUser.isPending || updateUser.isPending} />
           </div>
         </Modal>
@@ -807,26 +844,18 @@ const EmployeeProfile: React.FC<{ employee: ConfigEmployee; onClose: () => void 
 
   return (
     <div className="card p-0 overflow-hidden">
-      {/* Header */}
-      <div className="px-5 py-4 flex items-center justify-between"
-        style={{ background: HEADER_GRADIENTS['employees'] }}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold"
-            style={{ backgroundColor: 'rgba(255,255,255,0.25)', color: 'white' }}>
-            {employee.full_name.charAt(0)}
-          </div>
-          <div>
-            <p className="font-bold text-white text-sm">{employee.full_name}</p>
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.75)' }}>
-              {employee.emp_code} · {employee.current_grade?.code} → {employee.target_grade?.code}
-            </p>
-          </div>
-        </div>
-        <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-          style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white' }}>
-          <X size={15} />
-        </button>
-      </div>
+      <PanelHeader
+        title={employee.full_name}
+        subtitle={`${employee.emp_code} · ${employee.current_grade?.code} -> ${employee.target_grade?.code}`}
+        background={HEADER_GRADIENTS['employees']}
+        highContrast
+        action={(
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+            style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white' }}>
+            <X size={15} />
+          </button>
+        )}
+      />
 
       <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Promotion status */}
@@ -1595,23 +1624,19 @@ const CompetenciesSection: React.FC = () => {
 
         {/* Technologies detail panel */}
         <div className="card p-0 overflow-hidden flex flex-col" style={{ maxHeight: '540px' }}>
-          {/* Header */}
-          <div className="px-4 py-3 shrink-0" style={{ background: HEADER_GRADIENTS['competencies'] }}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white">
-                {selectedCompetency ? `${selectedCompetency.name}` : 'Select a Skill'}
-              </h3>
-              {selectedCompetency && (
-                <span className="text-xs font-medium px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
-                  {selectedTechs.length} tech{selectedTechs.length !== 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-            {selectedCompetency && (
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>Technologies</p>
-            )}
-          </div>
+          <PanelHeader
+            title={selectedCompetency ? `${selectedCompetency.name}` : 'Select a Skill'}
+            subtitle={selectedCompetency ? 'Technologies' : undefined}
+            background={HEADER_GRADIENTS['competencies']}
+            dense
+            highContrast
+            action={selectedCompetency ? (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full"
+                style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                {selectedTechs.length} tech{selectedTechs.length !== 1 ? 's' : ''}
+              </span>
+            ) : undefined}
+          />
 
           {!selectedCompetency ? (
             <div className="p-6 text-center flex-1 flex flex-col items-center justify-center">
@@ -1934,6 +1959,7 @@ const CategoriesSection: React.FC = () => {
 // ACCESS MANAGEMENT
 // ═══════════════════════════════════════════════════════════════════════════════
 type AccessPanel = 'roles' | 'departments' | 'line-managers' | 'audit';
+type AssignmentStatusFilter = 'active' | 'inactive' | 'all';
 
 const formatUserLabel = (user?: ConfigUser | null) => {
   if (!user) return 'Unknown user';
@@ -1984,7 +2010,9 @@ const AccessManagementSection: React.FC = () => {
     ends_at: '',
     is_active: true,
   });
-  const [lineModal, setLineModal] = useState<'create' | 'edit' | null>(null);
+  const [lineModal, setLineModal] = useState<'edit' | null>(null);
+  const [lineBulkModal, setLineBulkModal] = useState(false);
+  const [lineStatusFilter, setLineStatusFilter] = useState<AssignmentStatusFilter>('active');
   const [editingLine, setEditingLine] = useState<ConfigLineManagerAssignment | null>(null);
   const [lineForm, setLineForm] = useState({
     manager_user_id: '',
@@ -1997,6 +2025,18 @@ const AccessManagementSection: React.FC = () => {
     is_primary: false,
     is_active: true,
   });
+  const [lineBulkForm, setLineBulkForm] = useState({
+    manager_user_id: '',
+    employee_ids: [] as string[],
+    relationship_type: 'LINE_MANAGER',
+    can_view: true,
+    can_assess: true,
+    starts_at: '',
+    ends_at: '',
+    is_primary: false,
+    is_active: true,
+  });
+  const [selectedEmployeeSearch, setSelectedEmployeeSearch] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const userOptions = (users ?? []).map(user => ({
@@ -2009,11 +2049,47 @@ const AccessManagementSection: React.FC = () => {
     label: dept.name,
     sub: dept.description ?? undefined,
   }));
-  const employeeOptions = (employees ?? []).map(employee => ({
-    value: String(employee.id),
-    label: formatEmployeeLabel(employee),
-    sub: employee.current_grade?.code && employee.target_grade?.code ? `${employee.current_grade.code} -> ${employee.target_grade.code}` : undefined,
-  }));
+  const selectedBulkManagerEmployeeId = (users ?? []).find(user => String(user.id) === lineBulkForm.manager_user_id)?.employee_id;
+  const selectedEditManagerEmployeeId = (users ?? []).find(user => String(user.id) === lineForm.manager_user_id)?.employee_id;
+  const lineBulkEmployeeOptions = (employees ?? [])
+    .filter(employee => {
+      if (employee.id === selectedBulkManagerEmployeeId) return false;
+      const activeAssignment = (lineAssignments ?? []).find(assignment =>
+        assignment.employee_id === employee.id &&
+        assignment.is_active &&
+        assignment.relationship_type === lineBulkForm.relationship_type,
+      );
+      return !activeAssignment || String(activeAssignment.manager_user_id) === lineBulkForm.manager_user_id;
+    })
+    .map(employee => ({
+      value: String(employee.id),
+      label: formatEmployeeLabel(employee),
+      sub: employee.current_grade?.code && employee.target_grade?.code ? `${employee.current_grade.code} -> ${employee.target_grade.code}` : undefined,
+    }));
+  const lineEditEmployeeOptions = (employees ?? [])
+    .filter(employee => {
+      if (employee.id === selectedEditManagerEmployeeId) return false;
+      const activeAssignment = (lineAssignments ?? []).find(assignment =>
+        assignment.employee_id === employee.id &&
+        assignment.is_active &&
+        assignment.relationship_type === lineForm.relationship_type,
+      );
+      return !activeAssignment || activeAssignment.id === editingLine?.id;
+    })
+    .map(employee => ({
+      value: String(employee.id),
+      label: formatEmployeeLabel(employee),
+      sub: employee.current_grade?.code && employee.target_grade?.code ? `${employee.current_grade.code} -> ${employee.target_grade.code}` : undefined,
+    }));
+  const activeLineAssignments = (lineAssignments ?? []).filter(assignment => assignment.is_active);
+  const activeAssignedEmployeeIds = new Set(activeLineAssignments.map(assignment => assignment.employee_id));
+  const assignedEmployeeCount = activeAssignedEmployeeIds.size;
+  const unassignedEmployeeCount = Math.max((employees ?? []).length - assignedEmployeeCount, 0);
+  const filteredLineAssignments = (lineAssignments ?? []).filter(assignment => {
+    if (lineStatusFilter === 'active') return assignment.is_active;
+    if (lineStatusFilter === 'inactive') return !assignment.is_active;
+    return true;
+  });
 
   const roleState = useTableState(roles, (r, q) =>
     r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || (r.description ?? '').toLowerCase().includes(q),
@@ -2023,7 +2099,7 @@ const AccessManagementSection: React.FC = () => {
     (a.department?.name ?? '').toLowerCase().includes(q) ||
     a.assignment_type.toLowerCase().includes(q),
     (a, b) => (a.department?.name ?? '').localeCompare(b.department?.name ?? ''));
-  const lineState = useTableState(lineAssignments, (a, q) =>
+  const lineState = useTableState(filteredLineAssignments, (a, q) =>
     formatUserLabel(a.manager_user).toLowerCase().includes(q) ||
     formatEmployeeLabel(a.employee).toLowerCase().includes(q) ||
     a.relationship_type.toLowerCase().includes(q),
@@ -2111,11 +2187,23 @@ const AccessManagementSection: React.FC = () => {
     }
   };
 
-  const openLineCreate = () => {
-    setLineForm({ manager_user_id: '', employee_id: '', relationship_type: 'LINE_MANAGER', can_view: true, can_assess: true, starts_at: '', ends_at: '', is_primary: false, is_active: true });
-    setEditingLine(null);
+  const openLineBulk = () => {
+    setLineBulkForm({ manager_user_id: '', employee_ids: [], relationship_type: 'LINE_MANAGER', can_view: true, can_assess: true, starts_at: '', ends_at: '', is_primary: false, is_active: true });
+    setSelectedEmployeeSearch('');
     setSaveError(null);
-    setLineModal('create');
+    setLineBulkModal(true);
+  };
+  const loadLineBulkManager = (managerUserId: string) => {
+    const activeAssignments = (lineAssignments ?? []).filter(a =>
+      String(a.manager_user_id) === managerUserId &&
+      a.is_active &&
+      a.relationship_type === lineBulkForm.relationship_type,
+    );
+    setLineBulkForm({
+      ...lineBulkForm,
+      manager_user_id: managerUserId,
+      employee_ids: activeAssignments.map(a => String(a.employee_id)),
+    });
   };
   const openLineEdit = (assignment: ConfigLineManagerAssignment) => {
     setLineForm({
@@ -2136,9 +2224,8 @@ const AccessManagementSection: React.FC = () => {
   const saveLineAssignment = async () => {
     setSaveError(null);
     try {
-      const payload = {
+      const basePayload = {
         manager_user_id: Number(lineForm.manager_user_id),
-        employee_id: Number(lineForm.employee_id),
         relationship_type: lineForm.relationship_type,
         can_view: lineForm.can_view,
         can_assess: lineForm.can_assess,
@@ -2147,21 +2234,64 @@ const AccessManagementSection: React.FC = () => {
         is_primary: lineForm.is_primary,
         is_active: lineForm.is_active,
       };
-      if (!payload.manager_user_id || !payload.employee_id) {
+      const employeeId = Number(lineForm.employee_id);
+      if (!basePayload.manager_user_id || !employeeId) {
         setSaveError('Please select both line manager user and employee.');
         return;
       }
-      if (lineModal === 'create') await createLineAssignment.mutateAsync(payload);
-      else if (editingLine) await updateLineAssignment.mutateAsync({ id: editingLine.id, data: payload });
+      if (editingLine) await updateLineAssignment.mutateAsync({ id: editingLine.id, data: { ...basePayload, employee_id: employeeId } });
       setLineModal(null);
     } catch (err) {
       setSaveError(getApiErrorMessage(err, 'Failed to save line-manager access.'));
+    }
+  };
+  const saveLineBulkAssignments = async () => {
+    setSaveError(null);
+    try {
+      const managerUserId = Number(lineBulkForm.manager_user_id);
+      const selectedEmployeeIds = new Set(lineBulkForm.employee_ids.map(Number).filter(Boolean));
+      if (!managerUserId) {
+        setSaveError('Please select a line manager user.');
+        return;
+      }
+      const activeAssignments = (lineAssignments ?? []).filter(a =>
+        a.manager_user_id === managerUserId &&
+        a.is_active &&
+        a.relationship_type === lineBulkForm.relationship_type,
+      );
+      const activeEmployeeIds = new Set(activeAssignments.map(a => a.employee_id));
+      const toAdd = Array.from(selectedEmployeeIds).filter(employeeId => !activeEmployeeIds.has(employeeId));
+      const toRemove = activeAssignments.filter(a => !selectedEmployeeIds.has(a.employee_id));
+
+      await Promise.all([
+        ...toAdd.map(employee_id => createLineAssignment.mutateAsync({
+          manager_user_id: managerUserId,
+          employee_id,
+          relationship_type: lineBulkForm.relationship_type,
+          can_view: lineBulkForm.can_view,
+          can_assess: lineBulkForm.can_assess,
+          starts_at: fromDateInput(lineBulkForm.starts_at) ?? undefined,
+          ends_at: fromDateInput(lineBulkForm.ends_at),
+          is_primary: lineBulkForm.is_primary,
+          is_active: lineBulkForm.is_active,
+        })),
+        ...toRemove.map(assignment => deleteLineAssignment.mutateAsync(assignment.id)),
+      ]);
+      setLineBulkModal(false);
+    } catch (err) {
+      setSaveError(getApiErrorMessage(err, 'Failed to update line-manager employees.'));
     }
   };
 
   const statusBadge = (active: boolean) => (
     <span className={active ? 'badge badge-success' : 'badge'}>{active ? 'Active' : 'Inactive'}</span>
   );
+  const selectedLineBulkEmployees = lineBulkEmployeeOptions.filter(option => lineBulkForm.employee_ids.includes(option.value));
+  const visibleSelectedLineBulkEmployees = selectedLineBulkEmployees.filter(employee => {
+    const query = selectedEmployeeSearch.trim().toLowerCase();
+    if (!query) return true;
+    return employee.label.toLowerCase().includes(query) || (employee.sub ?? '').toLowerCase().includes(query);
+  });
 
   return (
     <>
@@ -2223,22 +2353,53 @@ const AccessManagementSection: React.FC = () => {
         )}
 
         {panel === 'line-managers' && (
-          <TableShell tabKey="line-manager-access" title="Line Manager Access" onAdd={openLineCreate} addLabel="Assign Employee"
-            headers={['Line Manager', 'Employee', 'Relationship', 'Permissions', 'Dates', 'Status']}
-            loading={lineLoading} error={lineError}
-            q={lineState.q} onSearch={lineState.onSearch} page={lineState.page} total={lineState.filtered.length} onPage={lineState.setPage}>
-            {lineState.paged.map((assignment, idx) => (
-              <TR key={assignment.id} idx={idx}>
-                <TD><span className="font-semibold">{formatUserLabel(assignment.manager_user)}</span></TD>
-                <TD>{formatEmployeeLabel(assignment.employee)}</TD>
-                <TD mono>{assignment.relationship_type}{assignment.is_primary ? ' / PRIMARY' : ''}</TD>
-                <TD small>{assignment.can_view ? 'View' : 'No view'} / {assignment.can_assess ? 'Assess' : 'No assess'}</TD>
-                <TD small muted>{toDateInput(assignment.starts_at) || '-'} to {toDateInput(assignment.ends_at) || 'Open'}</TD>
-                <TD>{statusBadge(assignment.is_active)}</TD>
-                <ActionBtns onEdit={() => openLineEdit(assignment)} onDelete={async () => { if (await confirm({ title: 'Deactivate Line Manager Access', message: 'This employee assignment will be marked inactive.', confirmLabel: 'Deactivate', variant: 'warning' })) deleteLineAssignment.mutate(assignment.id); }} />
-              </TR>
-            ))}
-          </TableShell>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {[
+                { label: 'Assigned', value: assignedEmployeeCount, tone: 'rgb(var(--success))' },
+                { label: 'Unassigned', value: unassignedEmployeeCount, tone: 'rgb(var(--warning))' },
+                { label: 'Active Rows', value: activeLineAssignments.length, tone: 'rgb(var(--accent-txt))' },
+              ].map(item => (
+                <div key={item.label} className="rounded-lg border px-4 py-3"
+                  style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
+                  <p className="text-xs font-bold uppercase" style={{ color: 'rgb(var(--text-2))' }}>{item.label}</p>
+                  <p className="text-2xl font-extrabold mt-1" style={{ color: item.tone }}>{item.value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="card p-1.5 inline-flex gap-1">
+              {[
+                { id: 'active' as const, label: 'Active' },
+                { id: 'inactive' as const, label: 'Inactive' },
+                { id: 'all' as const, label: 'All' },
+              ].map(item => (
+                <button key={item.id} type="button" onClick={() => setLineStatusFilter(item.id)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                  style={{
+                    backgroundColor: lineStatusFilter === item.id ? 'rgb(var(--accent))' : 'transparent',
+                    color: lineStatusFilter === item.id ? 'white' : 'rgb(var(--text-2))',
+                  }}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <TableShell tabKey="line-manager-access" title="Line Manager Access" onAdd={openLineBulk} addLabel="Manage Employees"
+              headers={['Line Manager', 'Employee', 'Relationship', 'Permissions', 'Dates', 'Status']}
+              loading={lineLoading} error={lineError}
+              q={lineState.q} onSearch={lineState.onSearch} page={lineState.page} total={lineState.filtered.length} onPage={lineState.setPage}>
+              {lineState.paged.map((assignment, idx) => (
+                <TR key={assignment.id} idx={idx}>
+                  <TD><span className="font-semibold">{formatUserLabel(assignment.manager_user)}</span></TD>
+                  <TD>{formatEmployeeLabel(assignment.employee)}</TD>
+                  <TD mono>{assignment.relationship_type}{assignment.is_primary ? ' / PRIMARY' : ''}</TD>
+                  <TD small>{assignment.can_view ? 'View' : 'No view'} / {assignment.can_assess ? 'Assess' : 'No assess'}</TD>
+                  <TD small muted>{toDateInput(assignment.starts_at) || '-'} to {toDateInput(assignment.ends_at) || 'Open'}</TD>
+                  <TD>{statusBadge(assignment.is_active)}</TD>
+                  <ActionBtns onEdit={() => openLineEdit(assignment)} onDelete={async () => { if (await confirm({ title: 'Deactivate Line Manager Access', message: 'This employee assignment will be marked inactive.', confirmLabel: 'Deactivate', variant: 'warning' })) deleteLineAssignment.mutate(assignment.id); }} />
+                </TR>
+              ))}
+            </TableShell>
+          </div>
         )}
 
         {panel === 'audit' && (
@@ -2299,11 +2460,14 @@ const AccessManagementSection: React.FC = () => {
       )}
 
       {lineModal && (
-        <Modal onClose={() => setLineModal(null)} wide title={lineModal === 'create' ? 'Assign Line Manager Access' : 'Edit Line Manager Access'}>
+        <Modal onClose={() => setLineModal(null)} wide title="Edit Line Manager Access">
           <div className="space-y-4">
             {saveError && <div className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'rgba(248,113,113,0.35)', backgroundColor: 'rgba(127,29,29,0.20)', color: 'rgb(var(--danger))' }}>{saveError}</div>}
             <div><label className={L}>Line Manager User</label><SearchableSelect value={lineForm.manager_user_id} onChange={v => setLineForm({ ...lineForm, manager_user_id: v })} placeholder="Select line manager..." options={userOptions} /></div>
-            <div><label className={L}>Employee</label><SearchableSelect value={lineForm.employee_id} onChange={v => setLineForm({ ...lineForm, employee_id: v })} placeholder="Select employee..." options={employeeOptions} /></div>
+            <div>
+              <label className={L}>Employee</label>
+              <SearchableSelect value={lineForm.employee_id} onChange={v => setLineForm({ ...lineForm, employee_id: v })} placeholder="Select employee..." options={lineEditEmployeeOptions} />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className={L}>Relationship Type</label><input className={F} value={lineForm.relationship_type} onChange={e => setLineForm({ ...lineForm, relationship_type: e.target.value })} /></div>
               <div><label className={L}>Start Date</label><input type="date" className={F} value={lineForm.starts_at} onChange={e => setLineForm({ ...lineForm, starts_at: e.target.value })} /></div>
@@ -2316,6 +2480,94 @@ const AccessManagementSection: React.FC = () => {
               </div>
             </div>
             <FormFooter onSave={saveLineAssignment} onCancel={() => setLineModal(null)} saving={createLineAssignment.isPending || updateLineAssignment.isPending} />
+          </div>
+        </Modal>
+      )}
+
+      {lineBulkModal && (
+        <Modal onClose={() => setLineBulkModal(false)} wide title="Manage Line Manager Employees">
+          <div className="space-y-4">
+            {saveError && <div className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'rgba(248,113,113,0.35)', backgroundColor: 'rgba(127,29,29,0.20)', color: 'rgb(var(--danger))' }}>{saveError}</div>}
+            <div><label className={L}>Line Manager User</label><SearchableSelect value={lineBulkForm.manager_user_id} onChange={loadLineBulkManager} placeholder="Select line manager..." options={userOptions} /></div>
+            <div>
+              <label className={L}>Employees</label>
+              <SearchableMultiSelect
+                values={lineBulkForm.employee_ids}
+                onChange={values => setLineBulkForm({ ...lineBulkForm, employee_ids: values })}
+                placeholder="Search and select employees..."
+                options={lineBulkEmployeeOptions}
+                selectAllLabel="Select all shown"
+              />
+            </div>
+            <div className="rounded-lg border" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
+              <div className="flex items-center justify-between gap-3 px-3 py-2 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-1))' }}>Selected Employees</p>
+                  <p className="text-xs" style={{ color: 'rgb(var(--text-2))' }}>{selectedLineBulkEmployees.length} employee{selectedLineBulkEmployees.length === 1 ? '' : 's'} selected</p>
+                </div>
+                {selectedLineBulkEmployees.length > 0 && (
+                  <button type="button" className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium"
+                    onClick={() => setLineBulkForm({ ...lineBulkForm, employee_ids: [] })}>
+                    Clear All
+                  </button>
+                )}
+              </div>
+              <div className="px-3 py-2 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ backgroundColor: 'rgb(var(--surface))' }}>
+                  <Search size={13} style={{ color: 'rgb(var(--text-3))' }} />
+                  <input
+                    value={selectedEmployeeSearch}
+                    onChange={event => setSelectedEmployeeSearch(event.target.value)}
+                    placeholder="Search selected employees..."
+                    className="bg-transparent text-sm outline-none flex-1"
+                    style={{ color: 'rgb(var(--text-1))' }}
+                  />
+                  {selectedEmployeeSearch && (
+                    <button type="button" className="text-xs" style={{ color: 'rgb(var(--text-3))' }} onClick={() => setSelectedEmployeeSearch('')}>
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="max-h-44 overflow-y-auto p-2">
+                {selectedLineBulkEmployees.length === 0 ? (
+                  <p className="text-sm px-2 py-4 text-center" style={{ color: 'rgb(var(--text-3))' }}>No employees selected.</p>
+                ) : visibleSelectedLineBulkEmployees.length === 0 ? (
+                  <p className="text-sm px-2 py-4 text-center" style={{ color: 'rgb(var(--text-3))' }}>No selected employees match your search.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {visibleSelectedLineBulkEmployees.map(employee => (
+                      <div key={employee.value} className="flex items-center justify-between gap-2 rounded-md border px-2.5 py-2"
+                        style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold truncate" style={{ color: 'rgb(var(--text-1))' }}>{employee.label}</p>
+                          {employee.sub && <p className="text-[11px] truncate" style={{ color: 'rgb(var(--text-3))' }}>{employee.sub}</p>}
+                        </div>
+                        <button type="button" className="btn-ghost px-2 py-1 text-xs rounded-md shrink-0"
+                          onClick={() => setLineBulkForm({ ...lineBulkForm, employee_ids: lineBulkForm.employee_ids.filter(id => id !== employee.value) })}>
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={L}>Relationship Type</label><input className={F} value={lineBulkForm.relationship_type} onChange={e => setLineBulkForm({ ...lineBulkForm, relationship_type: e.target.value })} /></div>
+              <div><label className={L}>Start Date</label><input type="date" className={F} value={lineBulkForm.starts_at} onChange={e => setLineBulkForm({ ...lineBulkForm, starts_at: e.target.value })} /></div>
+              <div><label className={L}>End Date</label><input type="date" className={F} value={lineBulkForm.ends_at} onChange={e => setLineBulkForm({ ...lineBulkForm, ends_at: e.target.value })} /></div>
+              <div className="flex items-center gap-4 pt-7 flex-wrap">
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.can_view} onChange={e => setLineBulkForm({ ...lineBulkForm, can_view: e.target.checked })} /> View</label>
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.can_assess} onChange={e => setLineBulkForm({ ...lineBulkForm, can_assess: e.target.checked })} /> Assess</label>
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.is_primary} onChange={e => setLineBulkForm({ ...lineBulkForm, is_primary: e.target.checked })} /> Primary</label>
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.is_active} onChange={e => setLineBulkForm({ ...lineBulkForm, is_active: e.target.checked })} /> Active</label>
+              </div>
+            </div>
+            <p className="text-xs" style={{ color: 'rgb(var(--text-2))' }}>
+              Saving will add newly selected employees and deactivate employees removed from this line manager.
+            </p>
+            <FormFooter onSave={saveLineBulkAssignments} onCancel={() => setLineBulkModal(false)} saving={createLineAssignment.isPending || deleteLineAssignment.isPending} />
           </div>
         </Modal>
       )}
