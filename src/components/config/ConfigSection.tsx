@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
-import { X, Search, Building2, Users, Award, Layers, Cpu, Zap, User, Settings, Tag, Network, Save } from 'lucide-react';
+import { X, Search, Building2, Users, Award, Layers, Cpu, Zap, User, Settings, Tag, Network, Save, ShieldCheck } from 'lucide-react';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -12,7 +12,10 @@ import {
   useConfigAssessmentLevels, useUpdateAssessmentLevel,
   useConfigAssessmentStatuses, useUpdateAssessmentStatus,
   useConfigAssessmentProjects, useUpdateAssessmentProject,
-  useConfigRoles,
+  useConfigRoles, useUpdateRole,
+  useDepartmentAssignments, useCreateDepartmentAssignment, useUpdateDepartmentAssignment, useDeleteDepartmentAssignment,
+  useLineManagerAssignments, useCreateLineManagerAssignment, useUpdateLineManagerAssignment, useDeleteLineManagerAssignment,
+  useAccessAuditLogs,
   useConfigDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment,
   useConfigUsers, useCreateUser, useUpdateUser, useDeleteUser,
   useConfigEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee,
@@ -24,6 +27,7 @@ import {
   useConfigCompetencyCategories, useCreateCompetencyCategory, useUpdateCompetencyCategory, useDeleteCompetencyCategory,
   ConfigAssessmentType, ConfigAssessmentLevel, ConfigAssessmentStatus, ConfigAssessmentProject,
   ConfigDepartment, ConfigUser, ConfigEmployee, ConfigGrade, ConfigSkillDomain, ConfigCompetency, ConfigTechnology, ConfigCompetencyCategory,
+  ConfigRole, ConfigDepartmentAssignment, ConfigLineManagerAssignment,
 } from '@/hooks/useConfig';
 import { useCompetencyScores, useGapMatrix, usePromotionReadiness } from '@/hooks/useReports';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
@@ -1927,12 +1931,406 @@ const CategoriesSection: React.FC = () => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ACCESS MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+type AccessPanel = 'roles' | 'departments' | 'line-managers' | 'audit';
+
+const formatUserLabel = (user?: ConfigUser | null) => {
+  if (!user) return 'Unknown user';
+  const emp = user.employee;
+  return emp ? `${emp.emp_code} - ${emp.full_name} - ${emp.department || 'No department'}` : user.username;
+};
+
+const formatEmployeeLabel = (employee?: ConfigEmployee | null) => {
+  if (!employee) return 'Unknown employee';
+  const department = employee.dept?.name ?? employee.department;
+  return `${employee.emp_code} - ${employee.full_name} - ${department || 'No department'}`;
+};
+
+const toDateInput = (value?: string | null) => value ? value.slice(0, 10) : '';
+const fromDateInput = (value: string) => value ? value : null;
+
+const AccessManagementSection: React.FC = () => {
+  const [panel, setPanel] = useState<AccessPanel>('roles');
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
+
+  const { data: roles, isLoading: rolesLoading, isError: rolesError } = useConfigRoles();
+  const { data: users } = useConfigUsers();
+  const { data: departments } = useConfigDepartments();
+  const { data: employees } = useConfigEmployees();
+  const { data: deptAssignments, isLoading: deptLoading, isError: deptError } = useDepartmentAssignments();
+  const { data: lineAssignments, isLoading: lineLoading, isError: lineError } = useLineManagerAssignments();
+  const { data: auditLogs, isLoading: auditLoading, isError: auditError } = useAccessAuditLogs();
+
+  const updateRole = useUpdateRole();
+  const createDeptAssignment = useCreateDepartmentAssignment();
+  const updateDeptAssignment = useUpdateDepartmentAssignment();
+  const deleteDeptAssignment = useDeleteDepartmentAssignment();
+  const createLineAssignment = useCreateLineManagerAssignment();
+  const updateLineAssignment = useUpdateLineManagerAssignment();
+  const deleteLineAssignment = useDeleteLineManagerAssignment();
+
+  const [roleModal, setRoleModal] = useState<ConfigRole | null>(null);
+  const [roleForm, setRoleForm] = useState({ name: '', description: '', is_active: true, sort_order: 0 });
+  const [deptModal, setDeptModal] = useState<'create' | 'edit' | null>(null);
+  const [editingDept, setEditingDept] = useState<ConfigDepartmentAssignment | null>(null);
+  const [deptForm, setDeptForm] = useState({
+    user_id: '',
+    department_id: '',
+    assignment_type: 'MANAGER',
+    can_view: true,
+    can_manage: true,
+    starts_at: '',
+    ends_at: '',
+    is_active: true,
+  });
+  const [lineModal, setLineModal] = useState<'create' | 'edit' | null>(null);
+  const [editingLine, setEditingLine] = useState<ConfigLineManagerAssignment | null>(null);
+  const [lineForm, setLineForm] = useState({
+    manager_user_id: '',
+    employee_id: '',
+    relationship_type: 'LINE_MANAGER',
+    can_view: true,
+    can_assess: true,
+    starts_at: '',
+    ends_at: '',
+    is_primary: false,
+    is_active: true,
+  });
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const userOptions = (users ?? []).map(user => ({
+    value: String(user.id),
+    label: formatUserLabel(user),
+    sub: user.role,
+  }));
+  const departmentOptions = (departments ?? []).map(dept => ({
+    value: String(dept.id),
+    label: dept.name,
+    sub: dept.description ?? undefined,
+  }));
+  const employeeOptions = (employees ?? []).map(employee => ({
+    value: String(employee.id),
+    label: formatEmployeeLabel(employee),
+    sub: employee.current_grade?.code && employee.target_grade?.code ? `${employee.current_grade.code} -> ${employee.target_grade.code}` : undefined,
+  }));
+
+  const roleState = useTableState(roles, (r, q) =>
+    r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || (r.description ?? '').toLowerCase().includes(q),
+    (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+  const deptState = useTableState(deptAssignments, (a, q) =>
+    formatUserLabel(a.user).toLowerCase().includes(q) ||
+    (a.department?.name ?? '').toLowerCase().includes(q) ||
+    a.assignment_type.toLowerCase().includes(q),
+    (a, b) => (a.department?.name ?? '').localeCompare(b.department?.name ?? ''));
+  const lineState = useTableState(lineAssignments, (a, q) =>
+    formatUserLabel(a.manager_user).toLowerCase().includes(q) ||
+    formatEmployeeLabel(a.employee).toLowerCase().includes(q) ||
+    a.relationship_type.toLowerCase().includes(q),
+    (a, b) => formatUserLabel(a.manager_user).localeCompare(formatUserLabel(b.manager_user)));
+  const auditState = useTableState(auditLogs, (log, q) =>
+    log.action.toLowerCase().includes(q) ||
+    log.entity_type.toLowerCase().includes(q) ||
+    formatUserLabel(log.actor_user).toLowerCase().includes(q) ||
+    formatUserLabel(log.target_user).toLowerCase().includes(q),
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  const openRole = (role: ConfigRole) => {
+    setRoleForm({
+      name: role.name,
+      description: role.description ?? '',
+      is_active: role.is_active,
+      sort_order: role.sort_order,
+    });
+    setRoleModal(role);
+    setSaveError(null);
+  };
+
+  const saveRole = async () => {
+    if (!roleModal) return;
+    setSaveError(null);
+    try {
+      await updateRole.mutateAsync({
+        id: roleModal.id,
+        data: {
+          name: roleForm.name,
+          description: roleForm.description || null,
+          is_active: roleForm.is_active,
+          sort_order: roleForm.sort_order,
+        },
+      });
+      setRoleModal(null);
+    } catch (err) {
+      setSaveError(getApiErrorMessage(err, 'Failed to save role.'));
+    }
+  };
+
+  const openDeptCreate = () => {
+    setDeptForm({ user_id: '', department_id: '', assignment_type: 'MANAGER', can_view: true, can_manage: true, starts_at: '', ends_at: '', is_active: true });
+    setEditingDept(null);
+    setSaveError(null);
+    setDeptModal('create');
+  };
+  const openDeptEdit = (assignment: ConfigDepartmentAssignment) => {
+    setDeptForm({
+      user_id: String(assignment.user_id),
+      department_id: String(assignment.department_id),
+      assignment_type: assignment.assignment_type,
+      can_view: assignment.can_view,
+      can_manage: assignment.can_manage,
+      starts_at: toDateInput(assignment.starts_at),
+      ends_at: toDateInput(assignment.ends_at),
+      is_active: assignment.is_active,
+    });
+    setEditingDept(assignment);
+    setSaveError(null);
+    setDeptModal('edit');
+  };
+  const saveDeptAssignment = async () => {
+    setSaveError(null);
+    try {
+      const payload = {
+        user_id: Number(deptForm.user_id),
+        department_id: Number(deptForm.department_id),
+        assignment_type: deptForm.assignment_type,
+        can_view: deptForm.can_view,
+        can_manage: deptForm.can_manage,
+        starts_at: fromDateInput(deptForm.starts_at) ?? undefined,
+        ends_at: fromDateInput(deptForm.ends_at),
+        is_active: deptForm.is_active,
+      };
+      if (!payload.user_id || !payload.department_id) {
+        setSaveError('Please select both user and department.');
+        return;
+      }
+      if (deptModal === 'create') await createDeptAssignment.mutateAsync(payload);
+      else if (editingDept) await updateDeptAssignment.mutateAsync({ id: editingDept.id, data: payload });
+      setDeptModal(null);
+    } catch (err) {
+      setSaveError(getApiErrorMessage(err, 'Failed to save department access.'));
+    }
+  };
+
+  const openLineCreate = () => {
+    setLineForm({ manager_user_id: '', employee_id: '', relationship_type: 'LINE_MANAGER', can_view: true, can_assess: true, starts_at: '', ends_at: '', is_primary: false, is_active: true });
+    setEditingLine(null);
+    setSaveError(null);
+    setLineModal('create');
+  };
+  const openLineEdit = (assignment: ConfigLineManagerAssignment) => {
+    setLineForm({
+      manager_user_id: String(assignment.manager_user_id),
+      employee_id: String(assignment.employee_id),
+      relationship_type: assignment.relationship_type,
+      can_view: assignment.can_view,
+      can_assess: assignment.can_assess,
+      starts_at: toDateInput(assignment.starts_at),
+      ends_at: toDateInput(assignment.ends_at),
+      is_primary: assignment.is_primary,
+      is_active: assignment.is_active,
+    });
+    setEditingLine(assignment);
+    setSaveError(null);
+    setLineModal('edit');
+  };
+  const saveLineAssignment = async () => {
+    setSaveError(null);
+    try {
+      const payload = {
+        manager_user_id: Number(lineForm.manager_user_id),
+        employee_id: Number(lineForm.employee_id),
+        relationship_type: lineForm.relationship_type,
+        can_view: lineForm.can_view,
+        can_assess: lineForm.can_assess,
+        starts_at: fromDateInput(lineForm.starts_at) ?? undefined,
+        ends_at: fromDateInput(lineForm.ends_at),
+        is_primary: lineForm.is_primary,
+        is_active: lineForm.is_active,
+      };
+      if (!payload.manager_user_id || !payload.employee_id) {
+        setSaveError('Please select both line manager user and employee.');
+        return;
+      }
+      if (lineModal === 'create') await createLineAssignment.mutateAsync(payload);
+      else if (editingLine) await updateLineAssignment.mutateAsync({ id: editingLine.id, data: payload });
+      setLineModal(null);
+    } catch (err) {
+      setSaveError(getApiErrorMessage(err, 'Failed to save line-manager access.'));
+    }
+  };
+
+  const statusBadge = (active: boolean) => (
+    <span className={active ? 'badge badge-success' : 'badge'}>{active ? 'Active' : 'Inactive'}</span>
+  );
+
+  return (
+    <>
+      {confirmDialog}
+      <div className="space-y-4">
+        <div className="card p-1.5 flex gap-1 flex-wrap">
+          {[
+            { id: 'roles' as const, label: 'Roles' },
+            { id: 'departments' as const, label: 'Department Access' },
+            { id: 'line-managers' as const, label: 'Line Manager Access' },
+            { id: 'audit' as const, label: 'Audit' },
+          ].map(item => (
+            <button key={item.id} type="button" onClick={() => setPanel(item.id)}
+              className="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+              style={{
+                backgroundColor: panel === item.id ? 'rgb(var(--accent))' : 'transparent',
+                color: panel === item.id ? 'white' : 'rgb(var(--text-2))',
+              }}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {panel === 'roles' && (
+          <TableShell tabKey="roles" title="Roles" headers={['Role', 'Code', 'Description', 'Status']}
+            loading={rolesLoading} error={rolesError}
+            q={roleState.q} onSearch={roleState.onSearch} page={roleState.page} total={roleState.filtered.length} onPage={roleState.setPage}>
+            {roleState.paged.map((role, idx) => (
+              <TR key={role.id} idx={idx}>
+                <TD><span className="font-semibold">{role.name}</span></TD>
+                <TD mono>{role.code}</TD>
+                <TD muted small>{role.description ?? '-'}</TD>
+                <TD>{statusBadge(role.is_active)}</TD>
+                <td className="px-4 py-3">
+                  <button onClick={() => openRole(role)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button>
+                </td>
+              </TR>
+            ))}
+          </TableShell>
+        )}
+
+        {panel === 'departments' && (
+          <TableShell tabKey="department-access" title="Department Access" onAdd={openDeptCreate} addLabel="Assign Department"
+            headers={['User', 'Department', 'Type', 'Permissions', 'Dates', 'Status']}
+            loading={deptLoading} error={deptError}
+            q={deptState.q} onSearch={deptState.onSearch} page={deptState.page} total={deptState.filtered.length} onPage={deptState.setPage}>
+            {deptState.paged.map((assignment, idx) => (
+              <TR key={assignment.id} idx={idx}>
+                <TD><span className="font-semibold">{formatUserLabel(assignment.user)}</span></TD>
+                <TD>{assignment.department?.name ?? `#${assignment.department_id}`}</TD>
+                <TD mono>{assignment.assignment_type}</TD>
+                <TD small>{assignment.can_view ? 'View' : 'No view'} / {assignment.can_manage ? 'Manage' : 'No manage'}</TD>
+                <TD small muted>{toDateInput(assignment.starts_at) || '-'} to {toDateInput(assignment.ends_at) || 'Open'}</TD>
+                <TD>{statusBadge(assignment.is_active)}</TD>
+                <ActionBtns onEdit={() => openDeptEdit(assignment)} onDelete={async () => { if (await confirm({ title: 'Deactivate Department Access', message: 'This access assignment will be marked inactive.', confirmLabel: 'Deactivate', variant: 'warning' })) deleteDeptAssignment.mutate(assignment.id); }} />
+              </TR>
+            ))}
+          </TableShell>
+        )}
+
+        {panel === 'line-managers' && (
+          <TableShell tabKey="line-manager-access" title="Line Manager Access" onAdd={openLineCreate} addLabel="Assign Employee"
+            headers={['Line Manager', 'Employee', 'Relationship', 'Permissions', 'Dates', 'Status']}
+            loading={lineLoading} error={lineError}
+            q={lineState.q} onSearch={lineState.onSearch} page={lineState.page} total={lineState.filtered.length} onPage={lineState.setPage}>
+            {lineState.paged.map((assignment, idx) => (
+              <TR key={assignment.id} idx={idx}>
+                <TD><span className="font-semibold">{formatUserLabel(assignment.manager_user)}</span></TD>
+                <TD>{formatEmployeeLabel(assignment.employee)}</TD>
+                <TD mono>{assignment.relationship_type}{assignment.is_primary ? ' / PRIMARY' : ''}</TD>
+                <TD small>{assignment.can_view ? 'View' : 'No view'} / {assignment.can_assess ? 'Assess' : 'No assess'}</TD>
+                <TD small muted>{toDateInput(assignment.starts_at) || '-'} to {toDateInput(assignment.ends_at) || 'Open'}</TD>
+                <TD>{statusBadge(assignment.is_active)}</TD>
+                <ActionBtns onEdit={() => openLineEdit(assignment)} onDelete={async () => { if (await confirm({ title: 'Deactivate Line Manager Access', message: 'This employee assignment will be marked inactive.', confirmLabel: 'Deactivate', variant: 'warning' })) deleteLineAssignment.mutate(assignment.id); }} />
+              </TR>
+            ))}
+          </TableShell>
+        )}
+
+        {panel === 'audit' && (
+          <TableShell tabKey="access-audit" title="Recent Access Audit" headers={['Time', 'Actor', 'Target', 'Action', 'Entity']}
+            loading={auditLoading} error={auditError}
+            q={auditState.q} onSearch={auditState.onSearch} page={auditState.page} total={auditState.filtered.length} onPage={auditState.setPage}>
+            {auditState.paged.map((log, idx) => (
+              <TR key={log.id} idx={idx}>
+                <TD small>{new Date(log.created_at).toLocaleString()}</TD>
+                <TD small>{formatUserLabel(log.actor_user)}</TD>
+                <TD small muted>{log.target_user ? formatUserLabel(log.target_user) : '-'}</TD>
+                <TD mono small>{log.action}</TD>
+                <TD small>{log.entity_type} {log.entity_id ? `#${log.entity_id}` : ''}</TD>
+                <td className="px-4 py-3" />
+              </TR>
+            ))}
+          </TableShell>
+        )}
+      </div>
+
+      {roleModal && (
+        <Modal onClose={() => setRoleModal(null)} wide title="Edit Role">
+          <div className="space-y-4">
+            {saveError && <div className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'rgba(248,113,113,0.35)', backgroundColor: 'rgba(127,29,29,0.20)', color: 'rgb(var(--danger))' }}>{saveError}</div>}
+            <div><label className={L}>Role Code</label><input className={F} value={roleModal.code} disabled /></div>
+            <div><label className={L}>Role Name</label><input className={F} value={roleForm.name} onChange={e => setRoleForm({ ...roleForm, name: e.target.value })} /></div>
+            <div><label className={L}>Description</label><input className={F} value={roleForm.description} onChange={e => setRoleForm({ ...roleForm, description: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={L}>Sort Order</label><input type="number" className={F} value={roleForm.sort_order} onChange={e => setRoleForm({ ...roleForm, sort_order: Number(e.target.value) })} /></div>
+              <label className="flex items-center gap-2 text-sm pt-7" style={{ color: 'rgb(var(--text-1))' }}>
+                <input type="checkbox" checked={roleForm.is_active} onChange={e => setRoleForm({ ...roleForm, is_active: e.target.checked })} /> Active
+              </label>
+            </div>
+            <FormFooter onSave={saveRole} onCancel={() => setRoleModal(null)} saving={updateRole.isPending} />
+          </div>
+        </Modal>
+      )}
+
+      {deptModal && (
+        <Modal onClose={() => setDeptModal(null)} wide title={deptModal === 'create' ? 'Assign Department Access' : 'Edit Department Access'}>
+          <div className="space-y-4">
+            {saveError && <div className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'rgba(248,113,113,0.35)', backgroundColor: 'rgba(127,29,29,0.20)', color: 'rgb(var(--danger))' }}>{saveError}</div>}
+            <div><label className={L}>User</label><SearchableSelect value={deptForm.user_id} onChange={v => setDeptForm({ ...deptForm, user_id: v })} placeholder="Select user..." options={userOptions} /></div>
+            <div><label className={L}>Department</label><SearchableSelect value={deptForm.department_id} onChange={v => setDeptForm({ ...deptForm, department_id: v })} placeholder="Select department..." options={departmentOptions} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={L}>Access Type</label><input className={F} value={deptForm.assignment_type} onChange={e => setDeptForm({ ...deptForm, assignment_type: e.target.value })} /></div>
+              <div><label className={L}>Start Date</label><input type="date" className={F} value={deptForm.starts_at} onChange={e => setDeptForm({ ...deptForm, starts_at: e.target.value })} /></div>
+              <div><label className={L}>End Date</label><input type="date" className={F} value={deptForm.ends_at} onChange={e => setDeptForm({ ...deptForm, ends_at: e.target.value })} /></div>
+              <div className="flex items-center gap-4 pt-7">
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={deptForm.can_view} onChange={e => setDeptForm({ ...deptForm, can_view: e.target.checked })} /> View</label>
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={deptForm.can_manage} onChange={e => setDeptForm({ ...deptForm, can_manage: e.target.checked })} /> Manage</label>
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={deptForm.is_active} onChange={e => setDeptForm({ ...deptForm, is_active: e.target.checked })} /> Active</label>
+              </div>
+            </div>
+            <FormFooter onSave={saveDeptAssignment} onCancel={() => setDeptModal(null)} saving={createDeptAssignment.isPending || updateDeptAssignment.isPending} />
+          </div>
+        </Modal>
+      )}
+
+      {lineModal && (
+        <Modal onClose={() => setLineModal(null)} wide title={lineModal === 'create' ? 'Assign Line Manager Access' : 'Edit Line Manager Access'}>
+          <div className="space-y-4">
+            {saveError && <div className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'rgba(248,113,113,0.35)', backgroundColor: 'rgba(127,29,29,0.20)', color: 'rgb(var(--danger))' }}>{saveError}</div>}
+            <div><label className={L}>Line Manager User</label><SearchableSelect value={lineForm.manager_user_id} onChange={v => setLineForm({ ...lineForm, manager_user_id: v })} placeholder="Select line manager..." options={userOptions} /></div>
+            <div><label className={L}>Employee</label><SearchableSelect value={lineForm.employee_id} onChange={v => setLineForm({ ...lineForm, employee_id: v })} placeholder="Select employee..." options={employeeOptions} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={L}>Relationship Type</label><input className={F} value={lineForm.relationship_type} onChange={e => setLineForm({ ...lineForm, relationship_type: e.target.value })} /></div>
+              <div><label className={L}>Start Date</label><input type="date" className={F} value={lineForm.starts_at} onChange={e => setLineForm({ ...lineForm, starts_at: e.target.value })} /></div>
+              <div><label className={L}>End Date</label><input type="date" className={F} value={lineForm.ends_at} onChange={e => setLineForm({ ...lineForm, ends_at: e.target.value })} /></div>
+              <div className="flex items-center gap-4 pt-7 flex-wrap">
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineForm.can_view} onChange={e => setLineForm({ ...lineForm, can_view: e.target.checked })} /> View</label>
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineForm.can_assess} onChange={e => setLineForm({ ...lineForm, can_assess: e.target.checked })} /> Assess</label>
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineForm.is_primary} onChange={e => setLineForm({ ...lineForm, is_primary: e.target.checked })} /> Primary</label>
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineForm.is_active} onChange={e => setLineForm({ ...lineForm, is_active: e.target.checked })} /> Active</label>
+              </div>
+            </div>
+            <FormFooter onSave={saveLineAssignment} onCancel={() => setLineModal(null)} saving={createLineAssignment.isPending || updateLineAssignment.isPending} />
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // MAIN CONFIG SECTION
 // ═══════════════════════════════════════════════════════════════════════════════
-type ConfigTab = 'scoring' | 'departments' | 'employees' | 'users' | 'grades' | 'skill-domains' | 'competencies' | 'technologies' | 'categories' | 'skill-map';
+type ConfigTab = 'scoring' | 'access' | 'departments' | 'employees' | 'users' | 'grades' | 'skill-domains' | 'competencies' | 'technologies' | 'categories' | 'skill-map';
 
 const CONFIG_TABS: Array<{ id: ConfigTab; label: string; help: string; icon: React.ElementType }> = [
   { id: 'scoring',      label: 'Scoring',          help: 'Types, levels, statuses, and project rules used in calculations.', icon: Settings },
+  { id: 'access',       label: 'Access',           help: 'Roles, department access, line-manager assignments, and audit history.', icon: ShieldCheck },
   { id: 'departments',   label: 'Departments',       help: 'Company groups used for employees and scoring settings.', icon: Building2 },
   { id: 'employees',     label: 'Employees',         help: 'People whose skills and readiness are tracked.', icon: Users },
   { id: 'users',         label: 'Users',             help: 'Login accounts and app roles.', icon: User },
@@ -1981,6 +2379,7 @@ export const ConfigSection: React.FC = () => {
       {/* Content */}
       <div>
         {activeTab === 'scoring'       && <ScoringConfigSection />}
+        {activeTab === 'access'        && <AccessManagementSection />}
         {activeTab === 'departments'   && <DepartmentsSection />}
         {activeTab === 'employees'     && <EmployeesSection />}
         {activeTab === 'users'         && <UsersSection />}

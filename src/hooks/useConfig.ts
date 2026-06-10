@@ -24,6 +24,57 @@ export interface ConfigRole {
   sort_order: number;
 }
 
+export interface ConfigDepartmentAssignment {
+  id: number;
+  user_id: number;
+  department_id: number;
+  assignment_type: string;
+  can_view: boolean;
+  can_manage: boolean;
+  starts_at: string;
+  ends_at: string | null;
+  is_active: boolean;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+  user?: ConfigUser & { role_ref?: ConfigRole | null };
+  department?: ConfigDepartment;
+}
+
+export interface ConfigLineManagerAssignment {
+  id: number;
+  manager_user_id: number;
+  employee_id: number;
+  relationship_type: string;
+  can_view: boolean;
+  can_assess: boolean;
+  starts_at: string;
+  ends_at: string | null;
+  is_primary: boolean;
+  is_active: boolean;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+  manager_user?: ConfigUser & { role_ref?: ConfigRole | null };
+  employee?: ConfigEmployee;
+}
+
+export interface ConfigAccessAuditLog {
+  id: number;
+  actor_user_id: number | null;
+  target_user_id: number | null;
+  role_id: number | null;
+  action: string;
+  entity_type: string;
+  entity_id: number | null;
+  old_value: unknown;
+  new_value: unknown;
+  created_at: string;
+  actor_user?: ConfigUser | null;
+  target_user?: ConfigUser | null;
+  role?: ConfigRole | null;
+}
+
 export interface ConfigDepartment {
   id: number;
   name: string;
@@ -382,6 +433,148 @@ export const useConfigRoles = () =>
     queryKey: ['config', 'roles'],
     queryFn: async () => {
       const res = await apiClient.get<{ success: boolean; data: ConfigRole[] }>('/config/roles');
+      return res.data.data;
+    },
+  });
+
+export const useUpdateRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<Pick<ConfigRole, 'name' | 'description' | 'is_active' | 'sort_order'>> }) => {
+      const res = await apiClient.patch<{ success: boolean; data: ConfigRole }>(`/config/roles/${id}`, data);
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'roles'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
+    },
+  });
+};
+
+export const useDepartmentAssignments = () =>
+  useQuery({
+    queryKey: ['config', 'department-assignments'],
+    queryFn: async () => {
+      const res = await apiClient.get<{ success: boolean; data: ConfigDepartmentAssignment[] }>('/config/access/department-assignments');
+      return res.data.data;
+    },
+  });
+
+export const useCreateDepartmentAssignment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      user_id: number;
+      department_id: number;
+      assignment_type: string;
+      can_view: boolean;
+      can_manage: boolean;
+      starts_at?: string;
+      ends_at?: string | null;
+      is_active: boolean;
+    }) => {
+      const res = await apiClient.post<{ success: boolean; data: ConfigDepartmentAssignment }>('/config/access/department-assignments', data);
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'department-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
+    },
+  });
+};
+
+export const useUpdateDepartmentAssignment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<ConfigDepartmentAssignment> }) => {
+      const res = await apiClient.patch<{ success: boolean; data: ConfigDepartmentAssignment }>(`/config/access/department-assignments/${id}`, data);
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'department-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
+    },
+  });
+};
+
+export const useDeleteDepartmentAssignment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiClient.delete(`/config/access/department-assignments/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'department-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
+    },
+  });
+};
+
+export const useLineManagerAssignments = () =>
+  useQuery({
+    queryKey: ['config', 'line-manager-assignments'],
+    queryFn: async () => {
+      const res = await apiClient.get<{ success: boolean; data: ConfigLineManagerAssignment[] }>('/config/access/line-manager-assignments');
+      return res.data.data;
+    },
+  });
+
+export const useCreateLineManagerAssignment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      manager_user_id: number;
+      employee_id: number;
+      relationship_type: string;
+      can_view: boolean;
+      can_assess: boolean;
+      starts_at?: string;
+      ends_at?: string | null;
+      is_primary: boolean;
+      is_active: boolean;
+    }) => {
+      const res = await apiClient.post<{ success: boolean; data: ConfigLineManagerAssignment }>('/config/access/line-manager-assignments', data);
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'line-manager-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
+    },
+  });
+};
+
+export const useUpdateLineManagerAssignment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<ConfigLineManagerAssignment> }) => {
+      const res = await apiClient.patch<{ success: boolean; data: ConfigLineManagerAssignment }>(`/config/access/line-manager-assignments/${id}`, data);
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'line-manager-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
+    },
+  });
+};
+
+export const useDeleteLineManagerAssignment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiClient.delete(`/config/access/line-manager-assignments/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'line-manager-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
+    },
+  });
+};
+
+export const useAccessAuditLogs = () =>
+  useQuery({
+    queryKey: ['config', 'access-audit-logs'],
+    queryFn: async () => {
+      const res = await apiClient.get<{ success: boolean; data: ConfigAccessAuditLog[] }>('/config/access/audit-logs');
       return res.data.data;
     },
   });
