@@ -8,9 +8,6 @@ export interface CompetencyRow { employee_id: number; full_name: string; emp_cod
 export interface GapRow { competency_id: number; competency_name: string; domain_name: string; score: number; threshold: number; gap: number; meets_grade: boolean; is_critical: boolean; }
 export interface GapResult { employee: { id: number; emp_code: string; full_name: string; current_grade: string; target_grade: string; }; overall_score: number; promotion_ready: boolean; total_competencies: number; meets_count: number; gaps: GapRow[]; }
 
-// ── Shared helpers ─────────────────────────────────────────────────────────────
-export const pct = (n: number) => `${Math.round(n * 100)}%`;
-
 export function Stars({ n }: { n: number }) {
   return <StarMeter count={n} emptyColor="rgb(var(--surface-3))" />;
 }
@@ -87,7 +84,3 @@ export const ViewToggle: React.FC<{ view: View; onChange: (v: View) => void }> =
     ))}
   </div>
 );
-
-export function starRatingDisplay(stars: number, max = 5) {
-  return <StarMeter count={stars} max={max} size={13} emptyColor="rgb(var(--border))" />;
-}

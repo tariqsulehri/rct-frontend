@@ -3,7 +3,8 @@ import { Download } from 'lucide-react';
 import { ResponsiveContainer, Bar, XAxis, YAxis, Tooltip, ComposedChart, CartesianGrid, Line } from 'recharts';
 import { useGapMatrix, type GapMatrixEmployee, type GapMatrixResult } from '@/hooks/useReports';
 import { useAuthStore } from '@/store/authStore';
-import { Empty, InfoTip, Loading, starRatingDisplay } from '../shared';
+import { Empty, InfoTip, Loading } from '../shared';
+import { starRatingDisplay } from '../reportDisplay';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ── Gap Analysis ──────────────────────────────────────────────────────────────
@@ -32,6 +33,19 @@ function gapCellBg(gap: number): React.CSSProperties {
   if (gap >= 0)    return { backgroundColor: 'rgb(var(--success-soft))', color: 'rgb(var(--success))' };
   if (gap >= -0.2) return { backgroundColor: 'rgb(var(--warning-soft))', color: 'rgb(var(--warning))' };
   return { backgroundColor: 'rgb(var(--danger-soft))', color: 'rgb(var(--danger))' };
+}
+
+interface GapBarLabelProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  index?: number;
+}
+
+interface GapHeader {
+  label: string;
+  w: number;
 }
 
 export const GapAnalysisTab: React.FC = () => {
@@ -319,8 +333,8 @@ export const GapAnalysisTab: React.FC = () => {
                     <Bar dataKey="score" name="Achieved" fill={`url(#${gradId})`}
                       radius={[0, 3, 3, 0]} maxBarSize={20}
                       background={{ fill: 'rgba(255,255,255,0.04)', radius: 3 }}
-                      label={(props: any) => {
-                        const { x, width, y, height, index } = props;
+                      label={(props: GapBarLabelProps) => {
+                        const { x = 0, width = 0, y = 0, height = 0, index = 0 } = props;
                         const d = data[index];
                         if (!d) return <g />;
                         const midY = y + height / 2;
@@ -400,7 +414,7 @@ export const GapAnalysisTab: React.FC = () => {
                   { label: '★ Rating',     w: 90  },
                   { label: 'Gap',          w: 80  },
                   { label: 'Result',       w: 110 },
-                ].filter(Boolean).map((h: any) => (
+                ].filter((h): h is GapHeader => Boolean(h)).map((h) => (
                   <th key={h.label} className="px-3 py-2.5 text-left font-semibold"
                     style={{ color: 'rgb(var(--text-3))', minWidth: h.w, maxWidth: h.w }}>
                     {h.label}

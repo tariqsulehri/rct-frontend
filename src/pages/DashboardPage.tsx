@@ -12,7 +12,7 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   PieChart, Pie, Legend,
 } from 'recharts';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore, type User } from '@/store/authStore';
 import { useThemeStore, Theme } from '@/store/themeStore';
 import { TeamRoster } from '@/components/TeamRoster';
 import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
@@ -750,7 +750,7 @@ const AdminDashboardTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onN
 
 /* ── Overview Tab ───────────────────────────────────────────────────────── */
 
-const OverviewTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> = ({ user, onNavigate }) => {
+const OverviewTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => void }> = ({ user, onNavigate }) => {
   const { data: overviewPromoData } = usePromotionReadiness();
   const { data: overviewCompData } = useCompetencyScores();
   const { data: overviewGapData } = useGapMatrix();
@@ -967,7 +967,7 @@ function RadarTick({ payload, x = 0, y = 0, cx = 0, cy = 0 }: {
 
 /* ── Assessments Tab ────────────────────────────────────────────────────── */
 
-const AssessmentsTab: React.FC<{ user: any; onNavigate: (t: TabType) => void }> = ({ user, onNavigate }) => {
+const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => void }> = ({ user, onNavigate }) => {
   const { data: compData, isLoading } = useCompetencyScores();
   const { data: promoData }           = usePromotionReadiness();
   const { data: gapData }             = useGapMatrix();
@@ -1721,12 +1721,13 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
   const [focus, setFocus] = useState<'executive' | 'risk' | 'skills' | 'readiness'>('executive');
   const [analysisTime, setAnalysisTime] = useState(() => new Date());
 
-  const rows = promoData ?? [];
-  const compRows = compData ?? [];
-  const gapRows = gapData?.employees ?? [];
   const isLoading = promoLoading || compLoading || gapLoading;
 
   const analysis = React.useMemo(() => {
+    const rows = promoData ?? [];
+    const compRows = compData ?? [];
+    const gapRows = gapData?.employees ?? [];
+
     const assessedRows = rows.filter((r) => r.overall_score > 0);
     const readyCount = rows.filter((r) => r.promotion_ready).length;
     const avgAchieved = assessedRows.length
@@ -1821,13 +1822,14 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
       avgRequired,
       readinessRate,
       readyCount,
+      totalCount: rows.length,
       domainAverages,
       riskPeople,
       nearReady,
       blockers,
       suggestions,
     };
-  }, [rows, compRows, gapRows, c.domains]);
+  }, [promoData, compData, gapData?.employees, c.domains]);
 
   const lowDomains = analysis.domainAverages.filter((d) => d.assessed > 0).slice(0, 6);
   const highDomains = [...analysis.domainAverages].filter((d) => d.assessed > 0).sort((a, b) => b.avg - a.avg).slice(0, 4);
@@ -1879,7 +1881,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
         {[
           { label: 'Avg Achieved', value: `${Math.round(analysis.avgAchieved * 100)}%`, color: c.accent },
           { label: 'Avg Required', value: analysis.avgRequired > 0 ? `${Math.round(analysis.avgRequired * 100)}%` : 'N/A', color: c.warning },
-          { label: 'Ready Resources', value: `${analysis.readyCount}/${rows.length}`, color: c.success },
+          { label: 'Ready Resources', value: `${analysis.readyCount}/${analysis.totalCount}`, color: c.success },
           { label: 'Near Ready', value: analysis.nearReady.length, color: c.warning },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-xl border p-4" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>

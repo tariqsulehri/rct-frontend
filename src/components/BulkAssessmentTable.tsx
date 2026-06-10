@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { Stars } from '@/components/ui/Stars';
 import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, ShieldCheck, Info } from 'lucide-react';
 import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
+import { getApiErrorMessage } from '@/lib/apiError';
 import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes } from '@/hooks/useConfig';
 import {
   useSkillsHierarchy,
@@ -423,6 +424,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
     existingAssessmentsLoading,
     employeeId,
     existingAssessments,
+    hierarchy,
     techLocationMap,
   ]);
 
@@ -444,7 +446,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
     return competency?.technologies || [];
   }, [hierarchy]);
 
-  const updateRow = useCallback((rowId: string, field: keyof BulkRow, value: any) => {
+  const updateRow = useCallback(<K extends keyof BulkRow>(rowId: string, field: K, value: BulkRow[K]) => {
     setRows((prev) =>
       prev.map((r) => {
         if (r.id !== rowId) return r;
@@ -476,7 +478,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
         return updated;
       })
     );
-  }, [getTechnologiesForCompetency]);
+  }, []);
 
   const isRowEditable = useCallback((row: BulkRow) => {
     return row.isNew === true || editingRowIds.has(row.id) || approvingRowIds.has(row.id);
@@ -586,12 +588,12 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         ));
       }
       onSuccess?.();
-    } catch (err: any) {
-      setRowError(rowId, err.response?.data?.message || 'Save failed. Try again.');
+    } catch (err: unknown) {
+      setRowError(rowId, getApiErrorMessage(err, 'Save failed. Try again.'));
     } finally {
       setSavingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
     }
-  }, [rows, approvingRowIds, validateAndEnrichRow, approveAssessment, updateAssessment, createAssessment, employeeId, onSuccess]);
+  }, [rows, approvingRowIds, validateAndEnrichRow, approveAssessment, updateAssessment, createAssessment, employeeId, onSuccess, setRowError]);
 
   const deleteRow = useCallback(async (rowId: string) => {
     const row = rows.find((r) => r.id === rowId);

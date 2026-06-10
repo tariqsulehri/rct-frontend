@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, Trash2, Info } from 'lucide-react';
 
-interface ConfirmDialogProps {
+export interface ConfirmDialogProps {
   title: string;
   message: string;
   confirmLabel?: string;
@@ -106,23 +106,3 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     document.body,
   );
 };
-
-// Hook for imperative usage — manages open/close state
-export function useConfirmDialog() {
-  const [state, setState] = React.useState<(ConfirmDialogProps & { resolve: (v: boolean) => void }) | null>(null);
-
-  const confirm = React.useCallback((opts: Omit<ConfirmDialogProps, 'onConfirm' | 'onCancel'>): Promise<boolean> => {
-    return new Promise(resolve => {
-      setState({
-        ...opts,
-        resolve,
-        onConfirm: () => { setState(null); resolve(true); },
-        onCancel:  () => { setState(null); resolve(false); },
-      });
-    });
-  }, []);
-
-  const dialog = state ? <ConfirmDialog {...state} /> : null;
-
-  return { confirm, dialog };
-}

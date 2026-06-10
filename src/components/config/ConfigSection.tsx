@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { X, Search, Building2, Users, Award, Layers, Cpu, Zap, User, Settings, Tag, Network, Save } from 'lucide-react';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { getApiErrorMessage } from '@/lib/apiError';
 import { ActionBtns, TableShell, TD, TR } from './ConfigTable';
 import { HEADER_GRADIENTS, useTableState } from './ConfigTableState';
 import {
@@ -33,6 +34,44 @@ import {
 
 const F = 'field';
 const L = 'field-label';
+
+type UserRole = ConfigUser['role'];
+type UserPayload = {
+  username: string;
+  password?: string;
+  role: UserRole;
+  employee_id: number;
+};
+type EmployeePayload = {
+  emp_code: string;
+  full_name: string;
+  department: string;
+  email: string | null;
+  current_grade_id: number;
+  target_grade_id: number;
+  manager_id: number | null;
+  department_id: number | null;
+};
+type GradePayload = {
+  code: string;
+  title: string;
+  level: number;
+  experience_years: number;
+  performance_note?: string;
+};
+type SkillDomainPayload = {
+  name: string;
+  description?: string;
+  color?: string;
+};
+type CompetencyPayload = {
+  name: string;
+  description: string;
+  is_critical: boolean;
+  category_id: number;
+  domain_ids: number[];
+};
+type CompetencyCategoryPayload = SkillDomainPayload;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ASSESSMENT TYPES
@@ -614,15 +653,24 @@ const UsersSection: React.FC = () => {
         return;
       }
       if (modal === 'create') {
-        await createUser.mutateAsync({ username: form.username, password: form.password, role: form.role as any, employee_id: Number(form.employee_id) });
+        await createUser.mutateAsync({
+          username: form.username,
+          password: form.password,
+          role: form.role as UserRole,
+          employee_id: Number(form.employee_id),
+        });
       } else if (editing) {
-        const data: any = { username: form.username, role: form.role, employee_id: Number(form.employee_id) };
+        const data: Partial<UserPayload> = {
+          username: form.username,
+          role: form.role as UserRole,
+          employee_id: Number(form.employee_id),
+        };
         if (form.password) data.password = form.password;
         await updateUser.mutateAsync({ id: editing.id, data });
       }
       setModal(null);
-    } catch (err: any) {
-      setSaveError(err.response?.data?.error || err.response?.data?.message || 'Failed to save user. Please check the details and try again.');
+    } catch (err: unknown) {
+      setSaveError(getApiErrorMessage(err, 'Failed to save user. Please check the details and try again.'));
     }
   };
 
@@ -886,7 +934,7 @@ const EmployeesSection: React.FC = () => {
     const deptName = form.department_id
       ? (departments?.find(d => String(d.id) === form.department_id)?.name ?? form.department)
       : form.department;
-    const payload: any = {
+    const payload: EmployeePayload = {
       emp_code: form.emp_code, full_name: form.full_name,
       department: deptName || form.department,
       email: form.email || null,
@@ -1023,7 +1071,7 @@ const GradesSection: React.FC = () => {
   const openEdit = (g: ConfigGrade) => { setForm({ code: g.code, title: g.title, level: String(g.level), experience_years: String(g.experience_years), performance_note: g.performance_note ?? '' }); setEditing(g); setModal('edit'); };
 
   const handleSave = async () => {
-    const payload: any = { code: form.code, title: form.title, level: Number(form.level), experience_years: Number(form.experience_years), performance_note: form.performance_note || undefined };
+    const payload: GradePayload = { code: form.code, title: form.title, level: Number(form.level), experience_years: Number(form.experience_years), performance_note: form.performance_note || undefined };
     if (modal === 'create') await createGrade.mutateAsync(payload);
     else if (editing) await updateGrade.mutateAsync({ id: editing.id, data: payload });
     setModal(null);
@@ -1098,7 +1146,7 @@ const SkillDomainsSection: React.FC = () => {
   };
 
   const handleSave = async () => {
-    const payload: any = {
+    const payload: SkillDomainPayload = {
       name: form.name,
       description: form.description || undefined,
       color: form.color || undefined,
@@ -1441,7 +1489,7 @@ const CompetenciesSection: React.FC = () => {
   };
 
   const handleSave = async () => {
-    const payload: any = {
+    const payload: CompetencyPayload = {
       name: form.name,
       description: form.description,
       is_critical: form.is_critical,
@@ -1753,7 +1801,7 @@ const CategoriesSection: React.FC = () => {
   };
 
   const handleSave = async () => {
-    const payload: any = { name: form.name, description: form.description || undefined, color: form.color || undefined };
+    const payload: CompetencyCategoryPayload = { name: form.name, description: form.description || undefined, color: form.color || undefined };
     if (modal === 'create') await createCategory.mutateAsync(payload);
     else if (editing) await updateCategory.mutateAsync({ id: editing.id, data: payload });
     setModal(null);

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import apiClient from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 const DEMO = [
   { role: 'Admin',    user: 'admin',     icon: '⚡', desc: 'Full platform access' },
@@ -44,8 +45,8 @@ export const LoginPage: React.FC = () => {
         role: data.user.role,
       });
       navigate('/dashboard', { replace: true });
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.error || 'Login failed. Please try again.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Login failed. Please try again.'));
     } finally {
       setLoading(false);
     }

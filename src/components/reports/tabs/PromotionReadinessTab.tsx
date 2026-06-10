@@ -7,6 +7,19 @@ import { DataTable, Empty, InfoTip, Loading, PromotionRow, Stars, TR, View, View
 // ─────────────────────────────────────────────────────────────────────────────
 // ── Promotion Readiness ───────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
+interface ScoreBarPoint {
+  fullName: string;
+  ready: boolean;
+  grade: string;
+  meets: string;
+  score: number;
+}
+
+interface ScoreBarTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: ScoreBarPoint }>;
+}
+
 export const PromotionReadinessTab: React.FC = () => {
   const { data, isLoading, isError } = usePromotionReadiness();
   const c = useChartColors();
@@ -102,7 +115,7 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
   const notReadyPipeline = sortedRows.filter(r => !r.promotion_ready).slice(0, 8);
   const pipelineMax = Math.max(...notReadyPipeline.map(r => r.overall_score), 0.05);
 
-  const ScoreBarTooltip = ({ active, payload }: any) => {
+  const ScoreBarTooltip = ({ active, payload }: ScoreBarTooltipProps) => {
     if (!active || !payload?.length) return null;
     const d = payload[0].payload;
     return (

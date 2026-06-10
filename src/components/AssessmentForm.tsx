@@ -9,6 +9,7 @@ import {
   SkillAssessment,
 } from '@/hooks/useAssessment';
 import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes } from '@/hooks/useConfig';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 interface Props {
   employeeId: string;   // emp_code e.g. "1818"
@@ -282,8 +283,8 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
 
       // Close modal after 2 seconds
       setTimeout(() => onClose?.(), 2000);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save assessment.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to save assessment.'));
     }
   };
 
@@ -309,8 +310,8 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
 
       // Close modal after 2 seconds
       setTimeout(() => onClose?.(), 2000);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to update assessment.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to update assessment.'));
       setDuplicateModal({ show: false, assessment: null });
     }
   };

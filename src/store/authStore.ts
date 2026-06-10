@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-interface User {
+export interface User {
   id: number;
   empCode: string;     // Real employee code e.g. "1818" — use this for all employee identification
   username: string;

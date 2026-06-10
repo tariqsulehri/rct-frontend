@@ -32,6 +32,15 @@ const rotatedHeaderTextStyle: React.CSSProperties = {
   fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
 
+interface RadarTickProps {
+  payload?: { value: string };
+  x?: number;
+  y?: number;
+  cx?: number;
+  cy?: number;
+  index?: number;
+}
+
 export const CompetencyScoresTab: React.FC = () => {
   const { data, isLoading, isError } = useCompetencyMatrix();
   const { data: gapData } = useGapMatrix();
@@ -330,16 +339,16 @@ export const CompetencyScoresTab: React.FC = () => {
                   outerRadius="62%" margin={{ top: 28, right: 90, bottom: 28, left: 90 }}>
                   <PolarGrid stroke={c.grid} />
                   <PolarAngleAxis dataKey="domain"
-                    tick={(props: any) => {
-                      const { payload, x, y, cx } = props;
+                    tick={(props: RadarTickProps) => {
+                      const { payload, x = 0, y = 0, cx = 0 } = props;
                       const dx = x - cx;
                       const anchor = dx > 10 ? 'start' : dx < -10 ? 'end' : 'middle';
-                      const dg = domainGroups.find((d) => d.domain === payload.value);
+                      const dg = domainGroups.find((d) => d.domain === payload?.value);
                       const col = dg?.color ?? '#d1d5db';
                       return (
                         <text x={x} y={y} textAnchor={anchor} dominantBaseline="middle"
                           fontSize={11} fontWeight={600} fill={col}>
-                          {payload.value}
+                          {payload?.value ?? ''}
                         </text>
                       );
                     }}
@@ -447,11 +456,11 @@ export const CompetencyScoresTab: React.FC = () => {
                   margin={{ top: 24, right: 190, bottom: 40, left: 190 }}>
                   <PolarGrid stroke={c.grid} />
                   <PolarAngleAxis dataKey="comp"
-                    tick={(props: any) => {
-                      const { payload, x, y, cx, cy, index } = props;
+                    tick={(props: RadarTickProps) => {
+                      const { payload, x = 0, y = 0, cx = 0, cy = 0, index = 0 } = props;
                       const dx = x - cx;
                       const dy = y - cy;
-                      const dist = Math.sqrt(dx * dx + dy * dy);
+                      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
                       const ux = dx / dist;
                       const uy = dy / dist;
 
@@ -481,7 +490,7 @@ export const CompetencyScoresTab: React.FC = () => {
                             fontSize={12} fontWeight={700} letterSpacing={0}
                             paintOrder="stroke" stroke="rgba(2, 6, 23, 0.72)" strokeWidth={2.5}
                             fill={labelColor}>
-                            {payload.value}
+                            {payload?.value ?? ''}
                           </text>
                         </g>
                       );
