@@ -3,6 +3,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLin
 import { usePromotionReadiness } from '@/hooks/useReports';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { DataTable, Empty, InfoTip, Loading, PromotionRow, Stars, TR, View, ViewToggle } from '../shared';
+import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ── Promotion Readiness ───────────────────────────────────────────────────────
@@ -20,15 +21,29 @@ interface ScoreBarTooltipProps {
   payload?: Array<{ payload: ScoreBarPoint }>;
 }
 
-export const PromotionReadinessTab: React.FC = () => {
+export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> = ({ reportFilters = DEFAULT_REPORT_FILTERS }) => {
   const { data, isLoading, isError } = usePromotionReadiness();
   const c = useChartColors();
   const [view, setView] = useState<View>('chart');
-  const rows: PromotionRow[] = data ?? [];
+  const allRows: PromotionRow[] = data ?? [];
+  const q = reportFilters.search.trim().toLowerCase();
+  const rows: PromotionRow[] = allRows.filter((row) => {
+    const nearReady = !row.promotion_ready && row.total_competencies > 0 && row.meets_count / row.total_competencies >= 0.75;
+    const matchesSearch = !q || `${row.full_name} ${row.emp_code}`.toLowerCase().includes(q);
+    const matchesCurrent = reportFilters.currentGrade === 'all' || row.current_grade === reportFilters.currentGrade;
+    const matchesTarget = reportFilters.targetGrade === 'all' || row.target_grade === reportFilters.targetGrade;
+    const matchesReadiness =
+      reportFilters.readiness === 'all' ||
+      (reportFilters.readiness === 'ready' && row.promotion_ready) ||
+      (reportFilters.readiness === 'near-ready' && nearReady) ||
+      (reportFilters.readiness === 'not-ready' && !row.promotion_ready && !nearReady);
+    return matchesSearch && matchesCurrent && matchesTarget && matchesReadiness;
+  });
 
   if (isLoading) return <Loading />;
   if (isError) return <Empty msg="Failed to load promotion readiness data." />;
-  if (rows.length === 0) return <Empty msg="No employees found." />;
+  if (allRows.length === 0) return <Empty msg="No employees found." />;
+  if (rows.length === 0) return <Empty msg="No people match the current report filters." />;
 
   const shortName = (name: string) => name.split(' ').slice(0, 2).join(' ');
   const sortedRows = [...rows].sort((a, b) => b.overall_score - a.overall_score);

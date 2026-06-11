@@ -6,6 +6,7 @@ import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { useAuthStore } from '@/store/authStore';
 import { isLeaderRole } from '@/types/rbac';
 import { Empty, InfoTip, Loading } from '../shared';
+import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ── Skill Matrix (Scores) ────────────────────────────────────────────────
@@ -42,7 +43,7 @@ interface RadarTickProps {
   index?: number;
 }
 
-export const CompetencyScoresTab: React.FC = () => {
+export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = ({ reportFilters = DEFAULT_REPORT_FILTERS }) => {
   const { data, isLoading, isError } = useCompetencyMatrix();
   const { data: gapData } = useGapMatrix();
   const c = useChartColors();
@@ -65,11 +66,24 @@ export const CompetencyScoresTab: React.FC = () => {
   const grades  = ['all', ...Array.from(new Set(allEmployees.map((e) => e.current_grade))).sort()];
 
   // Filtered lists
-  const visibleComps = domainFilter === 'All'
+  const activeDomainFilter = reportFilters.skillArea !== 'all' ? reportFilters.skillArea : domainFilter;
+  const visibleComps = activeDomainFilter === 'All' || activeDomainFilter === 'all'
     ? allComps
-    : allComps.filter((c) => c.domain === domainFilter);
+    : allComps.filter((c) => c.domain === activeDomainFilter);
 
+  const gapByCode = new Map((gapData?.employees ?? []).map((employee) => [employee.emp_code, employee]));
+  const reportSearch = reportFilters.search.trim().toLowerCase();
   const visibleEmps = allEmployees.filter((e) => {
+    const gapEmployee = gapByCode.get(e.emp_code);
+    const nearReady = gapEmployee
+      ? !gapEmployee.promotion_ready && gapEmployee.total_with_threshold > 0 && gapEmployee.meets_count / gapEmployee.total_with_threshold >= 0.75
+      : false;
+    if (reportSearch && !`${e.full_name} ${e.emp_code}`.toLowerCase().includes(reportSearch)) return false;
+    if (reportFilters.currentGrade !== 'all' && e.current_grade !== reportFilters.currentGrade) return false;
+    if (reportFilters.targetGrade !== 'all' && e.target_grade !== reportFilters.targetGrade) return false;
+    if (reportFilters.readiness === 'ready' && !gapEmployee?.promotion_ready) return false;
+    if (reportFilters.readiness === 'near-ready' && !nearReady) return false;
+    if (reportFilters.readiness === 'not-ready' && (gapEmployee?.promotion_ready || nearReady)) return false;
     if (!isManager) return true;
     if (gradeFilter !== 'all' && e.current_grade !== gradeFilter) return false;
     if (selectedEmpCode !== 'all' && e.emp_code !== selectedEmpCode) return false;
@@ -79,21 +93,22 @@ export const CompetencyScoresTab: React.FC = () => {
 
   if (isLoading) return <Loading />;
   if (isError || !data) return <Empty msg="Failed to load skill matrix." />;
+  if (allEmployees.length > 0 && visibleEmps.length === 0) return <Empty msg="No people match the current report filters." />;
 
   // Summary stats
-  const avgScore = allEmployees.length > 0
-    ? allEmployees.reduce((s, e) => s + e.overall_score, 0) / allEmployees.length
+  const avgScore = visibleEmps.length > 0
+    ? visibleEmps.reduce((s, e) => s + e.overall_score, 0) / visibleEmps.length
     : 0;
 
   const compAvgs = allComps.map((comp) => {
-    const scores = allEmployees.map((e: CompetencyMatrixEmployee) => e.competency_scores[comp.name]?.score ?? 0);
+    const scores = visibleEmps.map((e: CompetencyMatrixEmployee) => e.competency_scores[comp.name]?.score ?? 0);
     const assessed = scores.filter((s) => s > 0);
     return {
       name: comp.name,
       domain: comp.domain,
       is_critical: comp.is_critical,
       avg: assessed.length > 0 ? assessed.reduce((a, b) => a + b, 0) / assessed.length : 0,
-      checked: Math.round((assessed.length / allEmployees.length) * 100),
+      checked: Math.round((assessed.length / Math.max(1, visibleEmps.length)) * 100),
     };
   }).sort((a, b) => b.avg - a.avg);
 
@@ -133,7 +148,7 @@ export const CompetencyScoresTab: React.FC = () => {
   });
 
   // Chart data: bar chart of all skill team averages
-  const barData = (domainFilter === 'All' ? compAvgs : compAvgs.filter((c) => c.domain === domainFilter))
+  const barData = (activeDomainFilter === 'All' || activeDomainFilter === 'all' ? compAvgs : compAvgs.filter((c) => c.domain === activeDomainFilter))
     .map((comp) => ({
       name: comp.name.length > 16 ? comp.name.slice(0, 16) + '…' : comp.name,
       fullName: comp.name,
@@ -169,15 +184,15 @@ export const CompetencyScoresTab: React.FC = () => {
         {/* Domain pills — always visible */}
         <div className="flex flex-wrap gap-1.5 items-center justify-between">
           <div className="flex flex-wrap gap-1.5">
-            {domains.map((d) => (
+              {domains.map((d) => (
               <button
                 key={d}
                 onClick={() => setDomainFilter(d)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                 style={{
-                  backgroundColor: domainFilter === d ? 'rgb(var(--accent))' : 'rgb(var(--surface-2))',
-                  color:           domainFilter === d ? 'white'              : 'rgb(var(--text-2))',
-                  border: '1px solid ' + (domainFilter === d ? 'rgb(var(--accent))' : 'rgb(var(--border))'),
+                  backgroundColor: activeDomainFilter === d ? 'rgb(var(--accent))' : 'rgb(var(--surface-2))',
+                  color:           activeDomainFilter === d ? 'white'              : 'rgb(var(--text-2))',
+                  border: '1px solid ' + (activeDomainFilter === d ? 'rgb(var(--accent))' : 'rgb(var(--border))'),
                 }}
               >
                 {d}
@@ -277,7 +292,7 @@ export const CompetencyScoresTab: React.FC = () => {
               <InfoTip text="Average current score for each skill across the selected people." />
             </div>
             <p className="text-xs mb-4" style={{ color: 'rgb(var(--text-3))' }}>
-              Avg score across {allEmployees.length} people · {domainFilter !== 'All' ? domainFilter : 'All skill areas'}
+              Avg score across {visibleEmps.length} people · {activeDomainFilter !== 'All' && activeDomainFilter !== 'all' ? activeDomainFilter : 'All skill areas'}
             </p>
             <ResponsiveContainer width="100%" height={Math.max(280, barData.length * 28)}>
               <BarChart data={barData} layout="vertical" margin={{ left: 8, right: 60, top: 4, bottom: 4 }}>
@@ -447,7 +462,7 @@ export const CompetencyScoresTab: React.FC = () => {
                   style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
                 >
                   <option value="">Team average only</option>
-                  {allEmployees.map((e) => (
+                  {visibleEmps.map((e) => (
                     <option key={e.emp_code} value={e.emp_code}>{e.full_name} ({e.emp_code})</option>
                   ))}
                 </select>

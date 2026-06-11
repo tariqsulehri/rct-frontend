@@ -1,14 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList, Legend, ReferenceLine } from 'recharts';
 import { useGapAnalysis, usePromotionReadiness, useCompetencyScores } from '@/hooks/useReports';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { Empty, GapResult, InfoTip, Loading } from '../shared';
+import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ── Person Result Sheet PDF ───────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
-export const EmployeeResultSheetTab: React.FC = () => {
+export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }> = ({ reportFilters = DEFAULT_REPORT_FILTERS }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { data: gapData, isLoading: gapLoading, isError: gapError } = useGapAnalysis(selectedId);
   const { data: promoData, isLoading: promoLoading } = usePromotionReadiness();
@@ -17,6 +18,8 @@ export const EmployeeResultSheetTab: React.FC = () => {
 
   const personOptions = useMemo(() => {
     const people = new Map<string, { emp_code: string; full_name: string; current_grade?: string; target_grade?: string }>();
+    const promoByCode = new Map((promoData ?? []).map((row) => [row.emp_code, row]));
+    const compByCode = new Map((compData ?? []).map((row) => [row.emp_code, row]));
     for (const row of promoData ?? []) {
       people.set(row.emp_code, {
         emp_code: row.emp_code,
@@ -35,18 +38,52 @@ export const EmployeeResultSheetTab: React.FC = () => {
         });
       }
     }
-    return [...people.values()].sort((a, b) => a.full_name.localeCompare(b.full_name));
-  }, [compData, promoData]);
+    const q = reportFilters.search.trim().toLowerCase();
+    return [...people.values()]
+      .filter((person) => {
+        const promo = promoByCode.get(person.emp_code);
+        const comp = compByCode.get(person.emp_code);
+        const isReady = Boolean(promo?.promotion_ready);
+        const nearReady = Boolean(
+          promo &&
+          !promo.promotion_ready &&
+          promo.total_competencies > 0 &&
+          promo.meets_count / promo.total_competencies >= 0.75
+        );
+        const matchesSearch = !q || `${person.full_name} ${person.emp_code}`.toLowerCase().includes(q);
+        const matchesCurrent = reportFilters.currentGrade === 'all' || person.current_grade === reportFilters.currentGrade;
+        const matchesTarget = reportFilters.targetGrade === 'all' || person.target_grade === reportFilters.targetGrade;
+        const matchesSkillArea = reportFilters.skillArea === 'all' || comp?.domain_scores?.[reportFilters.skillArea] !== undefined;
+        const matchesReadiness =
+          reportFilters.readiness === 'all' ||
+          (reportFilters.readiness === 'ready' && isReady) ||
+          (reportFilters.readiness === 'near-ready' && nearReady) ||
+          (reportFilters.readiness === 'not-ready' && !isReady && !nearReady);
+        return matchesSearch && matchesCurrent && matchesTarget && matchesSkillArea && matchesReadiness;
+      })
+      .sort((a, b) => a.full_name.localeCompare(b.full_name));
+  }, [compData, promoData, reportFilters]);
+
+  useEffect(() => {
+    if (promoLoading || compLoading || !selectedId) return;
+    if (!personOptions.some((person) => person.emp_code === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [compLoading, personOptions, promoLoading, selectedId]);
 
   const gapResult = gapData as GapResult | undefined;
   const promoRow = (promoData ?? []).find(r => r.emp_code === selectedId);
   const compRow = (compData ?? []).find(r => r.emp_code === selectedId);
 
   const domainRows = Object.entries(compRow?.domain_scores ?? {})
+    .filter(([domain]) => reportFilters.skillArea === 'all' || domain === reportFilters.skillArea)
     .map(([domain, score]) => ({ domain, score: Math.round(score * 100) }))
     .sort((a, b) => b.score - a.score);
 
-  const topGaps = (gapResult?.gaps ?? [])
+  const visibleGaps = (gapResult?.gaps ?? [])
+    .filter(g => reportFilters.skillArea === 'all' || g.domain_name === reportFilters.skillArea);
+
+  const topGaps = visibleGaps
     .filter(g => g.gap > 0)
     .sort((a, b) => b.gap - a.gap);
 
@@ -144,8 +181,8 @@ export const EmployeeResultSheetTab: React.FC = () => {
           .join('')
       : `<tr><td colspan="2" style="text-align:center;color:#64748b;">No domain data found</td></tr>`;
 
-    const gapRowsHtml = gapResult.gaps.length > 0
-      ? gapResult.gaps
+    const gapRowsHtml = visibleGaps.length > 0
+      ? visibleGaps
           .map(g => `
             <tr>
               <td>${esc(g.domain_name)}</td>
@@ -304,7 +341,7 @@ export const EmployeeResultSheetTab: React.FC = () => {
           </select>
           {!promoLoading && !compLoading && personOptions.length === 0 && (
             <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
-              No people are available in your manager scope.
+              No people match the current report filters.
             </p>
           )}
         </div>

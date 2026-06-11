@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, TrendingUp, BarChart2, PieChart as PieIcon, Download } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { LayoutDashboard, TrendingUp, BarChart2, PieChart as PieIcon, Download, Filter, RotateCcw } from 'lucide-react';
 import { PromotionReadinessTab } from './tabs/PromotionReadinessTab';
 import { EmployeeResultSheetTab } from './tabs/EmployeeResultSheetTab';
 import { CompetencyScoresTab } from './tabs/CompetencyScoresTab';
 import { GapAnalysisTab } from './tabs/GapAnalysisTab';
+import { useCompetencyMatrix, useGapMatrix, usePromotionReadiness } from '@/hooks/useReports';
+import { DEFAULT_REPORT_FILTERS, type ReportFilters } from './reportFilters';
 
 type SubTab = 'summary' | 'promotion' | 'competency' | 'gap' | 'result-sheet';
 
@@ -114,6 +116,133 @@ const ReportsGuide: React.FC<{ onOpen: (tab: SubTab) => void }> = ({ onOpen }) =
 
 export const ReportsSection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SubTab>('summary');
+  const [reportFilters, setReportFilters] = useState<ReportFilters>(DEFAULT_REPORT_FILTERS);
+  const { data: readinessRows } = usePromotionReadiness();
+  const { data: gapData } = useGapMatrix();
+  const { data: competencyData } = useCompetencyMatrix();
+
+  const filterOptions = useMemo(() => {
+    const currentGrades = new Set<string>();
+    const targetGrades = new Set<string>();
+    const skillAreas = new Set<string>();
+
+    for (const row of readinessRows ?? []) {
+      currentGrades.add(row.current_grade);
+      targetGrades.add(row.target_grade);
+    }
+    for (const employee of gapData?.employees ?? []) {
+      currentGrades.add(employee.current_grade);
+      targetGrades.add(employee.target_grade);
+    }
+    for (const employee of competencyData?.employees ?? []) {
+      currentGrades.add(employee.current_grade);
+      targetGrades.add(employee.target_grade);
+    }
+    for (const domain of gapData?.domains ?? []) skillAreas.add(domain);
+    for (const competency of competencyData?.competencies ?? []) skillAreas.add(competency.domain);
+
+    return {
+      currentGrades: [...currentGrades].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+      targetGrades: [...targetGrades].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+      skillAreas: [...skillAreas].sort(),
+    };
+  }, [competencyData, gapData, readinessRows]);
+
+  const filteredReadinessRows = useMemo(() => {
+    const q = reportFilters.search.trim().toLowerCase();
+    return (readinessRows ?? []).filter((row) => {
+      const nearReady = !row.promotion_ready && row.total_competencies > 0 && row.meets_count / row.total_competencies >= 0.75;
+      const matchesSearch = !q || `${row.full_name} ${row.emp_code}`.toLowerCase().includes(q);
+      const matchesCurrent = reportFilters.currentGrade === 'all' || row.current_grade === reportFilters.currentGrade;
+      const matchesTarget = reportFilters.targetGrade === 'all' || row.target_grade === reportFilters.targetGrade;
+      const matchesReadiness =
+        reportFilters.readiness === 'all' ||
+        (reportFilters.readiness === 'ready' && row.promotion_ready) ||
+        (reportFilters.readiness === 'near-ready' && nearReady) ||
+        (reportFilters.readiness === 'not-ready' && !row.promotion_ready && !nearReady);
+      return matchesSearch && matchesCurrent && matchesTarget && matchesReadiness;
+    });
+  }, [readinessRows, reportFilters]);
+
+  const filteredGapEmployees = useMemo(() => {
+    const q = reportFilters.search.trim().toLowerCase();
+    const readinessByCode = new Map((readinessRows ?? []).map((row) => [row.emp_code, row]));
+    return (gapData?.employees ?? []).filter((employee) => {
+      const readiness = readinessByCode.get(employee.emp_code);
+      const nearReady = !employee.promotion_ready && employee.total_with_threshold > 0 && employee.meets_count / employee.total_with_threshold >= 0.75;
+      const matchesSearch = !q || `${employee.full_name} ${employee.emp_code}`.toLowerCase().includes(q);
+      const matchesCurrent = reportFilters.currentGrade === 'all' || employee.current_grade === reportFilters.currentGrade;
+      const matchesTarget = reportFilters.targetGrade === 'all' || employee.target_grade === reportFilters.targetGrade;
+      const matchesReadiness =
+        reportFilters.readiness === 'all' ||
+        (reportFilters.readiness === 'ready' && (readiness?.promotion_ready ?? employee.promotion_ready)) ||
+        (reportFilters.readiness === 'near-ready' && nearReady) ||
+        (reportFilters.readiness === 'not-ready' && !(readiness?.promotion_ready ?? employee.promotion_ready) && !nearReady);
+      return matchesSearch && matchesCurrent && matchesTarget && matchesReadiness;
+    });
+  }, [gapData, readinessRows, reportFilters]);
+
+  const reportDecision = useMemo(() => {
+    const readyCount = filteredReadinessRows.filter((row) => row.promotion_ready).length;
+    const readinessRate = filteredReadinessRows.length > 0
+      ? Math.round((readyCount / filteredReadinessRows.length) * 100)
+      : 0;
+    const nearReadyCount = filteredReadinessRows.filter((row) => !row.promotion_ready && row.total_competencies > 0 && row.meets_count / row.total_competencies >= 0.75).length;
+    const criticalGaps = filteredGapEmployees.flatMap((employee) =>
+      Object.entries(employee.competency_gaps ?? {})
+        .filter(([, gap]) =>
+          gap.threshold > 0 &&
+          !gap.meets &&
+          Math.abs(gap.gap) >= 0.3 &&
+          (reportFilters.skillArea === 'all' || gap.domain === reportFilters.skillArea)
+        )
+        .map(([skill, gap]) => ({
+          person: employee.full_name,
+          skill,
+          domain: gap.domain,
+          gapPct: Math.round(Math.abs(gap.gap) * 100),
+        })),
+    ).sort((a, b) => b.gapPct - a.gapPct);
+
+    const domainStats = (gapData?.domains ?? [])
+      .filter((domain) => reportFilters.skillArea === 'all' || domain === reportFilters.skillArea)
+      .map((domain) => {
+        const values = filteredGapEmployees
+          .map((employee) => employee.domain_gaps[domain]?.score ?? 0)
+          .filter((score) => score > 0);
+        const avg = values.length > 0 ? Math.round((values.reduce((sum, score) => sum + score, 0) / values.length) * 100) : 0;
+        return { domain, avg, assessed: values.length };
+      })
+      .filter((item) => item.assessed > 0)
+      .sort((a, b) => a.avg - b.avg);
+
+    const weakestSkillArea = domainStats[0];
+    const topGap = criticalGaps[0];
+    const summary = criticalGaps.length > 0
+      ? `Fix ${criticalGaps.length} big skill gaps first. Start with ${topGap?.skill ?? 'the largest gap'}${topGap ? ` for ${topGap.person}` : ''}.`
+      : readinessRate < 75
+        ? `Improve readiness from ${readinessRate}% by helping ${nearReadyCount} near-ready people first.`
+        : `Readiness is ${readinessRate}%. Keep watching weak skill areas and new assessments.`;
+
+    return {
+      people: filteredReadinessRows.length,
+      readyCount,
+      readinessRate,
+      nearReadyCount,
+      criticalGapCount: criticalGaps.length,
+      weakestSkillArea,
+      summary,
+    };
+  }, [filteredGapEmployees, filteredReadinessRows, gapData, reportFilters.skillArea]);
+
+  const hasReportFilters = Object.entries(reportFilters).some(([key, value]) => {
+    const defaultValue = DEFAULT_REPORT_FILTERS[key as keyof ReportFilters];
+    return value !== defaultValue;
+  });
+
+  const updateFilter = <K extends keyof ReportFilters>(key: K, value: ReportFilters[K]) => {
+    setReportFilters((filters) => ({ ...filters, [key]: value }));
+  };
 
   return (
     <div className="space-y-4 animate-slide-up">
@@ -148,12 +277,103 @@ export const ReportsSection: React.FC = () => {
         </div>
       </div>
 
+      <div className="card p-5 space-y-4">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2">
+              <Filter size={16} style={{ color: 'rgb(var(--accent))' }} />
+              <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Report Filters</p>
+            </div>
+            <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
+              Choose people, grades, and skill area once. All reports below use the same filters.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReportFilters(DEFAULT_REPORT_FILTERS)}
+            disabled={!hasReportFilters}
+            className="btn-ghost text-xs px-3 py-2 inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <RotateCcw size={13} /> Reset filters
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,1fr)_150px_150px_190px_150px] gap-2">
+          <input
+            value={reportFilters.search}
+            onChange={(event) => updateFilter('search', event.target.value)}
+            placeholder="Search person or employee code..."
+            className="rounded-lg border px-3 py-2 text-xs outline-none"
+            style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))', color: 'rgb(var(--text-1))' }}
+          />
+          <select
+            value={reportFilters.currentGrade}
+            onChange={(event) => updateFilter('currentGrade', event.target.value)}
+            className="rounded-lg border px-3 py-2 text-xs outline-none"
+            style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))', color: 'rgb(var(--text-1))' }}
+          >
+            <option value="all">All current grades</option>
+            {filterOptions.currentGrades.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+          </select>
+          <select
+            value={reportFilters.targetGrade}
+            onChange={(event) => updateFilter('targetGrade', event.target.value)}
+            className="rounded-lg border px-3 py-2 text-xs outline-none"
+            style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))', color: 'rgb(var(--text-1))' }}
+          >
+            <option value="all">All target grades</option>
+            {filterOptions.targetGrades.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+          </select>
+          <select
+            value={reportFilters.skillArea}
+            onChange={(event) => updateFilter('skillArea', event.target.value)}
+            className="rounded-lg border px-3 py-2 text-xs outline-none"
+            style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))', color: 'rgb(var(--text-1))' }}
+          >
+            <option value="all">All skill areas</option>
+            {filterOptions.skillAreas.map((skillArea) => <option key={skillArea} value={skillArea}>{skillArea}</option>)}
+          </select>
+          <select
+            value={reportFilters.readiness}
+            onChange={(event) => updateFilter('readiness', event.target.value as ReportFilters['readiness'])}
+            className="rounded-lg border px-3 py-2 text-xs outline-none"
+            style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))', color: 'rgb(var(--text-1))' }}
+          >
+            <option value="all">All readiness</option>
+            <option value="ready">Ready</option>
+            <option value="near-ready">Near ready</option>
+            <option value="not-ready">Needs help</option>
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          {[
+            { label: 'People Shown', value: reportDecision.people, detail: 'after filters', color: 'rgb(var(--accent))' },
+            { label: 'Ready', value: `${reportDecision.readyCount}`, detail: `${reportDecision.readinessRate}% ready`, color: 'rgb(var(--success))' },
+            { label: 'Near Ready', value: reportDecision.nearReadyCount, detail: 'fix small gaps first', color: 'rgb(var(--warning))' },
+            { label: 'Big Skill Gaps', value: reportDecision.criticalGapCount, detail: 'fix first', color: 'rgb(var(--danger))' },
+            { label: 'Weakest Area', value: reportDecision.weakestSkillArea?.domain ?? 'N/A', detail: reportDecision.weakestSkillArea ? `${reportDecision.weakestSkillArea.avg}% avg` : 'no data', color: 'rgb(var(--text-1))' },
+          ].map((item) => (
+            <div key={item.label} className="rounded-xl border p-3" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>{item.label}</p>
+              <p className="text-lg font-bold mt-1 truncate" style={{ color: item.color }}>{item.value}</p>
+              <p className="text-xs mt-1 truncate" style={{ color: 'rgb(var(--text-3))' }}>{item.detail}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-xl border p-3" style={{ borderColor: 'rgb(var(--accent))', backgroundColor: 'rgb(var(--accent-soft))' }}>
+          <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{ color: 'rgb(var(--accent-txt))' }}>What To Do First</p>
+          <p className="text-sm leading-relaxed" style={{ color: 'rgb(var(--accent-txt))' }}>{reportDecision.summary}</p>
+        </div>
+      </div>
+
       <div className="card p-6 animate-fade-in">
         {activeTab === 'summary'    && <ReportsGuide onOpen={setActiveTab} />}
-        {activeTab === 'promotion'  && <PromotionReadinessTab />}
-        {activeTab === 'competency'     && <CompetencyScoresTab />}
-        {activeTab === 'gap'            && <GapAnalysisTab />}
-        {activeTab === 'result-sheet' && <EmployeeResultSheetTab />}
+        {activeTab === 'promotion'  && <PromotionReadinessTab reportFilters={reportFilters} />}
+        {activeTab === 'competency'     && <CompetencyScoresTab reportFilters={reportFilters} />}
+        {activeTab === 'gap'            && <GapAnalysisTab reportFilters={reportFilters} />}
+        {activeTab === 'result-sheet' && <EmployeeResultSheetTab reportFilters={reportFilters} />}
       </div>
     </div>
   );

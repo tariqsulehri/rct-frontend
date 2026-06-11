@@ -5,6 +5,7 @@ import { useGapMatrix, type GapMatrixEmployee, type GapMatrixResult } from '@/ho
 import { useAuthStore } from '@/store/authStore';
 import { isLeaderRole } from '@/types/rbac';
 import { Empty, InfoTip, Loading } from '../shared';
+import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 import { starRatingDisplay } from '../reportDisplay';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,7 +64,7 @@ const NeededScoreLabel = ({ x, y, value }: { x?: number | string; y?: number | s
   );
 };
 
-export const GapAnalysisTab: React.FC = () => {
+export const GapAnalysisTab: React.FC<{ reportFilters?: ReportFilters }> = ({ reportFilters = DEFAULT_REPORT_FILTERS }) => {
   const { data, isLoading, isError } = useGapMatrix();
   const user = useAuthStore((s) => s.user);
   const isManager = isLeaderRole(user?.role);
@@ -100,9 +101,23 @@ export const GapAnalysisTab: React.FC = () => {
   if (isError || !data) return <Empty msg="Failed to load gap analysis." />;
 
   const { employees: allEmployees, domains, competencies } = data as GapMatrixResult;
+  const filteredDomains = reportFilters.skillArea === 'all'
+    ? domains
+    : domains.filter((domain) => domain === reportFilters.skillArea);
+  const filteredCompetencies = reportFilters.skillArea === 'all'
+    ? competencies
+    : competencies.filter((competency) => competency.domain === reportFilters.skillArea);
   const grades = ['all', ...Array.from(new Set(allEmployees.map((e) => e.current_grade))).sort()];
 
   const visibleEmps: GapMatrixEmployee[] = allEmployees.filter((e) => {
+    const reportSearch = reportFilters.search.trim().toLowerCase();
+    const nearReady = !e.promotion_ready && e.total_with_threshold > 0 && e.meets_count / e.total_with_threshold >= 0.75;
+    if (reportSearch && !`${e.full_name} ${e.emp_code}`.toLowerCase().includes(reportSearch)) return false;
+    if (reportFilters.currentGrade !== 'all' && e.current_grade !== reportFilters.currentGrade) return false;
+    if (reportFilters.targetGrade !== 'all' && e.target_grade !== reportFilters.targetGrade) return false;
+    if (reportFilters.readiness === 'ready' && !e.promotion_ready) return false;
+    if (reportFilters.readiness === 'near-ready' && !nearReady) return false;
+    if (reportFilters.readiness === 'not-ready' && (e.promotion_ready || nearReady)) return false;
     if (!isManager) return true;
     if (gradeFilter !== 'all' && e.current_grade !== gradeFilter) return false;
     if (selectedEmpCode !== 'all' && e.emp_code !== selectedEmpCode) return false;
@@ -117,14 +132,14 @@ export const GapAnalysisTab: React.FC = () => {
   const readyCount   = visibleEmps.filter((e) => e.promotion_ready).length;
 
   // ── Chart: avg score vs threshold per domain ──────────────────────────────
-  const domainChartData = domains.map((dn) => {
+  const domainChartData = filteredDomains.map((dn) => {
     const scored = visibleEmps.filter((e) => e.domain_gaps[dn]);
     const avgS = scored.length > 0 ? scored.reduce((s, e) => s + (e.domain_gaps[dn]?.score ?? 0), 0) / scored.length : 0;
     const avgT = scored.length > 0 ? scored.reduce((s, e) => s + (e.domain_gaps[dn]?.threshold ?? 0), 0) / scored.length : 0;
     return { name: dn.length > 14 ? dn.slice(0, 14) + '…' : dn, fullName: dn, score: Math.round(avgS * 100), target: Math.round(avgT * 100), gap: Math.round((avgS - avgT) * 100) };
   }).filter((d) => d.score > 0 || d.target > 0);
 
-  const compChartData = competencies.map((comp) => {
+  const compChartData = filteredCompetencies.map((comp) => {
     const scored = visibleEmps.filter((e) => e.competency_gaps[comp.name]);
     const avgS = scored.length > 0 ? scored.reduce((s, e) => s + (e.competency_gaps[comp.name]?.score ?? 0), 0) / scored.length : 0;
     const avgT = scored.length > 0 ? scored.reduce((s, e) => s + (e.competency_gaps[comp.name]?.threshold ?? 0), 0) / scored.length : 0;
@@ -148,7 +163,7 @@ export const GapAnalysisTab: React.FC = () => {
   type DomainGroup = { domain: string; grades: GradeGroup[] };
   const isSkillMode = breakdownView === 'skill' || breakdownView === 'skill-resource';
   const showPeople    = breakdownView === 'domain-resource' || breakdownView === 'skill-resource';
-  const tableSkillOptions = competencies
+  const tableSkillOptions = filteredCompetencies
     .filter((comp) => tableSkillArea === 'all' || comp.domain === tableSkillArea)
     .map((comp) => comp.name)
     .sort();
@@ -168,13 +183,13 @@ export const GapAnalysisTab: React.FC = () => {
     const flat: EmpRow[] = [];
     for (const emp of visibleEmps) {
       if (isDomainMode) {
-        for (const dn of domains) {
+        for (const dn of filteredDomains) {
           const dg = emp.domain_gaps[dn];
           if (!dg) continue;
           flat.push({ emp, area: dn, score: dg.score, threshold: dg.threshold, gap: dg.gap, meets: dg.meets });
         }
       } else {
-        for (const comp of competencies) {
+        for (const comp of filteredCompetencies) {
           const cg = emp.competency_gaps[comp.name];
           if (!cg) continue;
           flat.push({ emp, area: comp.name, score: cg.score, threshold: cg.threshold, gap: cg.gap, meets: cg.meets, is_critical: cg.is_critical, domain: cg.domain });
@@ -202,7 +217,7 @@ export const GapAnalysisTab: React.FC = () => {
     });
 
     // Domain order: from `domains` list (already sorted)
-    const domainOrder = isDomainMode ? domains : Array.from(new Set(competencies.map(c => c.domain))).sort();
+    const domainOrder = isDomainMode ? filteredDomains : Array.from(new Set(filteredCompetencies.map(c => c.domain))).sort();
 
     const result: DomainGroup[] = [];
     for (const dn of domainOrder) {
@@ -456,7 +471,7 @@ export const GapAnalysisTab: React.FC = () => {
             style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
           >
             <option value="all">All skill areas</option>
-            {domains.map((domain) => (
+            {filteredDomains.map((domain) => (
               <option key={domain} value={domain}>{domain}</option>
             ))}
           </select>
