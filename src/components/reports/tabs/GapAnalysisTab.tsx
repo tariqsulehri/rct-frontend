@@ -49,7 +49,7 @@ export const GapAnalysisTab: React.FC = () => {
   const [gradeFilter,     setGradeFilter]     = useState<string>('all');
   const [selectedEmpCode, setSelectedEmpCode] = useState<string>('all');
   const [resourceSearch,  setResourceSearch]  = useState<string>('');
-  const [breakdownView,   setBreakdownView]   = useState<'domain-resource' | 'skill-resource' | 'domain' | 'skill'>('domain-resource');
+  const [breakdownView,   setBreakdownView]   = useState<'domain-resource' | 'skill-resource' | 'domain' | 'skill'>('skill-resource');
   const [downloading,     setDownloading]     = useState(false);
 
   const handleDownload = async () => {
@@ -340,19 +340,19 @@ export const GapAnalysisTab: React.FC = () => {
         })}
       </div>
 
-      {/* Detail table — with By Domain / By Skill toggle */}
+      {/* Detail table — with By Skill / By Skill Area toggle */}
       <div className="card p-0 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
           <div className="flex items-center gap-1.5">
             <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Gap Details</p>
-            <InfoTip text="Gap = Achieved - Required. Positive means above target. Negative means below target." />
+            <InfoTip text="Gap = Current score - needed score. Positive means above target. Negative means below target." />
           </div>
           <div className="flex rounded-lg border overflow-hidden" style={{ borderColor: 'rgb(var(--border))' }}>
             {([
+              { v: 'skill-resource',     label: 'By Skill & Person'          },
               { v: 'domain-resource',    label: 'By Skill Area & Person'     },
-              { v: 'skill-resource',label: 'By Skill & Person'          },
+              { v: 'skill',              label: 'By Skill'                   },
               { v: 'domain',             label: 'By Skill Area'              },
-              { v: 'skill',         label: 'By Skill'                   },
             ] as const).map(({ v, label }) => (
               <button key={v} onClick={() => setBreakdownView(v)}
                 className="px-3 py-1.5 text-xs font-medium transition-colors"
@@ -367,13 +367,13 @@ export const GapAnalysisTab: React.FC = () => {
             <thead>
               <tr style={{ backgroundColor: 'rgb(var(--surface-3))', borderBottom: '2px solid rgb(var(--border))' }}>
                 {[
-                  showPeople ? { label: 'Resource',     w: 160 } : null,
+                  showPeople ? { label: 'Person',       w: 160 } : null,
                   showPeople ? { label: 'Grade',        w: 60  } : null,
                   { label: isSkillMode ? 'Skill' : 'Skill Area', w: 160 },
                   isSkillMode ? { label: 'Skill Area', w: 100 } : null,
                   !showPeople ? { label: 'Met', w: 72 } : null,
                   { label: 'Score',        w: 72  },
-                  { label: 'Required',     w: 72  },
+                  { label: 'Needed',       w: 72  },
                   { label: 'Level',        w: 52  },
                   { label: '★ Rating',     w: 90  },
                   { label: 'Gap',          w: 80  },
