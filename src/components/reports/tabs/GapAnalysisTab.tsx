@@ -369,8 +369,8 @@ export const GapAnalysisTab: React.FC = () => {
                 {[
                   showPeople ? { label: 'Person',       w: 160 } : null,
                   showPeople ? { label: 'Grade',        w: 60  } : null,
-                  { label: isSkillMode ? 'Skill' : 'Skill Area', w: 160 },
-                  isSkillMode ? { label: 'Skill Area', w: 100 } : null,
+                  { label: 'Skill Area', w: isSkillMode ? 120 : 160 },
+                  isSkillMode ? { label: 'Skill', w: 160 } : null,
                   !showPeople ? { label: 'Met', w: 72 } : null,
                   { label: 'Score',        w: 72  },
                   { label: 'Needed',       w: 72  },
@@ -419,15 +419,15 @@ export const GapAnalysisTab: React.FC = () => {
                           <td className="px-3 py-2 text-center">
                             <span className="badge badge-accent text-[10px] px-1.5 py-0.5">{row.emp.current_grade}</span>
                           </td>
-                          {/* Area */}
+                          {/* Skill Area */}
+                          {isSkillMode && (
+                            <td className="px-3 py-2 text-[10px]" style={{ color: 'rgb(var(--text-3))' }}>{row.domain}</td>
+                          )}
+                          {/* Skill or Skill Area */}
                           <td className="px-3 py-2">
                             <span className="font-medium" style={{ color: 'rgb(var(--text-1))' }}>{row.area}</span>
                             {row.is_critical && <span className="ml-1 text-[9px] font-bold" style={{ color: 'rgb(var(--danger))' }}>⚡</span>}
                           </td>
-                          {/* Domain (skill-resource only) */}
-                          {isSkillMode && (
-                            <td className="px-3 py-2 text-[10px]" style={{ color: 'rgb(var(--text-3))' }}>{row.domain}</td>
-                          )}
                           <td className="px-3 py-2 text-center font-bold" style={{ color: 'rgb(var(--accent))' }}>
                             {Math.round(row.score * 100)}%
                           </td>
@@ -486,12 +486,20 @@ export const GapAnalysisTab: React.FC = () => {
                             </span>
                           </td>
                         )}
-                        {/* Met summary in area column */}
-                        <td className="px-3 py-2 text-[10px] font-semibold" style={{ color: '#a8b8d8' }}>
-                          {gg.metCount}/{gg.rows.filter(r => r.threshold > 0).length} met
-                        </td>
-                        {/* Extra domain col for skill modes */}
-                        {isSkillMode && <td />}
+                        {isSkillMode ? (
+                          <>
+                            <td className="px-3 py-2 text-[10px] font-semibold" style={{ color: '#a8b8d8' }}>
+                              {showPeople ? dg.domain : 'All skills'}
+                            </td>
+                            <td className="px-3 py-2 text-[10px] font-semibold" style={{ color: '#a8b8d8' }}>
+                              {gg.metCount}/{gg.rows.filter(r => r.threshold > 0).length} met
+                            </td>
+                          </>
+                        ) : (
+                          <td className="px-3 py-2 text-[10px] font-semibold" style={{ color: '#a8b8d8' }}>
+                            {gg.metCount}/{gg.rows.filter(r => r.threshold > 0).length} met
+                          </td>
+                        )}
                         {/* Avg Score */}
                         <td className="px-3 py-2 text-center font-bold" style={{ color: '#7ec8f0' }}>
                           {gg.avgScore > 0 ? `${Math.round(gg.avgScore * 100)}%` : '—'}
