@@ -136,6 +136,9 @@ export const GapAnalysisTab: React.FC = () => {
     tableSkillArea !== 'all' ||
     tableSkill !== 'all' ||
     tableResult !== 'all';
+  const tableSearchPlaceholder = isSkillMode
+    ? (showPeople ? 'Search person, skill area, or skill...' : 'Search skill area or skill...')
+    : (showPeople ? 'Search person or skill area...' : 'Search skill area...');
 
   const buildGroups = (): DomainGroup[] => {
     const isDomainMode = breakdownView === 'domain' || breakdownView === 'domain-resource';
@@ -184,10 +187,10 @@ export const GapAnalysisTab: React.FC = () => {
       const domainRows = filteredFlat.filter(r => (isDomainMode ? r.area : r.domain) === dn);
       if (!domainRows.length) continue;
 
-      // Group by grade (sorted)
+      // In person views, group by grade. In summary views, group by the item shown in the table.
       const gradeMap = new Map<string, EmpRow[]>();
       for (const row of domainRows) {
-        const g = row.emp.current_grade;
+        const g = showPeople ? row.emp.current_grade : (isDomainMode ? dn : row.area);
         if (!gradeMap.has(g)) gradeMap.set(g, []);
         gradeMap.get(g)!.push(row);
       }
@@ -388,7 +391,10 @@ export const GapAnalysisTab: React.FC = () => {
               { v: 'skill',              label: 'By Skill'                   },
               { v: 'domain',             label: 'By Skill Area'              },
             ] as const).map(({ v, label }) => (
-              <button key={v} onClick={() => setBreakdownView(v)}
+              <button key={v} onClick={() => {
+                setBreakdownView(v);
+                if (v === 'domain' || v === 'domain-resource') setTableSkill('all');
+              }}
                 className="px-3 py-1.5 text-xs font-medium transition-colors"
                 style={{ backgroundColor: breakdownView === v ? 'rgb(var(--accent))' : 'rgb(var(--surface-2))', color: breakdownView === v ? 'white' : 'rgb(var(--text-2))' }}>
                 {label}
@@ -401,7 +407,7 @@ export const GapAnalysisTab: React.FC = () => {
           <input
             value={tableSearch}
             onChange={(event) => setTableSearch(event.target.value)}
-            placeholder="Search person, skill area, or skill..."
+            placeholder={tableSearchPlaceholder}
             className="rounded-lg px-3 py-2 text-xs border outline-none"
             style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
           />
@@ -456,22 +462,21 @@ export const GapAnalysisTab: React.FC = () => {
             <option value="met">Met</option>
             <option value="no-target">No target</option>
           </select>
-          {hasTableFilters && (
-            <button
-              type="button"
-              onClick={() => {
-                setTableSearch('');
-                setTableGrade('all');
-                setTableSkillArea('all');
-                setTableSkill('all');
-                setTableResult('all');
-              }}
-              className="px-3 py-2 text-xs rounded-lg border font-medium"
-              style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-2))', backgroundColor: 'rgb(var(--surface))' }}
-            >
-              Clear
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={!hasTableFilters}
+            onClick={() => {
+              setTableSearch('');
+              setTableGrade('all');
+              setTableSkillArea('all');
+              setTableSkill('all');
+              setTableResult('all');
+            }}
+            className="px-3 py-2 text-xs rounded-lg border font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-2))', backgroundColor: 'rgb(var(--surface))' }}
+          >
+            Clear
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full" style={{ borderCollapse: 'collapse', fontSize: '11px' }}>
@@ -578,7 +583,7 @@ export const GapAnalysisTab: React.FC = () => {
                       {/* ── Group total row ── */}
                       <tr key={`gt-${dg.domain}-${gg.grade}`}
                         style={{ backgroundColor: '#000000', borderBottom: '2px solid #0f2044' }}>
-                        {/* Label spans Resource + Grade cols when in resource view, else fills area col */}
+                        {/* Summary label cells follow the visible table hierarchy. */}
                         {showPeople ? (
                           <>
                             <td className="px-3 py-2 font-bold text-[11px]" style={{ color: '#f5c518' }}>
@@ -589,18 +594,30 @@ export const GapAnalysisTab: React.FC = () => {
                             </td>
                             <td className="px-3 py-2 text-center text-[10px]" style={{ color: '#a8b8d8' }}>—</td>
                           </>
+                        ) : isSkillMode ? (
+                          <>
+                            <td className="px-3 py-2 font-bold text-[11px]" style={{ color: '#f5c518' }}>
+                              {dg.domain}
+                            </td>
+                            <td className="px-3 py-2 font-bold text-[11px]" style={{ color: '#f5c518' }}>
+                              {gg.grade}
+                              <span className="ml-2 font-normal text-[10px]" style={{ color: '#a8b8d8' }}>
+                                ({gg.rows.length} {gg.rows.length === 1 ? 'person' : 'people'})
+                              </span>
+                            </td>
+                          </>
                         ) : (
                           <td className="px-3 py-2 font-bold text-[11px]" style={{ color: '#f5c518' }}>
-                            {dg.domain} / {gg.grade} Total
+                            {dg.domain}
                             <span className="ml-2 font-normal text-[10px]" style={{ color: '#a8b8d8' }}>
                               ({gg.rows.length} {gg.rows.length === 1 ? 'person' : 'people'})
                             </span>
                           </td>
                         )}
-                        {isSkillMode ? (
+                        {showPeople && isSkillMode ? (
                           <>
                             <td className="px-3 py-2 text-[10px] font-semibold" style={{ color: '#a8b8d8' }}>
-                              {showPeople ? dg.domain : 'All skills'}
+                              {dg.domain}
                             </td>
                             <td className="px-3 py-2 text-[10px] font-semibold" style={{ color: '#a8b8d8' }}>
                               {gg.metCount}/{gg.rows.filter(r => r.threshold > 0).length} met
