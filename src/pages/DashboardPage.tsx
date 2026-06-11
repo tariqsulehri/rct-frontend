@@ -48,7 +48,7 @@ const NAV: Array<{ id: TabType; label: string; icon: React.ElementType; roles: R
   { id: 'overview',    label: 'Overview',     icon: LayoutDashboard, roles: ['TOP_MANAGEMENT','MANAGER','LINE_MANAGER','ENGINEER'] },
   { id: 'team',        label: 'Team Roster',  icon: Users,           roles: LEADERS },
   { id: 'assessments', label: 'Assessments',  icon: ClipboardCheck,  roles: ['ADMIN','TOP_MANAGEMENT','MANAGER','LINE_MANAGER','ENGINEER'] },
-  { id: 'ai',          label: 'AI Insights',   icon: Bot,             roles: LEADERS },
+  { id: 'ai',          label: 'AI Dashboard',  icon: Bot,             roles: LEADERS },
   { id: 'reports',     label: 'Reports',      icon: BarChart2,       roles: LEADERS },
   { id: 'config',      label: 'Configuration',icon: Settings2,       roles: ['ADMIN'] },
 ];
@@ -799,7 +799,7 @@ const OverviewTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => voi
 
   const features = [
     { id: 'team' as TabType,        icon: '👥', title: 'Team Roster',   desc: 'View people, grades, current score, required score, and gaps.', roles: LEADERS },
-    { id: 'ai' as TabType,          icon: '🤖', title: 'AI Insights',    desc: 'Find people and skill areas that need management attention.', roles: LEADERS },
+    { id: 'ai' as TabType,          icon: '🤖', title: 'AI Dashboard',   desc: 'Find people and skill areas that need management attention.', roles: LEADERS },
     { id: 'reports' as TabType,     icon: '📊', title: 'Reports',       desc: 'Answer who is ready, what is missing, and what to improve.', roles: LEADERS },
     { id: 'assessments' as TabType, icon: '📝', title: 'Assessments',   desc: 'Review skill progress against the target grade.',   roles: ['ADMIN','TOP_MANAGEMENT','MANAGER','LINE_MANAGER','ENGINEER'] },
     { id: 'config' as TabType,      icon: '⚙️', title: 'Setup',         desc: 'Manage people, grades, skill groups, skills, and technologies.',       roles: ['ADMIN'] },
@@ -1708,7 +1708,7 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
   );
 };
 
-/* ── AI Insights Tab ────────────────────────────────────────────────────── */
+/* ── AI Dashboard Tab ───────────────────────────────────────────────────── */
 
 const priorityStyles = (priority: AiPriority, c: ReturnType<typeof useChartColors>) => {
   if (priority === 'critical') return { color: c.danger, bg: 'rgb(var(--danger-soft))', icon: AlertTriangle };
@@ -1797,7 +1797,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
               <Bot size={22} />
             </div>
             <div>
-              <p className="text-lg font-bold" style={{ color: 'rgb(var(--text-1))' }}>AI Insights Dashboard</p>
+              <p className="text-lg font-bold" style={{ color: 'rgb(var(--text-1))' }}>AI Dashboard</p>
               <p className="text-sm mt-1 max-w-2xl" style={{ color: 'rgb(var(--text-2))' }}>
                 AI-generated leadership intelligence using readiness, skill area, and gap data to highlight risks, strengths, and next actions.
               </p>
@@ -1854,14 +1854,17 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
               <p className="text-sm font-bold mt-1 truncate" style={{ color: 'rgb(var(--text-1))' }}>{analysis.model ?? 'Rules engine'}</p>
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Signal</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Critical Gaps</p>
               <p className="text-sm font-bold mt-1" style={{ color: c.danger }}>{analysis.kpis.criticalBlockerCount} critical gaps</p>
             </div>
           </div>
         </div>
 
         <div className="card p-5 min-h-[260px]">
-          <p className="text-xs font-semibold uppercase tracking-wide mb-4" style={{ color: 'rgb(var(--text-3))' }}>Readiness Gauge</p>
+          <div className="mb-4">
+            <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Readiness Gauge</p>
+            <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Promotion readiness across the current dataset.</p>
+          </div>
           <div className="flex items-center justify-center">
             <div
               className="w-40 h-40 rounded-full flex items-center justify-center"
@@ -1882,7 +1885,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
               <p className="text-xl font-bold" style={{ color: c.success }}>{analysis.kpis.readyResources}</p>
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-wide font-semibold" style={{ color: 'rgb(var(--text-3))' }}>Remaining</p>
+              <p className="text-[11px] uppercase tracking-wide font-semibold" style={{ color: 'rgb(var(--text-3))' }}>Needs Action</p>
               <p className="text-xl font-bold" style={{ color: c.warning }}>{Math.max(0, analysis.kpis.totalResources - analysis.kpis.readyResources)}</p>
             </div>
           </div>
@@ -1934,7 +1937,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
         <div className="xl:col-span-2 card p-5">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
-              <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>AI Suggestions</p>
+              <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>AI Recommendations</p>
               <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Prioritized observations generated from current dashboard data.</p>
             </div>
             <button type="button" onClick={() => onNavigate('reports')} className="btn-ghost text-xs px-3 py-2">
@@ -1990,7 +1993,8 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
             );})}
           </div>
           <div className="mt-5 pt-4 border-t" style={{ borderColor: 'rgb(var(--border))' }}>
-            <p className="text-xs font-bold mb-3" style={{ color: 'rgb(var(--text-1))' }}>Priority Mix</p>
+            <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Priority Mix</p>
+            <p className="text-xs mt-1 mb-3" style={{ color: 'rgb(var(--text-3))' }}>Recommendation severity distribution.</p>
             <div className="space-y-3">
               {priorityMix.map((item) => (
                 <div key={item.priority}>
@@ -2042,7 +2046,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
                 onClick={() => setShowBlockers((value) => !value)}
                 className="btn-secondary text-xs px-3 py-2 shrink-0"
               >
-                {showBlockers ? 'Hide Table' : `View All (${analysis.blockers.length})`}
+                {showBlockers ? 'Hide Critical Gaps' : `View All Critical Gaps (${analysis.blockers.length})`}
               </button>
             )}
           </div>
@@ -2080,7 +2084,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
               </p>
             </div>
             <div className="text-xs font-semibold" style={{ color: 'rgb(var(--text-2))' }}>
-              Showing {filteredBlockers.length} of {analysis.blockers.length}
+              Showing {filteredBlockers.length} of {analysis.blockers.length} critical gaps
             </div>
           </div>
 
@@ -2180,7 +2184,10 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
 
       {analysis.riskPeople.length > 0 && (
         <div className="card p-5">
-          <p className="text-sm font-bold mb-4" style={{ color: 'rgb(var(--text-1))' }}>People Needing Attention</p>
+          <div className="mb-4">
+            <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>People Needing Attention</p>
+            <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Resources with readiness risk and suggested next action.</p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {analysis.riskPeople.map((person) => (
               <div key={`${person.empCode}-${person.name}`} className="rounded-xl border p-4" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
