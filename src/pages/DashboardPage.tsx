@@ -1855,7 +1855,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
               <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Signal</p>
-              <p className="text-sm font-bold mt-1" style={{ color: c.danger }}>{analysis.kpis.criticalBlockerCount} blockers</p>
+              <p className="text-sm font-bold mt-1" style={{ color: c.danger }}>{analysis.kpis.criticalBlockerCount} critical gaps</p>
             </div>
           </div>
         </div>
@@ -1894,7 +1894,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
           { label: 'Avg Achieved', value: `${analysis.kpis.avgAchievedPct}%`, detail: 'Current capability', color: c.accent },
           { label: 'Avg Required', value: analysis.kpis.avgRequiredPct > 0 ? `${analysis.kpis.avgRequiredPct}%` : 'N/A', detail: 'Target benchmark', color: c.warning },
           { label: 'Ready Resources', value: `${analysis.kpis.readyResources}/${analysis.kpis.totalResources}`, detail: `${readinessPct}% readiness`, color: c.success },
-          { label: 'Critical Blockers', value: analysis.kpis.criticalBlockerCount, detail: 'Immediate actions', color: c.danger },
+          { label: 'Critical Gaps', value: analysis.kpis.criticalBlockerCount, detail: 'Immediate actions', color: c.danger },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-xl border p-4 min-h-[112px]" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>{kpi.label}</p>
@@ -2048,7 +2048,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
           </div>
           <div className="space-y-3">
             {analysis.blockers.length === 0 ? (
-              <p className="text-sm py-8 text-center" style={{ color: 'rgb(var(--text-3))' }}>No critical blockers found.</p>
+              <p className="text-sm py-8 text-center" style={{ color: 'rgb(var(--text-3))' }}>No critical gaps found.</p>
             ) : analysis.blockers.slice(0, showBlockers ? 3 : 6).map((b) => (
               <div
                 key={`${b.employee}-${b.competency}`}
@@ -2074,9 +2074,9 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
         <div className="card p-5">
           <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
             <div>
-              <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Blocker Explorer</p>
+              <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Critical Gap Explorer</p>
               <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
-                Full blocker queue with employee, competency, skill area, gap severity, and AI action.
+                Full critical gap queue with employee, competency, skill area, gap severity, and AI action.
               </p>
             </div>
             <div className="text-xs font-semibold" style={{ color: 'rgb(var(--text-2))' }}>
@@ -2146,7 +2146,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
                 {filteredBlockers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'rgb(var(--text-3))' }}>
-                      No blockers match the selected filters.
+                      No critical gaps match the selected filters.
                     </td>
                   </tr>
                 ) : filteredBlockers.map((blocker) => {
