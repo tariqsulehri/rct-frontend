@@ -330,7 +330,7 @@ export const GapAnalysisTab: React.FC = () => {
                         );
                       }}
                     />
-                    {/* Achieved bar — score % inside bar */}
+                    {/* Current bar with one clear needed-score label beside the dashed line. */}
                     <Bar dataKey="score" name="Achieved" fill={`url(#${gradId})`}
                       radius={[0, 3, 3, 0]} maxBarSize={20}
                       background={{ fill: 'rgba(255,255,255,0.04)', radius: 3 }}
@@ -344,18 +344,9 @@ export const GapAnalysisTab: React.FC = () => {
                         //           = x + width * target / score
                         const plotWidth  = d.score > 0 ? (width * 100 / d.score) : 400;
                         const targetX    = x + plotWidth * d.target / 100;
-                        const targetLblX = targetX + 5;
+                        const targetLblX = targetX + 10;
                         return (
                           <g>
-                            {/* Score inside bar (white) or just outside (blue) if bar too short */}
-                            {d.score > 0 && (
-                              width > 28
-                                ? <text x={x + width - 4} y={midY} dominantBaseline="middle" textAnchor="end"
-                                    fontSize={9} fontWeight={700} fill="rgba(255,255,255,0.95)">{d.score}%</text>
-                                : <text x={x + width + 4} y={midY} dominantBaseline="middle" textAnchor="start"
-                                    fontSize={9} fontWeight={700} fill="#60a5fa">{d.score}%</text>
-                            )}
-                            {/* Target value in gold — always at targetX+7, tied to the yellow dot */}
                             {d.target > 0 && (
                               <text x={targetLblX} y={midY} dominantBaseline="middle" textAnchor="start"
                                 fontSize={9} fontWeight={700} fill="#f5c518">{d.target}%</text>
