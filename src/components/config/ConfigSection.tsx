@@ -15,6 +15,7 @@ import {
   useConfigAssessmentStatuses, useUpdateAssessmentStatus,
   useConfigAssessmentProjects, useUpdateAssessmentProject,
   useConfigRoles, useUpdateRole,
+  useConfigPermissions, useUpdateRolePermissions,
   useDepartmentAssignments, useCreateDepartmentAssignment, useUpdateDepartmentAssignment, useDeleteDepartmentAssignment,
   useLineManagerAssignments, useCreateLineManagerAssignment, useUpdateLineManagerAssignment, useDeleteLineManagerAssignment,
   useAccessAuditLogs,
@@ -29,7 +30,7 @@ import {
   useConfigCompetencyCategories, useCreateCompetencyCategory, useUpdateCompetencyCategory, useDeleteCompetencyCategory,
   ConfigAssessmentType, ConfigAssessmentLevel, ConfigAssessmentStatus, ConfigAssessmentProject,
   ConfigDepartment, ConfigUser, ConfigEmployee, ConfigGrade, ConfigSkillDomain, ConfigCompetency, ConfigTechnology, ConfigCompetencyCategory,
-  ConfigRole, ConfigDepartmentAssignment, ConfigLineManagerAssignment,
+  ConfigRole, ConfigDepartmentAssignment, ConfigLineManagerAssignment, ConfigPermission,
 } from '@/hooks/useConfig';
 import { useCompetencyScores, useGapMatrix, usePromotionReadiness } from '@/hooks/useReports';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
@@ -80,7 +81,11 @@ type CompetencyPayload = {
   category_id: number;
   domain_ids: number[];
 };
-type CompetencyCategoryPayload = SkillDomainPayload;
+type CompetencyCategoryPayload = SkillDomainPayload & {
+  weight?: number;
+  sort_order?: number;
+  is_active?: boolean;
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ASSESSMENT TYPES
@@ -886,7 +891,7 @@ const EmployeeProfile: React.FC<{ employee: ConfigEmployee; onClose: () => void 
             <p className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'rgb(var(--text-2))' }}>Skill Area Radar</p>
             <ResponsiveContainer width="100%" height={180}>
               <RadarChart data={radarData}>
-                <PolarGrid stroke={c.grid} />
+                <PolarGrid stroke={c.radarGrid} />
                 <PolarAngleAxis dataKey="domain" tick={{ fill: c.text, fontSize: 10 }} />
                 <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
                 <Radar name="Score" dataKey="score" stroke={c.accent} fill={c.accent} fillOpacity={0.25} strokeWidth={2} />
@@ -1836,16 +1841,30 @@ const CategoriesSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigCompetencyCategory | null>(null);
-  const [form, setForm] = useState({ name: '', description: '', color: '#6366f1' });
+  const [form, setForm] = useState({ name: '', description: '', color: '#6366f1', weight: '1', sort_order: '0', is_active: true });
 
-  const openCreate = () => { setForm({ name: '', description: '', color: '#6366f1' }); setEditing(null); setModal('create'); };
+  const openCreate = () => { setForm({ name: '', description: '', color: '#6366f1', weight: '1', sort_order: String((categories?.length ?? 0) + 1), is_active: true }); setEditing(null); setModal('create'); };
   const openEdit = (c: ConfigCompetencyCategory) => {
-    setForm({ name: c.name, description: c.description ?? '', color: c.color ?? '#6366f1' });
+    setForm({
+      name: c.name,
+      description: c.description ?? '',
+      color: c.color ?? '#6366f1',
+      weight: String(c.weight ?? 1),
+      sort_order: String(c.sort_order ?? 0),
+      is_active: c.is_active,
+    });
     setEditing(c); setModal('edit');
   };
 
   const handleSave = async () => {
-    const payload: CompetencyCategoryPayload = { name: form.name, description: form.description || undefined, color: form.color || undefined };
+    const payload: CompetencyCategoryPayload = {
+      name: form.name,
+      description: form.description || undefined,
+      color: form.color || undefined,
+      weight: Number(form.weight),
+      sort_order: Number(form.sort_order),
+      is_active: form.is_active,
+    };
     if (modal === 'create') await createCategory.mutateAsync(payload);
     else if (editing) await updateCategory.mutateAsync({ id: editing.id, data: payload });
     setModal(null);
@@ -1853,7 +1872,7 @@ const CategoriesSection: React.FC = () => {
 
   const ts = useTableState(categories, (c, q) =>
     c.name.toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q),
-    (a, b) => a.name.localeCompare(b.name));
+    (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
 
   // Preset colors for quick pick
   const COLOR_PRESETS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6', '#f97316', '#ec4899', '#14b8a6', '#3b82f6'];
@@ -1862,7 +1881,7 @@ const CategoriesSection: React.FC = () => {
     <>
       {confirmDialog}
       <TableShell tabKey="categories" title="Skill Categories" onAdd={openCreate} addLabel="Add Category"
-        headers={['Name', 'Color', 'Description', 'Skills']}
+        headers={['Name', 'Weight', 'Order', 'Status', 'Color', 'Description', 'Skills']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
         {ts.paged.map((c, idx) => (
@@ -1878,6 +1897,9 @@ const CategoriesSection: React.FC = () => {
                   }}>{c.name}</span>
               </div>
             </TD>
+            <TD>{Math.round((c.weight ?? 0) * 100)}%</TD>
+            <TD mono>{c.sort_order}</TD>
+            <TD><span className={c.is_active ? 'badge badge-success' : 'badge'}>{c.is_active ? 'Active' : 'Inactive'}</span></TD>
             <TD>
               {c.color ? (
                 <span className="badge font-mono text-xs"
@@ -1908,6 +1930,20 @@ const CategoriesSection: React.FC = () => {
           <div className="space-y-4">
             <div><label className={L}>Name</label><input className={F} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Cloud, DevSecOps…" /></div>
             <div><label className={L}>Description (optional)</label><input className={F} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="What this category covers…" /></div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className={L}>Weight</label>
+                <input type="number" min="0" max="1" step="0.01" className={F} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} />
+              </div>
+              <div>
+                <label className={L}>Sort Order</label>
+                <input type="number" min="0" step="1" className={F} value={form.sort_order} onChange={e => setForm({ ...form, sort_order: e.target.value })} />
+              </div>
+              <label className="flex items-center gap-2 text-sm pt-7" style={{ color: 'rgb(var(--text-1))' }}>
+                <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+                Active
+              </label>
+            </div>
 
             {/* Color picker */}
             <div>
@@ -1981,6 +2017,7 @@ const AccessManagementSection: React.FC = () => {
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const { data: roles, isLoading: rolesLoading, isError: rolesError } = useConfigRoles();
+  const { data: permissions } = useConfigPermissions();
   const { data: users } = useConfigUsers();
   const { data: departments } = useConfigDepartments();
   const { data: employees } = useConfigEmployees();
@@ -1989,6 +2026,7 @@ const AccessManagementSection: React.FC = () => {
   const { data: auditLogs, isLoading: auditLoading, isError: auditError } = useAccessAuditLogs();
 
   const updateRole = useUpdateRole();
+  const updateRolePermissions = useUpdateRolePermissions();
   const createDeptAssignment = useCreateDepartmentAssignment();
   const updateDeptAssignment = useUpdateDepartmentAssignment();
   const deleteDeptAssignment = useDeleteDepartmentAssignment();
@@ -1998,6 +2036,7 @@ const AccessManagementSection: React.FC = () => {
 
   const [roleModal, setRoleModal] = useState<ConfigRole | null>(null);
   const [roleForm, setRoleForm] = useState({ name: '', description: '', is_active: true, sort_order: 0 });
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState<number[]>([]);
   const [deptModal, setDeptModal] = useState<'create' | 'edit' | null>(null);
   const [editingDept, setEditingDept] = useState<ConfigDepartmentAssignment | null>(null);
   const [deptForm, setDeptForm] = useState({
@@ -2094,6 +2133,12 @@ const AccessManagementSection: React.FC = () => {
   const roleState = useTableState(roles, (r, q) =>
     r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || (r.description ?? '').toLowerCase().includes(q),
     (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+  const groupedPermissions = (permissions ?? []).reduce<Record<string, ConfigPermission[]>>((groups, permission) => {
+    const category = permission.category || 'General';
+    groups[category] = groups[category] ?? [];
+    groups[category].push(permission);
+    return groups;
+  }, {});
   const deptState = useTableState(deptAssignments, (a, q) =>
     formatUserLabel(a.user).toLowerCase().includes(q) ||
     (a.department?.name ?? '').toLowerCase().includes(q) ||
@@ -2118,6 +2163,7 @@ const AccessManagementSection: React.FC = () => {
       is_active: role.is_active,
       sort_order: role.sort_order,
     });
+    setSelectedPermissionIds((role.role_permissions ?? []).map(item => item.permission_id));
     setRoleModal(role);
     setSaveError(null);
   };
@@ -2135,6 +2181,7 @@ const AccessManagementSection: React.FC = () => {
           sort_order: roleForm.sort_order,
         },
       });
+      await updateRolePermissions.mutateAsync({ id: roleModal.id, permissionIds: selectedPermissionIds });
       setRoleModal(null);
     } catch (err) {
       setSaveError(getApiErrorMessage(err, 'Failed to save role.'));
@@ -2316,7 +2363,7 @@ const AccessManagementSection: React.FC = () => {
         </div>
 
         {panel === 'roles' && (
-          <TableShell tabKey="roles" title="Roles" headers={['Role', 'Code', 'Description', 'Status']}
+          <TableShell tabKey="roles" title="Roles" headers={['Role', 'Code', 'Description', 'Permissions', 'Status']}
             loading={rolesLoading} error={rolesError}
             q={roleState.q} onSearch={roleState.onSearch} page={roleState.page} total={roleState.filtered.length} onPage={roleState.setPage}>
             {roleState.paged.map((role, idx) => (
@@ -2324,6 +2371,9 @@ const AccessManagementSection: React.FC = () => {
                 <TD><span className="font-semibold">{role.name}</span></TD>
                 <TD mono>{role.code}</TD>
                 <TD muted small>{role.description ?? '-'}</TD>
+                <TD small>
+                  <span className="badge">{role.role_permissions?.length ?? 0} permissions</span>
+                </TD>
                 <TD>{statusBadge(role.is_active)}</TD>
                 <td className="px-4 py-3">
                   <button onClick={() => openRole(role)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button>
@@ -2433,7 +2483,52 @@ const AccessManagementSection: React.FC = () => {
                 <input type="checkbox" checked={roleForm.is_active} onChange={e => setRoleForm({ ...roleForm, is_active: e.target.checked })} /> Active
               </label>
             </div>
-            <FormFooter onSave={saveRole} onCancel={() => setRoleModal(null)} saving={updateRole.isPending} />
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <label className={L}>Permissions</label>
+                <span className="text-xs font-semibold" style={{ color: 'rgb(var(--text-2))' }}>
+                  {selectedPermissionIds.length} selected
+                </span>
+              </div>
+              <div className="rounded-lg border max-h-72 overflow-y-auto" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
+                {Object.entries(groupedPermissions).map(([category, items]) => (
+                  <div key={category} className="border-b last:border-b-0" style={{ borderColor: 'rgb(var(--border))' }}>
+                    <div className="px-3 py-2 text-xs font-bold uppercase tracking-wide" style={{ color: 'rgb(var(--text-2))', backgroundColor: 'rgb(var(--surface))' }}>
+                      {category}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-2">
+                      {items.map(permission => {
+                        const checked = selectedPermissionIds.includes(permission.id);
+                        return (
+                          <label key={permission.id} className="flex gap-2 rounded-md border px-2.5 py-2 cursor-pointer"
+                            style={{
+                              borderColor: checked ? 'rgb(var(--accent))' : 'rgb(var(--border))',
+                              backgroundColor: checked ? 'rgb(var(--accent-soft))' : 'rgb(var(--surface))',
+                            }}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={event => {
+                                setSelectedPermissionIds(current => event.target.checked
+                                  ? [...current, permission.id]
+                                  : current.filter(id => id !== permission.id));
+                              }}
+                              className="mt-0.5"
+                              style={{ accentColor: 'rgb(var(--accent))' }}
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-xs font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{permission.name}</span>
+                              <span className="block text-[11px] mt-0.5" style={{ color: 'rgb(var(--text-2))' }}>{permission.description ?? permission.code}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <FormFooter onSave={saveRole} onCancel={() => setRoleModal(null)} saving={updateRole.isPending || updateRolePermissions.isPending} />
           </div>
         </Modal>
       )}

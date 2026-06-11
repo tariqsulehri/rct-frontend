@@ -6,6 +6,8 @@ export interface ChartPalette {
   warning: string;
   danger:  string;
   grid:    string;
+  radarGrid: string;
+  radarTick: string;
   text:    string;
   surface: string;
   domains: string[];
@@ -17,6 +19,8 @@ const LIGHT: ChartPalette = {
   warning: '#d97706',
   danger:  '#dc2626',
   grid:    '#e5e7eb',
+  radarGrid: 'rgba(17, 24, 39, 0.22)',
+  radarTick: '#4b5563',
   text:    '#6b7280',
   surface: '#f9fafb',
   domains: ['#7c3aed','#2563eb','#0891b2','#059669','#d97706','#dc2626','#9333ea'],
@@ -28,6 +32,8 @@ const DARK: ChartPalette = {
   warning: '#fbbf24',
   danger:  '#f87171',
   grid:    '#3f3f46',
+  radarGrid: 'rgba(255, 255, 255, 0.22)',
+  radarTick: '#cbd5e1',
   text:    '#a1a1aa',
   surface: '#27272a',
   domains: ['#a78bfa','#60a5fa','#22d3ee','#34d399','#fbbf24','#f87171','#c084fc'],
@@ -39,6 +45,8 @@ const MIDNIGHT: ChartPalette = {
   warning: '#fbbf24',
   danger:  '#f87171',
   grid:    '#1e293b',
+  radarGrid: 'rgba(226, 232, 240, 0.26)',
+  radarTick: '#cbd5e1',
   text:    '#64748b',
   surface: '#0f172a',
   domains: ['#22d3ee','#818cf8','#34d399','#a78bfa','#fbbf24','#f87171','#38bdf8'],

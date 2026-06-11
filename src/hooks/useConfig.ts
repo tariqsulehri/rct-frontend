@@ -22,6 +22,25 @@ export interface ConfigRole {
   is_system: boolean;
   is_active: boolean;
   sort_order: number;
+  role_permissions?: ConfigRolePermission[];
+}
+
+export interface ConfigPermission {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  category: string;
+  is_system: boolean;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface ConfigRolePermission {
+  id: number;
+  role_id: number;
+  permission_id: number;
+  permission: ConfigPermission;
 }
 
 export interface ConfigDepartmentAssignment {
@@ -122,6 +141,9 @@ export interface ConfigCompetencyCategory {
   name: string;
   description: string | null;
   color: string | null;
+  weight: number;
+  sort_order: number;
+  is_active: boolean;
   competencies?: { id: number }[];
 }
 
@@ -437,6 +459,15 @@ export const useConfigRoles = () =>
     },
   });
 
+export const useConfigPermissions = () =>
+  useQuery({
+    queryKey: ['config', 'permissions'],
+    queryFn: async () => {
+      const res = await apiClient.get<{ success: boolean; data: ConfigPermission[] }>('/config/permissions');
+      return res.data.data;
+    },
+  });
+
 export const useUpdateRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -446,6 +477,23 @@ export const useUpdateRole = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['config', 'roles'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
+    },
+  });
+};
+
+export const useUpdateRolePermissions = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, permissionIds }: { id: number; permissionIds: number[] }) => {
+      const res = await apiClient.put<{ success: boolean; data: ConfigRole }>(`/config/roles/${id}/permissions`, {
+        permission_ids: permissionIds,
+      });
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'roles'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'permissions'] });
       queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
     },
   });
@@ -759,7 +807,7 @@ export const useConfigSkillDomains = () =>
 export const useCreateSkillDomain = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { name: string; description?: string; color?: string }) => {
+    mutationFn: async (data: { name: string; description?: string; color?: string; weight?: number; sort_order?: number; is_active?: boolean }) => {
       const res = await apiClient.post<{ success: boolean; data: ConfigSkillDomain }>('/config/skill-domains', data);
       return res.data.data;
     },
@@ -775,7 +823,7 @@ export const useUpdateSkillDomain = () => {
       data,
     }: {
       id: number;
-      data: Partial<{ name: string; description: string; color: string }>;
+      data: Partial<{ name: string; description: string; color: string; weight: number; sort_order: number; is_active: boolean }>;
     }) => {
       const res = await apiClient.patch<{ success: boolean; data: ConfigSkillDomain }>(`/config/skill-domains/${id}`, data);
       return res.data.data;

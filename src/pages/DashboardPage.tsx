@@ -19,6 +19,7 @@ import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
 import { ConfigSection } from '@/components/config/ConfigSection';
 import { ReportsSection } from '@/components/reports/ReportsSection';
 import { usePromotionReadiness, useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
+import { useAiDashboard, type AiFocus, type AiPriority } from '@/hooks/useAiDashboard';
 import {
   useConfigAssessmentLevels,
   useConfigAssessmentProjects,
@@ -964,7 +965,7 @@ function RadarTick({ payload, x = 0, y = 0, cx = 0, cy = 0 }: {
   const labelY = y + (dy / distance) * labelOffset;
   const textAnchor = Math.abs(dx) < 12 ? 'middle' : dx > 0 ? 'start' : 'end';
   return (
-    <text x={labelX} y={labelY} textAnchor={textAnchor} dominantBaseline="central" fill="#d1d5db" fontSize={11}>
+    <text x={labelX} y={labelY} textAnchor={textAnchor} dominantBaseline="central" fill="rgb(var(--text-2))" fontSize={11}>
       {payload.value}
     </text>
   );
@@ -1287,9 +1288,9 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
           </div>
           <ResponsiveContainer width="100%" height={640}>
             <RadarChart data={radarData} outerRadius="82%" margin={{ top: 76, right: 126, bottom: 76, left: 126 }}>
-              <PolarGrid stroke={c.grid} />
+              <PolarGrid stroke={c.radarGrid} />
               <PolarAngleAxis dataKey="fullDomain" tick={<RadarTick />} />
-              <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }}
+              <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10, fill: c.radarTick }}
                 tickFormatter={v => `${v}%`} angle={30} />
               <Radar name="Score" dataKey="score" stroke={c.accent} fill={c.accent} fillOpacity={0.25} strokeWidth={2} />
               {avgThreshold > 0 && (
@@ -1709,8 +1710,6 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
 
 /* ── AI Insights Tab ────────────────────────────────────────────────────── */
 
-type AiPriority = 'critical' | 'warning' | 'positive' | 'neutral';
-
 const priorityStyles = (priority: AiPriority, c: ReturnType<typeof useChartColors>) => {
   if (priority === 'critical') return { color: c.danger, bg: 'rgb(var(--danger-soft))', icon: AlertTriangle };
   if (priority === 'warning') return { color: c.warning, bg: 'rgb(var(--warning-soft))', icon: Target };
@@ -1719,126 +1718,26 @@ const priorityStyles = (priority: AiPriority, c: ReturnType<typeof useChartColor
 };
 
 const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavigate }) => {
-  const { data: promoData, isLoading: promoLoading } = usePromotionReadiness();
-  const { data: compData, isLoading: compLoading } = useCompetencyScores();
-  const { data: gapData, isLoading: gapLoading } = useGapMatrix();
   const c = useChartColors();
-  const [focus, setFocus] = useState<'executive' | 'risk' | 'skills' | 'readiness'>('executive');
-  const [analysisTime, setAnalysisTime] = useState(() => new Date());
-
-  const isLoading = promoLoading || compLoading || gapLoading;
-
-  const analysis = React.useMemo(() => {
-    const rows = promoData ?? [];
-    const compRows = compData ?? [];
-    const gapRows = gapData?.employees ?? [];
-
-    const assessedRows = rows.filter((r) => r.overall_score > 0);
-    const readyCount = rows.filter((r) => r.promotion_ready).length;
-    const avgAchieved = assessedRows.length
-      ? assessedRows.reduce((sum, r) => sum + r.overall_score, 0) / assessedRows.length
-      : 0;
-    const thresholdRows = rows.filter((r) => r.avg_threshold > 0);
-    const avgRequired = thresholdRows.length
-      ? thresholdRows.reduce((sum, r) => sum + r.avg_threshold, 0) / thresholdRows.length
-      : 0;
-    const readinessRate = rows.length ? readyCount / rows.length : 0;
-
-    const domainNames = compRows.length > 0 ? Object.keys(compRows[0].domain_scores) : [];
-    const domainAverages = domainNames.map((domain, i) => {
-      const values = compRows.map((r) => r.domain_scores[domain] ?? 0).filter((score) => score > 0);
-      const avg = values.length ? values.reduce((sum, score) => sum + score, 0) / values.length : 0;
-      return { domain, avg, assessed: values.length, color: c.domains[i % c.domains.length] };
-    }).sort((a, b) => a.avg - b.avg);
-
-    const riskPeople = [...rows]
-      .filter((r) => !r.promotion_ready && r.total_competencies > 0)
-      .map((r) => ({
-        ...r,
-        gap: Math.max(0, (r.avg_threshold || 0) - r.overall_score),
-        meetsRate: r.meets_count / Math.max(1, r.total_competencies),
-      }))
-      .sort((a, b) => b.gap - a.gap)
-      .slice(0, 5);
-
-    const nearReady = [...rows]
-      .filter((r) => !r.promotion_ready && r.total_competencies > 0)
-      .map((r) => ({ ...r, meetsRate: r.meets_count / Math.max(1, r.total_competencies) }))
-      .filter((r) => r.meetsRate >= 0.7)
-      .sort((a, b) => b.meetsRate - a.meetsRate)
-      .slice(0, 5);
-
-    const blockers = gapRows.flatMap((employee) =>
-      Object.entries(employee.competency_gaps ?? {})
-        .filter(([, gap]) => gap.threshold > 0 && !gap.meets)
-        .map(([competency, gap]) => ({
-          employee: employee.full_name,
-          competency,
-          domain: gap.domain,
-          gap: Math.abs(gap.gap),
-          score: gap.score,
-          threshold: gap.threshold,
-        })),
-    ).sort((a, b) => b.gap - a.gap).slice(0, 6);
-
-    const suggestions: Array<{ title: string; body: string; priority: AiPriority }> = [];
-    if (rows.length === 0) {
-      suggestions.push({
-        title: 'No team dataset available',
-        body: 'Load readiness data before the AI panel can produce meaningful recommendations.',
-        priority: 'neutral',
-      });
-    } else {
-      suggestions.push({
-        title: `${Math.round(readinessRate * 100)}% next-grade readiness`,
-        body: `${readyCount} of ${rows.length} resources are ready. Average achieved is ${Math.round(avgAchieved * 100)}% against ${avgRequired > 0 ? `${Math.round(avgRequired * 100)}% required` : 'no configured required baseline'}.`,
-        priority: readinessRate >= 0.75 ? 'positive' : readinessRate >= 0.45 ? 'warning' : 'critical',
-      });
-    }
-
-    const weakestDomain = domainAverages.find((d) => d.assessed > 0);
-    if (weakestDomain) {
-      suggestions.push({
-        title: `Lowest skill area: ${weakestDomain.domain}`,
-        body: `Team average is ${Math.round(weakestDomain.avg * 100)}% across ${weakestDomain.assessed} assessed resources. Prioritize this area for enablement plans and project assignment.`,
-        priority: weakestDomain.avg < 0.4 ? 'critical' : weakestDomain.avg < 0.6 ? 'warning' : 'neutral',
-      });
-    }
-
-    if (riskPeople.length > 0) {
-      const r = riskPeople[0];
-      suggestions.push({
-        title: `Highest readiness gap: ${r.full_name}`,
-        body: `${r.full_name} is ${Math.round(r.gap * 100)} points below the current required benchmark and meets ${r.meets_count}/${r.total_competencies} required skills.`,
-        priority: 'critical',
-      });
-    }
-
-    if (nearReady.length > 0) {
-      suggestions.push({
-        title: `${nearReady.length} near-ready resources`,
-        body: `These people already meet at least 70% of required skills. A focused plan can move them into ready status quickly.`,
-        priority: 'positive',
-      });
-    }
-
-    return {
-      avgAchieved,
-      avgRequired,
-      readinessRate,
-      readyCount,
-      totalCount: rows.length,
-      domainAverages,
-      riskPeople,
-      nearReady,
-      blockers,
-      suggestions,
-    };
-  }, [promoData, compData, gapData?.employees, c.domains]);
-
-  const lowDomains = analysis.domainAverages.filter((d) => d.assessed > 0).slice(0, 6);
-  const highDomains = [...analysis.domainAverages].filter((d) => d.assessed > 0).sort((a, b) => b.avg - a.avg).slice(0, 4);
-  const maxDomain = Math.max(...lowDomains.map((d) => d.avg), 0.1);
+  const [focus, setFocus] = useState<AiFocus>('executive');
+  const { data: analysis, isLoading, isFetching, isError, refetch } = useAiDashboard(focus);
+  const generatedAt = analysis?.generatedAt
+    ? new Date(analysis.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : 'not available';
+  const maxSkill = Math.max(...(analysis?.skillAreas ?? []).map((d) => d.averagePct), 10);
+  const readinessPct = analysis?.kpis.readinessRatePct ?? 0;
+  const priorityMix = (['critical', 'warning', 'positive', 'neutral'] as AiPriority[]).map((priority) => ({
+    priority,
+    count: analysis?.recommendations.filter((item) => item.priority === priority).length ?? 0,
+    ...priorityStyles(priority, c),
+  }));
+  const maxPriority = Math.max(...priorityMix.map((item) => item.count), 1);
+  const focusLabels: Record<AiFocus, string> = {
+    executive: 'Executive command view',
+    risk: 'Risk and intervention view',
+    skills: 'Skill-area strategy view',
+    readiness: 'Promotion readiness view',
+  };
 
   if (isLoading) {
     return (
@@ -1847,6 +1746,24 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
           <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
             style={{ borderColor: 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
           <span className="text-sm">Analyzing readiness data…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !analysis) {
+    return (
+      <div className="card p-8">
+        <div className="max-w-xl mx-auto text-center">
+          <div className="w-12 h-12 rounded-xl mx-auto flex items-center justify-center mb-4"
+            style={{ backgroundColor: 'rgb(var(--danger-soft))', color: 'rgb(var(--danger))' }}>
+            <AlertTriangle size={22} />
+          </div>
+          <p className="font-bold mb-1" style={{ color: 'rgb(var(--text-1))' }}>AI dashboard could not load</p>
+          <p className="text-sm mb-4" style={{ color: 'rgb(var(--text-2))' }}>
+            The AI service or reports data is unavailable. Retry after confirming backend report APIs and AI configuration.
+          </p>
+          <button type="button" className="btn-primary text-sm" onClick={() => refetch()}>Retry Analysis</button>
         </div>
       </div>
     );
@@ -1864,34 +1781,110 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
             <div>
               <p className="text-lg font-bold" style={{ color: 'rgb(var(--text-1))' }}>AI Insights Dashboard</p>
               <p className="text-sm mt-1 max-w-2xl" style={{ color: 'rgb(var(--text-2))' }}>
-                Conversational analytics panel using readiness, skill area, and gap data to highlight risks, strengths, and next actions.
+                AI-generated leadership intelligence using readiness, skill area, and gap data to highlight risks, strengths, and next actions.
               </p>
-              <div className="flex items-center gap-2 mt-2 text-xs" style={{ color: 'rgb(var(--text-3))' }}>
+              <div className="flex items-center gap-2 mt-2 text-xs flex-wrap" style={{ color: 'rgb(var(--text-3))' }}>
                 <Clock3 size={13} />
-                <span>Last analyzed {analysisTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <span>Last analyzed {generatedAt}</span>
+                <span>·</span>
+                <span>{analysis.aiEnabled ? `Generated by ${analysis.model}` : 'Deterministic fallback'}</span>
               </div>
             </div>
           </div>
           <button
             type="button"
             className="btn-primary text-sm inline-flex items-center gap-2"
-            onClick={() => setAnalysisTime(new Date())}
+            onClick={() => refetch()}
+            disabled={isFetching}
           >
-            <Sparkles size={14} /> Re-analyze
+            <Sparkles size={14} /> {isFetching ? 'Analyzing…' : 'Re-analyze'}
           </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)] gap-5">
+        <div className="rounded-xl border p-5 min-h-[260px] flex flex-col justify-between"
+          style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
+          <div>
+            <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>AI Command Brief</p>
+                <p className="text-lg font-bold mt-1" style={{ color: 'rgb(var(--text-1))' }}>{focusLabels[focus]}</p>
+              </div>
+              <span className="rounded-full px-3 py-1 text-xs font-bold"
+                style={{
+                  backgroundColor: analysis.aiEnabled ? 'rgb(var(--success-soft))' : 'rgb(var(--warning-soft))',
+                  color: analysis.aiEnabled ? 'rgb(var(--success))' : 'rgb(var(--warning))',
+                }}>
+                {analysis.source === 'openai' ? 'AI generated' : 'Fallback analytics'}
+              </span>
+            </div>
+            <p className="text-base leading-relaxed mb-4" style={{ color: 'rgb(var(--text-1))' }}>{analysis.executiveNarrative}</p>
+            <div className="rounded-lg p-4 border"
+              style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}>
+              <p className="text-xs font-bold uppercase tracking-wide mb-1">Focus Answer</p>
+              <p className="text-sm leading-relaxed">{analysis.focusAnswer}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Dataset</p>
+              <p className="text-sm font-bold mt-1" style={{ color: 'rgb(var(--text-1))' }}>{analysis.kpis.totalResources} resources</p>
+            </div>
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Model</p>
+              <p className="text-sm font-bold mt-1 truncate" style={{ color: 'rgb(var(--text-1))' }}>{analysis.model ?? 'Rules engine'}</p>
+            </div>
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Signal</p>
+              <p className="text-sm font-bold mt-1" style={{ color: c.danger }}>{analysis.kpis.criticalBlockerCount} blockers</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="card p-5 min-h-[260px]">
+          <p className="text-xs font-semibold uppercase tracking-wide mb-4" style={{ color: 'rgb(var(--text-3))' }}>Readiness Gauge</p>
+          <div className="flex items-center justify-center">
+            <div
+              className="w-40 h-40 rounded-full flex items-center justify-center"
+              style={{
+                background: `conic-gradient(${c.success} ${readinessPct * 3.6}deg, rgb(var(--surface-3)) 0deg)`,
+              }}
+            >
+              <div className="w-28 h-28 rounded-full flex flex-col items-center justify-center"
+                style={{ backgroundColor: 'rgb(var(--surface))' }}>
+                <span className="text-3xl font-bold leading-none" style={{ color: c.success }}>{readinessPct}%</span>
+                <span className="text-[11px] font-semibold mt-1" style={{ color: 'rgb(var(--text-3))' }}>READY</span>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mt-5">
+            <div>
+              <p className="text-[11px] uppercase tracking-wide font-semibold" style={{ color: 'rgb(var(--text-3))' }}>Ready</p>
+              <p className="text-xl font-bold" style={{ color: c.success }}>{analysis.kpis.readyResources}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide font-semibold" style={{ color: 'rgb(var(--text-3))' }}>Remaining</p>
+              <p className="text-xl font-bold" style={{ color: c.warning }}>{Math.max(0, analysis.kpis.totalResources - analysis.kpis.readyResources)}</p>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Avg Achieved', value: `${Math.round(analysis.avgAchieved * 100)}%`, color: c.accent },
-          { label: 'Avg Required', value: analysis.avgRequired > 0 ? `${Math.round(analysis.avgRequired * 100)}%` : 'N/A', color: c.warning },
-          { label: 'Ready Resources', value: `${analysis.readyCount}/${analysis.totalCount}`, color: c.success },
-          { label: 'Near Ready', value: analysis.nearReady.length, color: c.warning },
+          { label: 'Avg Achieved', value: `${analysis.kpis.avgAchievedPct}%`, detail: 'Current capability', color: c.accent },
+          { label: 'Avg Required', value: analysis.kpis.avgRequiredPct > 0 ? `${analysis.kpis.avgRequiredPct}%` : 'N/A', detail: 'Target benchmark', color: c.warning },
+          { label: 'Ready Resources', value: `${analysis.kpis.readyResources}/${analysis.kpis.totalResources}`, detail: `${readinessPct}% readiness`, color: c.success },
+          { label: 'Critical Blockers', value: analysis.kpis.criticalBlockerCount, detail: 'Immediate actions', color: c.danger },
         ].map((kpi) => (
-          <div key={kpi.label} className="rounded-xl border p-4" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
+          <div key={kpi.label} className="rounded-xl border p-4 min-h-[112px]" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>{kpi.label}</p>
             <p className="text-2xl font-bold mt-1 leading-none" style={{ color: kpi.color }}>{kpi.value}</p>
+            <p className="text-xs mt-2" style={{ color: 'rgb(var(--text-2))' }}>{kpi.detail}</p>
+            <div className="h-1.5 rounded-full overflow-hidden mt-3" style={{ backgroundColor: 'rgb(var(--surface-3))' }}>
+              <div className="h-full rounded-full" style={{ width: `${Math.min(100, Number.parseInt(String(kpi.value), 10) || 18)}%`, backgroundColor: kpi.color }} />
+            </div>
           </div>
         ))}
       </div>
@@ -1931,7 +1924,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
             </button>
           </div>
           <div className="space-y-3">
-            {analysis.suggestions.map((item) => {
+            {analysis.recommendations.map((item) => {
               const style = priorityStyles(item.priority, c);
               const Icon = style.icon;
               return (
@@ -1941,7 +1934,11 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
                   </div>
                   <div>
                     <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{item.title}</p>
-                    <p className="text-sm mt-1 leading-relaxed" style={{ color: 'rgb(var(--text-2))' }}>{item.body}</p>
+                    <p className="text-sm mt-1 leading-relaxed" style={{ color: 'rgb(var(--text-2))' }}>{item.insight}</p>
+                    <p className="text-sm mt-2 font-medium" style={{ color: style.color }}>{item.action}</p>
+                    <p className="text-[11px] mt-2 uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>
+                      {item.owner} · {item.timeframe}
+                    </p>
                   </div>
                 </div>
               );
@@ -1950,19 +1947,17 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
         </div>
 
         <div className="card p-5">
-          <p className="text-sm font-bold mb-1" style={{ color: 'rgb(var(--text-1))' }}>Ask the Data</p>
+          <p className="text-sm font-bold mb-1" style={{ color: 'rgb(var(--text-1))' }}>AI Query Console</p>
           <p className="text-xs mb-4" style={{ color: 'rgb(var(--text-3))' }}>
             Select an angle to change the recommendations.
           </p>
           <div className="space-y-2">
-            {[
-              { id: 'executive', q: 'What is the overall readiness story?' },
-              { id: 'risk', q: 'Who needs immediate intervention?' },
-              { id: 'skills', q: 'Which skill areas are weakest?' },
-              { id: 'readiness', q: 'Who can become ready fastest?' },
-            ].map((prompt) => (
+            {analysis.suggestedQuestions.map((question, index) => {
+              const ids: AiFocus[] = ['executive', 'risk', 'skills', 'readiness'];
+              const prompt = { id: ids[index % ids.length], q: question };
+              return (
               <button
-                key={prompt.id}
+                key={`${prompt.id}-${index}-${prompt.q}`}
                 type="button"
                 onClick={() => setFocus(prompt.id as typeof focus)}
                 className="w-full text-left rounded-lg border px-3 py-2 text-xs transition-colors"
@@ -1974,7 +1969,23 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
               >
                 {prompt.q}
               </button>
-            ))}
+            );})}
+          </div>
+          <div className="mt-5 pt-4 border-t" style={{ borderColor: 'rgb(var(--border))' }}>
+            <p className="text-xs font-bold mb-3" style={{ color: 'rgb(var(--text-1))' }}>Priority Mix</p>
+            <div className="space-y-3">
+              {priorityMix.map((item) => (
+                <div key={item.priority}>
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className="font-semibold capitalize" style={{ color: item.color }}>{item.priority}</span>
+                    <span style={{ color: 'rgb(var(--text-3))' }}>{item.count}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgb(var(--surface-3))' }}>
+                    <div className="h-full rounded-full" style={{ width: `${Math.max(4, (item.count / maxPriority) * 100)}%`, backgroundColor: item.color }} />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -1984,17 +1995,18 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
           <p className="text-sm font-bold mb-1" style={{ color: 'rgb(var(--text-1))' }}>Weakest Skill Areas</p>
           <p className="text-xs mb-4" style={{ color: 'rgb(var(--text-3))' }}>Lowest assessed skill area averages across the visible team.</p>
           <div className="space-y-3">
-            {lowDomains.length === 0 ? (
+            {analysis.skillAreas.length === 0 ? (
               <p className="text-sm py-8 text-center" style={{ color: 'rgb(var(--text-3))' }}>No skill area scores available yet.</p>
-            ) : lowDomains.map((d) => (
+            ) : analysis.skillAreas.map((d) => (
               <div key={d.domain}>
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="font-semibold truncate pr-2" style={{ color: 'rgb(var(--text-1))' }}>{d.domain}</span>
-                  <span style={{ color: 'rgb(var(--text-2))' }}>{Math.round(d.avg * 100)}%</span>
+                  <span style={{ color: 'rgb(var(--text-2))' }}>{d.averagePct}%</span>
                 </div>
                 <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'rgb(var(--surface-3))' }}>
-                  <div className="h-full rounded-full" style={{ width: `${Math.max(4, (d.avg / maxDomain) * 100)}%`, backgroundColor: d.color }} />
+                  <div className="h-full rounded-full" style={{ width: `${Math.max(4, (d.averagePct / maxSkill) * 100)}%`, backgroundColor: d.priority === 'critical' ? c.danger : d.priority === 'warning' ? c.warning : c.accent }} />
                 </div>
+                <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-2))' }}>{d.recommendation}</p>
               </div>
             ))}
           </div>
@@ -2017,27 +2029,45 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs font-semibold truncate" style={{ color: 'rgb(var(--text-1))' }}>{b.competency}</p>
-                  <span className="text-xs font-bold shrink-0" style={{ color: c.danger }}>-{Math.round(b.gap * 100)} pts</span>
+                  <span className="text-xs font-bold shrink-0" style={{ color: c.danger }}>-{b.gapPct} pts</span>
                 </div>
                 <p className="text-xs mt-1 truncate" style={{ color: 'rgb(var(--text-2))' }}>{b.employee} · {b.domain}</p>
-                <p className="text-[11px] mt-1 font-semibold" style={{ color: 'rgb(var(--warning))' }}>
-                  {Math.round(b.score * 100)}% current / {Math.round(b.threshold * 100)}% required
-                </p>
+                <p className="text-[11px] mt-1 font-semibold" style={{ color: 'rgb(var(--warning))' }}>{b.action}</p>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {highDomains.length > 0 && (
+      {analysis.riskPeople.length > 0 && (
+        <div className="card p-5">
+          <p className="text-sm font-bold mb-4" style={{ color: 'rgb(var(--text-1))' }}>People Needing Attention</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {analysis.riskPeople.map((person) => (
+              <div key={`${person.empCode}-${person.name}`} className="rounded-xl border p-4" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold truncate" style={{ color: 'rgb(var(--text-1))' }}>{person.name}</p>
+                    <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>{person.currentGrade} → {person.targetGrade} · {person.meets} met</p>
+                  </div>
+                  <span className="text-xs font-bold shrink-0" style={{ color: c.danger }}>{person.gapPct} pts</span>
+                </div>
+                <p className="text-xs mt-3 leading-relaxed" style={{ color: 'rgb(var(--text-2))' }}>{person.action}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {analysis.strengths.length > 0 && (
         <div className="card p-5">
           <p className="text-sm font-bold mb-4" style={{ color: 'rgb(var(--text-1))' }}>Strengths to Reuse</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-            {highDomains.map((d) => (
+            {analysis.strengths.map((d) => (
               <div key={d.domain} className="rounded-xl border p-4" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--success-soft))' }}>
                 <p className="text-xs font-semibold truncate" style={{ color: 'rgb(var(--text-1))' }}>{d.domain}</p>
-                <p className="text-xl font-bold mt-1" style={{ color: c.success }}>{Math.round(d.avg * 100)}%</p>
-                <p className="text-xs" style={{ color: 'rgb(var(--text-3))' }}>Use mentors from this area for weaker skill areas.</p>
+                <p className="text-xl font-bold mt-1" style={{ color: c.success }}>{d.averagePct}%</p>
+                <p className="text-xs" style={{ color: 'rgb(var(--text-3))' }}>{d.recommendation}</p>
               </div>
             ))}
           </div>

@@ -338,7 +338,7 @@ export const CompetencyScoresTab: React.FC = () => {
                 <RadarChart
                   data={domainRadarData}
                   outerRadius="62%" margin={{ top: 28, right: 90, bottom: 28, left: 90 }}>
-                  <PolarGrid stroke={c.grid} />
+                  <PolarGrid stroke={c.radarGrid} />
                   <PolarAngleAxis dataKey="domain"
                     tick={(props: RadarTickProps) => {
                       const { payload, x = 0, y = 0, cx = 0 } = props;
@@ -354,7 +354,7 @@ export const CompetencyScoresTab: React.FC = () => {
                       );
                     }}
                   />
-                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(v) => `${v}%`} angle={30} />
+                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9, fill: c.radarTick }} tickFormatter={(v) => `${v}%`} angle={30} />
                   <Radar name="Score" dataKey="score" stroke={c.accent} fill={c.accent} fillOpacity={0.25} strokeWidth={2} />
                   {domainRadarData.some((d) => d.required > 0) && (
                     <Radar name="Required" dataKey="required" stroke={c.warning} fill="none" strokeWidth={1.5} strokeDasharray="5 3" />
@@ -455,7 +455,7 @@ export const CompetencyScoresTab: React.FC = () => {
               <ResponsiveContainer width="100%" height={900}>
                 <RadarChart data={radarData} outerRadius="59%"
                   margin={{ top: 24, right: 190, bottom: 40, left: 190 }}>
-                  <PolarGrid stroke={c.grid} />
+                  <PolarGrid stroke={c.radarGrid} />
                   <PolarAngleAxis dataKey="comp"
                     tick={(props: RadarTickProps) => {
                       const { payload, x = 0, y = 0, cx = 0, cy = 0, index = 0 } = props;
@@ -497,7 +497,7 @@ export const CompetencyScoresTab: React.FC = () => {
                       );
                     }}
                   />
-                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }}
+                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 11, fill: c.radarTick }}
                     tickFormatter={(v) => `${v}%`} angle={30} />
                   <Radar name="Team Avg" dataKey="team" stroke={c.accent} fill={c.accent} fillOpacity={0.25} strokeWidth={2.5} />
                   {radarData.some((d) => d.required > 0) && (
