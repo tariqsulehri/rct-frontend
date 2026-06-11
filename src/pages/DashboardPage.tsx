@@ -1720,6 +1720,10 @@ const priorityStyles = (priority: AiPriority, c: ReturnType<typeof useChartColor
 const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavigate }) => {
   const c = useChartColors();
   const [focus, setFocus] = useState<AiFocus>('executive');
+  const [showBlockers, setShowBlockers] = useState(false);
+  const [blockerSearch, setBlockerSearch] = useState('');
+  const [blockerDomain, setBlockerDomain] = useState('all');
+  const [blockerSeverity, setBlockerSeverity] = useState<'all' | 'critical' | 'warning' | 'watch'>('all');
   const { data: analysis, isLoading, isFetching, isError, refetch } = useAiDashboard(focus);
   const generatedAt = analysis?.generatedAt
     ? new Date(analysis.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -1738,6 +1742,20 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
     skills: 'Skill-area strategy view',
     readiness: 'Promotion readiness view',
   };
+  const blockerSeverityFor = (gapPct: number): 'critical' | 'warning' | 'watch' => (
+    gapPct >= 30 ? 'critical' : gapPct >= 12 ? 'warning' : 'watch'
+  );
+  const blockerDomains = Array.from(new Set((analysis?.blockers ?? []).map((blocker) => blocker.domain))).sort();
+  const filteredBlockers = (analysis?.blockers ?? []).filter((blocker) => {
+    const q = blockerSearch.trim().toLowerCase();
+    const matchesSearch = !q ||
+      blocker.employee.toLowerCase().includes(q) ||
+      blocker.competency.toLowerCase().includes(q) ||
+      blocker.domain.toLowerCase().includes(q);
+    const matchesDomain = blockerDomain === 'all' || blocker.domain === blockerDomain;
+    const matchesSeverity = blockerSeverity === 'all' || blockerSeverityFor(blocker.gapPct) === blockerSeverity;
+    return matchesSearch && matchesDomain && matchesSeverity;
+  });
 
   if (isLoading) {
     return (
@@ -2013,12 +2031,25 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
         </div>
 
         <div className="card p-5">
-          <p className="text-sm font-bold mb-1" style={{ color: 'rgb(var(--text-1))' }}>Critical Gaps</p>
-          <p className="text-xs mb-4" style={{ color: 'rgb(var(--text-3))' }}>Largest skill gaps against target-grade requirements.</p>
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div>
+              <p className="text-sm font-bold mb-1" style={{ color: 'rgb(var(--text-1))' }}>Critical Gaps</p>
+              <p className="text-xs" style={{ color: 'rgb(var(--text-3))' }}>Largest skill gaps against target-grade requirements.</p>
+            </div>
+            {analysis.blockers.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowBlockers((value) => !value)}
+                className="btn-secondary text-xs px-3 py-2 shrink-0"
+              >
+                {showBlockers ? 'Hide Table' : `View All (${analysis.blockers.length})`}
+              </button>
+            )}
+          </div>
           <div className="space-y-3">
             {analysis.blockers.length === 0 ? (
               <p className="text-sm py-8 text-center" style={{ color: 'rgb(var(--text-3))' }}>No critical blockers found.</p>
-            ) : analysis.blockers.map((b) => (
+            ) : analysis.blockers.slice(0, showBlockers ? 3 : 6).map((b) => (
               <div
                 key={`${b.employee}-${b.competency}`}
                 className="rounded-lg border p-3"
@@ -2038,6 +2069,114 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
           </div>
         </div>
       </div>
+
+      {showBlockers && analysis.blockers.length > 0 && (
+        <div className="card p-5">
+          <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+            <div>
+              <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Blocker Explorer</p>
+              <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
+                Full blocker queue with employee, competency, skill area, gap severity, and AI action.
+              </p>
+            </div>
+            <div className="text-xs font-semibold" style={{ color: 'rgb(var(--text-2))' }}>
+              Showing {filteredBlockers.length} of {analysis.blockers.length}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_180px_150px] gap-3 mb-4">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgb(var(--text-3))' }} />
+              <input
+                value={blockerSearch}
+                onChange={(event) => setBlockerSearch(event.target.value)}
+                placeholder="Search employee, competency, or skill area"
+                className="w-full rounded-lg border pl-9 pr-3 py-2 text-sm outline-none"
+                style={{
+                  borderColor: 'rgb(var(--border))',
+                  backgroundColor: 'rgb(var(--surface-2))',
+                  color: 'rgb(var(--text-1))',
+                }}
+              />
+            </div>
+            <select
+              value={blockerDomain}
+              onChange={(event) => setBlockerDomain(event.target.value)}
+              className="rounded-lg border px-3 py-2 text-sm outline-none"
+              style={{
+                borderColor: 'rgb(var(--border))',
+                backgroundColor: 'rgb(var(--surface-2))',
+                color: 'rgb(var(--text-1))',
+              }}
+            >
+              <option value="all">All skill areas</option>
+              {blockerDomains.map((domain) => (
+                <option key={domain} value={domain}>{domain}</option>
+              ))}
+            </select>
+            <select
+              value={blockerSeverity}
+              onChange={(event) => setBlockerSeverity(event.target.value as typeof blockerSeverity)}
+              className="rounded-lg border px-3 py-2 text-sm outline-none"
+              style={{
+                borderColor: 'rgb(var(--border))',
+                backgroundColor: 'rgb(var(--surface-2))',
+                color: 'rgb(var(--text-1))',
+              }}
+            >
+              <option value="all">All severity</option>
+              <option value="critical">Critical</option>
+              <option value="warning">Warning</option>
+              <option value="watch">Watch</option>
+            </select>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'rgb(var(--border))' }}>
+            <table className="w-full min-w-[860px] text-sm">
+              <thead style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
+                <tr>
+                  {['Employee', 'Competency', 'Skill Area', 'Gap', 'Severity', 'AI Action'].map((header) => (
+                    <th key={header} className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredBlockers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'rgb(var(--text-3))' }}>
+                      No blockers match the selected filters.
+                    </td>
+                  </tr>
+                ) : filteredBlockers.map((blocker) => {
+                  const severity = blockerSeverityFor(blocker.gapPct);
+                  const sevColor = severity === 'critical' ? c.danger : severity === 'warning' ? c.warning : c.accent;
+                  const sevBg = severity === 'critical'
+                    ? 'rgb(var(--danger-soft))'
+                    : severity === 'warning'
+                      ? 'rgb(var(--warning-soft))'
+                      : 'rgb(var(--accent-soft))';
+                  return (
+                    <tr key={`${blocker.employee}-${blocker.competency}-${blocker.domain}`} className="border-t" style={{ borderColor: 'rgb(var(--border))' }}>
+                      <td className="px-4 py-3 font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{blocker.employee}</td>
+                      <td className="px-4 py-3" style={{ color: 'rgb(var(--text-2))' }}>{blocker.competency}</td>
+                      <td className="px-4 py-3" style={{ color: 'rgb(var(--text-2))' }}>{blocker.domain}</td>
+                      <td className="px-4 py-3 font-bold" style={{ color: c.danger }}>-{blocker.gapPct} pts</td>
+                      <td className="px-4 py-3">
+                        <span className="rounded-full px-2.5 py-1 text-xs font-bold capitalize" style={{ color: sevColor, backgroundColor: sevBg }}>
+                          {severity}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 max-w-[320px]" style={{ color: 'rgb(var(--text-2))' }}>{blocker.action}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {analysis.riskPeople.length > 0 && (
         <div className="card p-5">
