@@ -506,17 +506,21 @@ export const GapAnalysisTab: React.FC = () => {
               {groupedData.length === 0 && (
                 <tr><td colSpan={totalCols} className="px-4 py-8 text-center text-xs" style={{ color: 'rgb(var(--text-3))' }}>No data to display.</td></tr>
               )}
-              {groupedData.map((dg) => (
+              {groupedData.map((dg) => {
+                const compactAreaSummary = !showPeople && !isSkillMode;
+
+                return (
                 <React.Fragment key={dg.domain}>
-                  {/* ── Domain header row ── */}
-                  <tr key={`dh-${dg.domain}`}
-                    style={{ backgroundColor: '#0f2044', borderBottom: '2px solid rgb(var(--border))' }}>
-                    <td colSpan={totalCols} className="px-4 py-2">
-                      <span className="text-xs font-bold tracking-wide uppercase" style={{ color: '#f5c518' }}>
-                        {dg.domain}
-                      </span>
-                    </td>
-                  </tr>
+                  {!compactAreaSummary && (
+                    <tr key={`dh-${dg.domain}`}
+                      style={{ backgroundColor: '#0f2044', borderBottom: '2px solid rgb(var(--border))' }}>
+                      <td colSpan={totalCols} className="px-4 py-2">
+                        <span className="text-xs font-bold tracking-wide uppercase" style={{ color: '#f5c518' }}>
+                          {dg.domain}
+                        </span>
+                      </td>
+                    </tr>
+                  )}
 
                   {dg.grades.map((gg) => (
                     <React.Fragment key={`${dg.domain}-${gg.grade}`}>
@@ -582,7 +586,7 @@ export const GapAnalysisTab: React.FC = () => {
 
                       {/* ── Group total row ── */}
                       <tr key={`gt-${dg.domain}-${gg.grade}`}
-                        style={{ backgroundColor: '#000000', borderBottom: '2px solid #0f2044' }}>
+                        style={{ backgroundColor: compactAreaSummary ? '#0f2044' : '#000000', borderBottom: '2px solid #0f2044' }}>
                         {/* Summary label cells follow the visible table hierarchy. */}
                         {showPeople ? (
                           <>
@@ -667,7 +671,8 @@ export const GapAnalysisTab: React.FC = () => {
                     </React.Fragment>
                   ))}
                 </React.Fragment>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
