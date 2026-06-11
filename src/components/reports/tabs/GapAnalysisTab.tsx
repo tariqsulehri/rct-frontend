@@ -50,6 +50,11 @@ export const GapAnalysisTab: React.FC = () => {
   const [selectedEmpCode, setSelectedEmpCode] = useState<string>('all');
   const [resourceSearch,  setResourceSearch]  = useState<string>('');
   const [breakdownView,   setBreakdownView]   = useState<'domain-resource' | 'skill-resource' | 'domain' | 'skill'>('skill-resource');
+  const [tableSearch,     setTableSearch]     = useState<string>('');
+  const [tableGrade,      setTableGrade]      = useState<string>('all');
+  const [tableSkillArea,  setTableSkillArea]  = useState<string>('all');
+  const [tableSkill,      setTableSkill]      = useState<string>('all');
+  const [tableResult,     setTableResult]     = useState<string>('all');
   const [downloading,     setDownloading]     = useState(false);
 
   const handleDownload = async () => {
@@ -119,6 +124,18 @@ export const GapAnalysisTab: React.FC = () => {
   // Build nested structure: domain → grade → rows
   type GradeGroup  = { grade: string; rows: EmpRow[]; avgScore: number; avgTarget: number; avgGap: number; metCount: number };
   type DomainGroup = { domain: string; grades: GradeGroup[] };
+  const isSkillMode = breakdownView === 'skill' || breakdownView === 'skill-resource';
+  const showPeople    = breakdownView === 'domain-resource' || breakdownView === 'skill-resource';
+  const tableSkillOptions = competencies
+    .filter((comp) => tableSkillArea === 'all' || comp.domain === tableSkillArea)
+    .map((comp) => comp.name)
+    .sort();
+  const hasTableFilters =
+    tableSearch.trim() !== '' ||
+    tableGrade !== 'all' ||
+    tableSkillArea !== 'all' ||
+    tableSkill !== 'all' ||
+    tableResult !== 'all';
 
   const buildGroups = (): DomainGroup[] => {
     const isDomainMode = breakdownView === 'domain' || breakdownView === 'domain-resource';
@@ -139,13 +156,32 @@ export const GapAnalysisTab: React.FC = () => {
         }
       }
     }
+    const q = tableSearch.trim().toLowerCase();
+    const filteredFlat = flat.filter((row) => {
+      const skillArea = isDomainMode ? row.area : (row.domain ?? '');
+      const skill = isDomainMode ? '' : row.area;
+      const matchesSearch = !q ||
+        row.emp.full_name.toLowerCase().includes(q) ||
+        row.emp.emp_code.toLowerCase().includes(q) ||
+        skillArea.toLowerCase().includes(q) ||
+        skill.toLowerCase().includes(q);
+      const matchesGrade = tableGrade === 'all' || row.emp.current_grade === tableGrade;
+      const matchesArea = tableSkillArea === 'all' || skillArea === tableSkillArea;
+      const matchesSkill = tableSkill === 'all' || !isSkillMode || skill === tableSkill;
+      const matchesResult =
+        tableResult === 'all' ||
+        (tableResult === 'gap' && row.threshold > 0 && !row.meets) ||
+        (tableResult === 'met' && row.threshold > 0 && row.meets) ||
+        (tableResult === 'no-target' && row.threshold <= 0);
+      return matchesSearch && matchesGrade && matchesArea && matchesSkill && matchesResult;
+    });
 
     // Domain order: from `domains` list (already sorted)
     const domainOrder = isDomainMode ? domains : Array.from(new Set(competencies.map(c => c.domain))).sort();
 
     const result: DomainGroup[] = [];
     for (const dn of domainOrder) {
-      const domainRows = flat.filter(r => (isDomainMode ? r.area : r.domain) === dn);
+      const domainRows = filteredFlat.filter(r => (isDomainMode ? r.area : r.domain) === dn);
       if (!domainRows.length) continue;
 
       // Group by grade (sorted)
@@ -170,8 +206,6 @@ export const GapAnalysisTab: React.FC = () => {
   };
 
   const groupedData = buildGroups();
-  const isSkillMode = breakdownView === 'skill' || breakdownView === 'skill-resource';
-  const showPeople    = breakdownView === 'domain-resource' || breakdownView === 'skill-resource';
   const totalCols        = showPeople
     ? (isSkillMode ? 10 : 9)
     : (isSkillMode ? 8 : 7);
@@ -362,6 +396,83 @@ export const GapAnalysisTab: React.FC = () => {
             ))}
           </div>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,1fr)_120px_180px_180px_140px_auto] gap-2 px-4 py-3 border-b"
+          style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
+          <input
+            value={tableSearch}
+            onChange={(event) => setTableSearch(event.target.value)}
+            placeholder="Search person, skill area, or skill..."
+            className="rounded-lg px-3 py-2 text-xs border outline-none"
+            style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
+          />
+          <select
+            value={tableGrade}
+            onChange={(event) => setTableGrade(event.target.value)}
+            className="rounded-lg px-3 py-2 text-xs border outline-none"
+            style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
+          >
+            <option value="all">All grades</option>
+            {grades.filter((grade) => grade !== 'all').map((grade) => (
+              <option key={grade} value={grade}>{grade}</option>
+            ))}
+          </select>
+          <select
+            value={tableSkillArea}
+            onChange={(event) => {
+              setTableSkillArea(event.target.value);
+              setTableSkill('all');
+            }}
+            className="rounded-lg px-3 py-2 text-xs border outline-none"
+            style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
+          >
+            <option value="all">All skill areas</option>
+            {domains.map((domain) => (
+              <option key={domain} value={domain}>{domain}</option>
+            ))}
+          </select>
+          {isSkillMode ? (
+            <select
+              value={tableSkill}
+              onChange={(event) => setTableSkill(event.target.value)}
+              className="rounded-lg px-3 py-2 text-xs border outline-none"
+              style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
+            >
+              <option value="all">All skills</option>
+              {tableSkillOptions.map((skill) => (
+                <option key={skill} value={skill}>{skill}</option>
+              ))}
+            </select>
+          ) : (
+            <div className="hidden md:block" />
+          )}
+          <select
+            value={tableResult}
+            onChange={(event) => setTableResult(event.target.value)}
+            className="rounded-lg px-3 py-2 text-xs border outline-none"
+            style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
+          >
+            <option value="all">All results</option>
+            <option value="gap">Skills gap</option>
+            <option value="met">Met</option>
+            <option value="no-target">No target</option>
+          </select>
+          {hasTableFilters && (
+            <button
+              type="button"
+              onClick={() => {
+                setTableSearch('');
+                setTableGrade('all');
+                setTableSkillArea('all');
+                setTableSkill('all');
+                setTableResult('all');
+              }}
+              className="px-3 py-2 text-xs rounded-lg border font-medium"
+              style={{ borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-2))', backgroundColor: 'rgb(var(--surface))' }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full" style={{ borderCollapse: 'collapse', fontSize: '11px' }}>
             <thead>
@@ -391,7 +502,7 @@ export const GapAnalysisTab: React.FC = () => {
                 <tr><td colSpan={totalCols} className="px-4 py-8 text-center text-xs" style={{ color: 'rgb(var(--text-3))' }}>No data to display.</td></tr>
               )}
               {groupedData.map((dg) => (
-                <>
+                <React.Fragment key={dg.domain}>
                   {/* ── Domain header row ── */}
                   <tr key={`dh-${dg.domain}`}
                     style={{ backgroundColor: '#0f2044', borderBottom: '2px solid rgb(var(--border))' }}>
@@ -403,7 +514,7 @@ export const GapAnalysisTab: React.FC = () => {
                   </tr>
 
                   {dg.grades.map((gg) => (
-                    <>
+                    <React.Fragment key={`${dg.domain}-${gg.grade}`}>
                       {/* ── Employee rows (resource tabs only) ── */}
                       {showPeople && gg.rows.map((row, ri) => (
                         <tr key={`${row.emp.emp_code}-${row.area}`}
@@ -536,9 +647,9 @@ export const GapAnalysisTab: React.FC = () => {
                           </span>
                         </td>
                       </tr>
-                    </>
+                    </React.Fragment>
                   ))}
-                </>
+                </React.Fragment>
               ))}
             </tbody>
           </table>
