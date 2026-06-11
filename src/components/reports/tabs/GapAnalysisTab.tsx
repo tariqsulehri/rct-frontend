@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Download } from 'lucide-react';
-import { ResponsiveContainer, Bar, XAxis, YAxis, Tooltip, ComposedChart, CartesianGrid, Line } from 'recharts';
+import { ResponsiveContainer, Bar, XAxis, YAxis, Tooltip, ComposedChart, CartesianGrid, Line, LabelList } from 'recharts';
 import { useGapMatrix, type GapMatrixEmployee, type GapMatrixResult } from '@/hooks/useReports';
 import { useAuthStore } from '@/store/authStore';
 import { isLeaderRole } from '@/types/rbac';
@@ -40,6 +40,28 @@ interface GapHeader {
   label: string;
   w: number;
 }
+
+const NeededScoreLabel = ({ x, y, value }: { x?: number | string; y?: number | string; value?: number | string }) => {
+  const labelX = Number(x);
+  const labelY = Number(y);
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(labelX) || !Number.isFinite(labelY) || !Number.isFinite(numericValue)) return null;
+
+  return (
+    <text
+      x={labelX + 8}
+      y={labelY + 4}
+      textAnchor="start"
+      fill="#f5c518"
+      fontSize={10}
+      fontWeight={700}
+      pointerEvents="none"
+    >
+      {Math.round(numericValue)}%
+    </text>
+  );
+};
 
 export const GapAnalysisTab: React.FC = () => {
   const { data, isLoading, isError } = useGapMatrix();
@@ -315,7 +337,7 @@ export const GapAnalysisTab: React.FC = () => {
               <div className="px-2 py-2">
                 <ResponsiveContainer width="100%" height={chartH}>
                   <ComposedChart data={data} layout="vertical"
-                    barCategoryGap="30%" margin={{ left: 4, right: 54, top: 2, bottom: 2 }}>
+                    barCategoryGap="30%" margin={{ left: 4, right: 82, top: 2, bottom: 2 }}>
                     <defs>
                       <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
                         <stop offset="0%"   stopColor="#1e40af" stopOpacity={1} />
@@ -368,7 +390,9 @@ export const GapAnalysisTab: React.FC = () => {
                     <Line dataKey="target" name="Target" stroke="#f5c518" strokeWidth={1.5}
                       strokeDasharray="5 3"
                       dot={{ r: 3, fill: '#f5c518', stroke: '#0a0a0a', strokeWidth: 1.5 }}
-                      activeDot={{ r: 5, fill: '#f5c518' }} label={false} />
+                      activeDot={{ r: 5, fill: '#f5c518' }}>
+                      <LabelList dataKey="target" content={<NeededScoreLabel />} />
+                    </Line>
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
