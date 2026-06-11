@@ -5,7 +5,7 @@ import {
   Sun, Moon, Zap, LogOut, Bell, Search,
   TrendingUp, Activity, Info,
   Bot, Sparkles, Clock3, Target, AlertTriangle, CheckCircle2,
-  MessageSquare, Send,
+  MessageSquare, Send, UserRound,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -1859,6 +1859,54 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
         role: 'assistant' as const,
         text: 'Ask me about readiness, critical gaps, weak skill areas, people needing help, or what leaders should do next.',
       }];
+  const renderAssistantAnswer = (text: string) => {
+    const blocks = text.split('\n').filter((line) => line.trim().length > 0);
+
+    return (
+      <div className="space-y-2">
+        {blocks.map((line, index) => {
+          const lower = line.toLowerCase();
+          const isAction = lower.startsWith('action:') || lower.includes('next step') || lower.includes('simple action') || lower.includes('suggested action');
+          const isRisk = lower.includes('critical') || lower.includes('gap:') || lower.includes('short by') || lower.includes('weakest');
+          const isMetric = lower.includes('readiness') || lower.includes('average score') || lower.includes('needed score') || lower.includes('ready.');
+          const isOwner = lower.startsWith('owner:') || lower.startsWith('time:');
+          const isListItem = line.includes(':') && (line.includes('points') || line.includes('short by'));
+          const color = isAction ? c.success : isRisk ? c.danger : isMetric ? c.accent : isOwner ? c.warning : 'rgb(var(--text-1))';
+          const bg = isAction
+            ? 'rgb(var(--success-soft))'
+            : isRisk
+              ? 'rgb(var(--danger-soft))'
+              : isMetric
+                ? 'rgb(var(--accent-soft))'
+                : isOwner
+                  ? 'rgb(var(--warning-soft))'
+                  : 'transparent';
+
+          if (index === 0 && !isListItem) {
+            return (
+              <p key={`${line}-${index}`} className="text-sm font-semibold leading-relaxed" style={{ color }}>
+                {line}
+              </p>
+            );
+          }
+
+          return (
+            <div
+              key={`${line}-${index}`}
+              className="rounded-lg border px-3 py-2 text-xs leading-relaxed"
+              style={{
+                borderColor: isAction || isRisk || isMetric || isOwner ? 'transparent' : 'rgb(var(--border))',
+                backgroundColor: bg,
+                color,
+              }}
+            >
+              {line}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-5 animate-slide-up">
@@ -1932,17 +1980,35 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
               <div className="min-h-[320px] max-h-[460px] overflow-y-auto rounded-xl border p-4 space-y-3"
                 style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
                 {visibleChatMessages.map((message) => (
-                  <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className="max-w-[88%] rounded-xl px-4 py-3 text-sm whitespace-pre-line"
-                      style={{
-                        backgroundColor: message.role === 'user' ? 'rgb(var(--accent))' : 'rgb(var(--surface))',
-                        color: message.role === 'user' ? 'white' : 'rgb(var(--text-1))',
-                        border: message.role === 'user' ? '1px solid rgb(var(--accent))' : '1px solid rgb(var(--border))',
-                      }}
-                    >
-                      {message.text}
+                  <div key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {message.role === 'assistant' && (
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent))' }}>
+                        <Bot size={17} />
+                      </div>
+                    )}
+                    <div className={`max-w-[88%] flex flex-col gap-1.5 ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div className="text-[11px] font-semibold" style={{ color: 'rgb(var(--text-3))' }}>
+                        {message.role === 'user' ? 'You' : 'AI Assistant'}
+                      </div>
+                      <div
+                        className="rounded-xl px-4 py-3 text-sm"
+                        style={{
+                          backgroundColor: message.role === 'user' ? 'rgb(var(--accent))' : 'rgb(var(--surface))',
+                          color: message.role === 'user' ? 'white' : 'rgb(var(--text-1))',
+                          border: message.role === 'user' ? '1px solid rgb(var(--accent))' : '1px solid rgb(var(--border))',
+                          boxShadow: message.role === 'assistant' ? '0 10px 30px rgba(0,0,0,0.08)' : 'none',
+                        }}
+                      >
+                        {message.role === 'assistant' ? renderAssistantAnswer(message.text) : message.text}
+                      </div>
                     </div>
+                    {message.role === 'user' && (
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: 'rgb(var(--accent))', color: 'white' }}>
+                        <UserRound size={17} />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
