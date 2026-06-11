@@ -5,6 +5,7 @@ import {
   Sun, Moon, Zap, LogOut, Bell, Search,
   TrendingUp, Activity, Info,
   Bot, Sparkles, Clock3, Target, AlertTriangle, CheckCircle2,
+  MessageSquare, Send,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -1717,9 +1718,18 @@ const priorityStyles = (priority: AiPriority, c: ReturnType<typeof useChartColor
   return { color: c.accent, bg: 'rgb(var(--accent-soft))', icon: Sparkles };
 };
 
+type AiChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+};
+
 const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavigate }) => {
   const c = useChartColors();
   const [focus, setFocus] = useState<AiFocus>('executive');
+  const [aiView, setAiView] = useState<'overview' | 'ask'>('overview');
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState<AiChatMessage[]>([]);
   const [showBlockers, setShowBlockers] = useState(false);
   const [blockerSearch, setBlockerSearch] = useState('');
   const [blockerDomain, setBlockerDomain] = useState('all');
@@ -1787,6 +1797,69 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
     );
   }
 
+  const topWeakArea = analysis.skillAreas[0];
+  const topBlocker = analysis.blockers[0];
+  const topRiskPerson = analysis.riskPeople[0];
+  const topRecommendation = analysis.recommendations[0];
+  const dynamicSuggestions = [
+    analysis.kpis.criticalBlockerCount > 0 ? `Which ${analysis.kpis.criticalBlockerCount} critical gaps need action first?` : 'Where is the team strongest?',
+    topWeakArea ? `Why is ${topWeakArea.domain} weak?` : 'Which skill areas should we watch?',
+    topRiskPerson ? `How can we help ${topRiskPerson.name}?` : 'Who is closest to being ready?',
+    `How can we improve readiness from ${readinessPct}%?`,
+    topRecommendation ? `Explain: ${topRecommendation.title}` : 'What should leaders do this week?',
+  ].filter(Boolean);
+
+  const answerAiQuestion = (question: string) => {
+    const q = question.toLowerCase();
+
+    if (q.includes('critical') || q.includes('gap') || q.includes('blocker')) {
+      if (!topBlocker) return 'No critical gaps are showing right now. Keep checking readiness and review new assessments when they are added.';
+      const nextBlockers = analysis.blockers.slice(0, 3).map((item) => `${item.employee}: ${item.competency} in ${item.domain} is short by ${item.gapPct} points`).join('\n');
+      return `Start with these gaps:\n${nextBlockers}\n\nBest next step: assign short coaching or practice work for these exact skills, then recheck the score after the next assessment.`;
+    }
+
+    if (q.includes('weak') || q.includes('skill area') || q.includes('domain')) {
+      if (!topWeakArea) return 'No weak skill area is available yet. Add or approve more skill checks so the dashboard has enough data.';
+      return `${topWeakArea.domain} is the weakest skill area at ${topWeakArea.averagePct}%. ${topWeakArea.recommendation}\n\nSimple action: create a small training plan for this area and review progress every week.`;
+    }
+
+    if (q.includes('ready') || q.includes('readiness') || q.includes('promotion')) {
+      return `${analysis.kpis.readyResources} of ${analysis.kpis.totalResources} people are ready. That is ${readinessPct}% readiness.\n\nTo improve this, focus on people with small gaps first, then handle the biggest critical gaps. This gives faster visible progress.`;
+    }
+
+    if (q.includes('person') || q.includes('people') || q.includes('help') || q.includes('risk')) {
+      if (!topRiskPerson) return 'No high-risk person is listed right now. Use the critical gaps list to watch new risks.';
+      return `${topRiskPerson.name} needs attention first. Current path: ${topRiskPerson.currentGrade} to ${topRiskPerson.targetGrade}. Gap: ${topRiskPerson.gapPct} points.\n\nSuggested action: ${topRiskPerson.action}`;
+    }
+
+    if (q.includes('recommend') || q.includes('action') || q.includes('this week') || q.includes('leader')) {
+      if (!topRecommendation) return 'No recommendation is available yet. Re-analyze after more assessment data is added.';
+      return `${topRecommendation.title}\n\nWhy it matters: ${topRecommendation.insight}\n\nAction: ${topRecommendation.action}\nOwner: ${topRecommendation.owner}\nTime: ${topRecommendation.timeframe}`;
+    }
+
+    return `${analysis.summary || analysis.executiveNarrative}\n\nKey numbers: average score is ${analysis.kpis.avgAchievedPct}%, needed score is ${analysis.kpis.avgRequiredPct || 'N/A'}%, and readiness is ${readinessPct}%. Ask about gaps, weak skill areas, people needing help, or next actions for a sharper answer.`;
+  };
+
+  const askAi = (question: string) => {
+    const cleanQuestion = question.trim();
+    if (!cleanQuestion) return;
+
+    setChatMessages((messages) => [
+      ...messages,
+      { id: `user-${Date.now()}`, role: 'user', text: cleanQuestion },
+      { id: `assistant-${Date.now()}`, role: 'assistant', text: answerAiQuestion(cleanQuestion) },
+    ]);
+    setChatInput('');
+  };
+
+  const visibleChatMessages = chatMessages.length > 0
+    ? chatMessages
+    : [{
+        id: 'welcome',
+        role: 'assistant' as const,
+        text: 'Ask me about readiness, critical gaps, weak skill areas, people needing help, or what leaders should do next.',
+      }];
+
   return (
     <div className="space-y-5 animate-slide-up">
       <div className="card p-5">
@@ -1820,6 +1893,137 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {[
+          { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+          { id: 'ask', label: 'Ask AI', icon: MessageSquare },
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setAiView(id as typeof aiView)}
+            className="px-3 py-2 rounded-lg text-xs font-semibold border transition-colors inline-flex items-center gap-2"
+            style={{
+              borderColor: aiView === id ? 'rgb(var(--accent))' : 'rgb(var(--border))',
+              backgroundColor: aiView === id ? 'rgb(var(--accent-soft))' : 'rgb(var(--surface))',
+              color: aiView === id ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))',
+            }}
+          >
+            <Icon size={14} /> {label}
+          </button>
+        ))}
+      </div>
+
+      {aiView === 'ask' ? (
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)] gap-5">
+          <div className="card p-0 overflow-hidden">
+            <div className="px-5 py-4 border-b flex items-start justify-between gap-3 flex-wrap" style={{ borderColor: 'rgb(var(--border))' }}>
+              <div>
+                <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Ask AI</p>
+                <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Ask simple questions about readiness, gaps, and next actions.</p>
+              </div>
+              <span className="rounded-full px-3 py-1 text-xs font-bold"
+                style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}>
+                Uses current dashboard data
+              </span>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="min-h-[320px] max-h-[460px] overflow-y-auto rounded-xl border p-4 space-y-3"
+                style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
+                {visibleChatMessages.map((message) => (
+                  <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className="max-w-[88%] rounded-xl px-4 py-3 text-sm whitespace-pre-line"
+                      style={{
+                        backgroundColor: message.role === 'user' ? 'rgb(var(--accent))' : 'rgb(var(--surface))',
+                        color: message.role === 'user' ? 'white' : 'rgb(var(--text-1))',
+                        border: message.role === 'user' ? '1px solid rgb(var(--accent))' : '1px solid rgb(var(--border))',
+                      }}
+                    >
+                      {message.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold mb-2" style={{ color: 'rgb(var(--text-3))' }}>Suggested questions</p>
+                <div className="flex flex-wrap gap-2">
+                  {dynamicSuggestions.map((question) => (
+                    <button
+                      key={question}
+                      type="button"
+                      onClick={() => askAi(question)}
+                      className="rounded-full border px-3 py-1.5 text-xs text-left"
+                      style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))', color: 'rgb(var(--text-2))' }}
+                    >
+                      {question}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <form
+                className="flex gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  askAi(chatInput);
+                }}
+              >
+                <input
+                  value={chatInput}
+                  onChange={(event) => setChatInput(event.target.value)}
+                  placeholder="Ask about gaps, readiness, weak areas, or next steps..."
+                  className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none"
+                  style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))', color: 'rgb(var(--text-1))' }}
+                />
+                <button type="submit" className="btn-primary px-3 py-2 inline-flex items-center gap-2 text-sm">
+                  <Send size={14} /> Ask
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            <div className="card p-5">
+              <p className="text-sm font-bold mb-3" style={{ color: 'rgb(var(--text-1))' }}>Live Data Snapshot</p>
+              <div className="space-y-3">
+                {[
+                  { label: 'Readiness', value: `${readinessPct}%`, color: c.success },
+                  { label: 'Ready People', value: `${analysis.kpis.readyResources}/${analysis.kpis.totalResources}`, color: c.success },
+                  { label: 'Critical Gaps', value: String(analysis.kpis.criticalBlockerCount), color: c.danger },
+                  { label: 'Average Score', value: `${analysis.kpis.avgAchievedPct}%`, color: c.accent },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                    style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
+                    <span className="text-xs font-semibold" style={{ color: 'rgb(var(--text-3))' }}>{item.label}</span>
+                    <span className="text-sm font-bold" style={{ color: item.color }}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="card p-5">
+              <p className="text-sm font-bold mb-3" style={{ color: 'rgb(var(--text-1))' }}>Good Questions to Ask</p>
+              <div className="space-y-2">
+                {['Who needs help first?', 'What should we fix this week?', 'Which skill area is weakest?', 'How do we improve readiness?'].map((question) => (
+                  <button
+                    key={question}
+                    type="button"
+                    onClick={() => askAi(question)}
+                    className="w-full rounded-lg border px-3 py-2 text-xs text-left"
+                    style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)] gap-5">
         <div className="rounded-xl border p-5 min-h-[260px] flex flex-col justify-between"
           style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
@@ -2218,6 +2422,8 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
             ))}
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
