@@ -1805,7 +1805,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
                 <Clock3 size={13} />
                 <span>Last analyzed {generatedAt}</span>
                 <span>·</span>
-                <span>{analysis.aiEnabled ? `Made by ${analysis.model}` : 'Basic analysis'}</span>
+                <span>{analysis.aiEnabled ? 'AI analysis ready' : 'Basic analysis ready'}</span>
               </div>
             </div>
           </div>
@@ -1850,8 +1850,8 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
               <p className="text-sm font-bold mt-1" style={{ color: 'rgb(var(--text-1))' }}>{analysis.kpis.totalResources} people</p>
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Model</p>
-              <p className="text-sm font-bold mt-1 truncate" style={{ color: 'rgb(var(--text-1))' }}>{analysis.model ?? 'Rules engine'}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Analysis</p>
+              <p className="text-sm font-bold mt-1 truncate" style={{ color: 'rgb(var(--text-1))' }}>{analysis.aiEnabled ? 'AI ready' : 'Basic ready'}</p>
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
               <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Critical Gaps</p>
