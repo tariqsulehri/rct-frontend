@@ -1582,7 +1582,7 @@ const CompetenciesSection: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
       <TableShell tabKey="competencies" title="Skills" onAdd={openCreate} addLabel="Add Skill"
-        headers={['Name', 'Category', 'Skill Area', 'Important', 'Technologies']}
+        headers={['Name', 'Category', 'Skill Area', 'Important', 'Tools']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
         {ts.paged.map((c, idx) => (
@@ -1621,17 +1621,17 @@ const CompetenciesSection: React.FC = () => {
                 {c.technologies?.length ?? 0}
               </span>
             </TD>
-            <ActionBtns onEdit={() => openEdit(c)} onDelete={async () => { if (await confirm({ title: 'Delete Skill', message: `"${c.name}" and all its technology mappings will be permanently deleted.`, confirmLabel: 'Delete' })) deleteCompetency.mutate(c.id); }} />
+            <ActionBtns onEdit={() => openEdit(c)} onDelete={async () => { if (await confirm({ title: 'Delete Skill', message: `"${c.name}" and all its tool links will be deleted.`, confirmLabel: 'Delete' })) deleteCompetency.mutate(c.id); }} />
           </TR>
         ))}
       </TableShell>
         </div>
 
-        {/* Technologies detail panel */}
+        {/* Tools detail panel */}
         <div className="card p-0 overflow-hidden flex flex-col" style={{ maxHeight: '540px' }}>
           <PanelHeader
             title={selectedCompetency ? `${selectedCompetency.name}` : 'Select a Skill'}
-            subtitle={selectedCompetency ? 'Technologies' : undefined}
+            subtitle={selectedCompetency ? 'Tools' : undefined}
             background={HEADER_GRADIENTS['competencies']}
             dense
             highContrast
@@ -1671,7 +1671,7 @@ const CompetenciesSection: React.FC = () => {
                 </div>
               </div>
 
-              {/* Technology list */}
+              {/* Tool list */}
               {filteredTechs.length === 0 ? (
                 <div className="p-6 text-center flex-1 flex flex-col items-center justify-center">
                   <Zap size={24} className="mb-2 opacity-30" style={{ color: 'rgb(var(--text-3))' }} />
@@ -1799,7 +1799,7 @@ const TechnologiesSection: React.FC = () => {
   return (
     <>
       {confirmDialog}
-      <TableShell tabKey="technologies" title="Technologies" onAdd={openCreate} addLabel="Add Technology"
+      <TableShell tabKey="technologies" title="Tools" onAdd={openCreate} addLabel="Add Tool"
         headers={['Name', 'Skill', 'Skill Area']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
@@ -1808,13 +1808,13 @@ const TechnologiesSection: React.FC = () => {
             <TD>{t.name}</TD>
             <TD muted>{t.competency?.name ?? `#${t.competency_id}`}</TD>
             <TD muted small>{t.competency?.competency_domains?.find(d => d.is_primary)?.domain.name ?? '—'}</TD>
-            <ActionBtns onEdit={() => openEdit(t)} onDelete={async () => { if (await confirm({ title: 'Delete Technology', message: `"${t.name}" will be permanently deleted.`, confirmLabel: 'Delete' })) deleteTechnology.mutate(t.id); }} />
+            <ActionBtns onEdit={() => openEdit(t)} onDelete={async () => { if (await confirm({ title: 'Delete Tool', message: `"${t.name}" will be deleted.`, confirmLabel: 'Delete' })) deleteTechnology.mutate(t.id); }} />
           </TR>
         ))}
       </TableShell>
 
       {modal && (
-        <Modal onClose={() => setModal(null)} wide title={modal === 'create' ? 'Create Technology' : 'Edit Technology'}>
+        <Modal onClose={() => setModal(null)} wide title={modal === 'create' ? 'Create Tool' : 'Edit Tool'}>
           <div className="space-y-4">
             <div><label className={L}>Name</label><input className={F} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
             <div><label className={L}>Skill</label>
@@ -2676,17 +2676,17 @@ const AccessManagementSection: React.FC = () => {
 type ConfigTab = 'scoring' | 'access' | 'departments' | 'employees' | 'users' | 'grades' | 'skill-domains' | 'competencies' | 'technologies' | 'categories' | 'skill-map';
 
 const CONFIG_TABS: Array<{ id: ConfigTab; label: string; help: string; icon: React.ElementType }> = [
-  { id: 'scoring',      label: 'Scoring',          help: 'Types, levels, statuses, and project rules used in calculations.', icon: Settings },
-  { id: 'access',       label: 'Access',           help: 'Roles, department access, line-manager assignments, and audit history.', icon: ShieldCheck },
-  { id: 'departments',   label: 'Departments',       help: 'Company groups used for employees and scoring settings.', icon: Building2 },
+  { id: 'scoring',      label: 'Scoring',          help: 'Rules used to count skill scores.', icon: Settings },
+  { id: 'access',       label: 'Access',           help: 'Who can open each part of the app.', icon: ShieldCheck },
+  { id: 'departments',   label: 'Departments',       help: 'Company groups for employees.', icon: Building2 },
   { id: 'employees',     label: 'Employees',         help: 'People whose skills and readiness are tracked.', icon: Users },
   { id: 'users',         label: 'Users',             help: 'Login accounts and app roles.', icon: User },
   { id: 'grades',        label: 'Grades',            help: 'Career levels such as G13, G14, and G15.', icon: Award },
   { id: 'categories',    label: 'Categories',        help: 'Simple labels used to group skills.', icon: Tag },
-  { id: 'skill-domains', label: 'Skill Areas',       help: 'Large areas such as Cloud, SRE, Security, or DataOps.', icon: Layers },
-  { id: 'competencies',  label: 'Skills',            help: 'The skills employees are assessed against.', icon: Cpu },
-  { id: 'technologies',  label: 'Technologies',      help: 'Tools or technologies linked to a skill.', icon: Zap },
-  { id: 'skill-map',     label: 'Skill Map',         help: 'Shows how categories, skill areas, skills, and technologies connect.', icon: Network },
+  { id: 'skill-domains', label: 'Skill Areas',       help: 'Large skill groups such as Cloud or SRE.', icon: Layers },
+  { id: 'competencies',  label: 'Skills',            help: 'Skills that employees are checked on.', icon: Cpu },
+  { id: 'technologies',  label: 'Tools',             help: 'Tools linked to a skill.', icon: Zap },
+  { id: 'skill-map',     label: 'Skill Map',         help: 'See how skill groups, skills, and tools connect.', icon: Network },
 ];
 
 export const ConfigSection: React.FC = () => {
@@ -2695,9 +2695,9 @@ export const ConfigSection: React.FC = () => {
   return (
     <div className="space-y-5 animate-slide-up">
       <div>
-        <h2 className="section-title">Configuration</h2>
+        <h2 className="section-title">Setup</h2>
         <p className="section-desc">
-          Set up the people, grades, skill groups, skills, and technologies used across the dashboard.
+          Set up people, grades, skill groups, skills, and tools used in the app.
         </p>
       </div>
 

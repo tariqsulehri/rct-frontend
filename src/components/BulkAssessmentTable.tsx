@@ -393,7 +393,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
         type: assessment.type,
         projects: assessment.projects,
         level: (assessment.level as AssessmentLevel) ?? 'Beginner',
-        error: mapped ? undefined : 'Technology no longer exists in skill catalog.',
+        error: mapped ? undefined : 'This tool no longer exists in setup.',
       };
     });
 
@@ -489,7 +489,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
 
     if (!row.domainId) errors.push('Skill Area');
     if (!row.competencyId) errors.push('Skill');
-    if (!row.technologyId) errors.push('Technology');
+    if (!row.technologyId) errors.push('Tool');
 
     const enriched = { ...row };
 
@@ -502,7 +502,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       const duplicate = checkDuplicate(row.domainId!, row.competencyId!, row.technologyId!);
 
       if (isRowEditable(row) && duplicateRow) {
-        errors.push('Duplicate: this resource already has the same Skill Area, Skill, and Technology.');
+        errors.push('Duplicate: this person already has the same skill area, skill, and tool.');
       }
 
       if (
@@ -513,7 +513,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       ) {
         enriched.isDuplicate = true;
         enriched.existingAssessmentId = duplicate.existingAssessmentId;
-        errors.push('Duplicate: this resource already has the same Skill Area, Skill, and Technology.');
+        errors.push('Duplicate: this person already has the same skill area, skill, and tool.');
       }
 
       enriched.scorePreview = computeAssessmentScorePreview(row.type, row.projects, row.level, scoringValues, levelWeights, projectCredits);
@@ -738,17 +738,17 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-bold leading-tight" style={{ color: 'rgb(var(--text-1))' }}>
-            {readOnlyLevel ? 'My Skill Entries' : 'Assess Skills'}
+            {readOnlyLevel ? 'My Skill Rows' : 'Check Skills'}
           </h3>
           <p className="text-xs mt-1 max-w-2xl" style={{ color: 'rgb(var(--text-3))' }}>
             {readOnlyLevel
-              ? 'Add skills and technologies you have used. Saved rows stay pending until a manager approves them.'
+              ? 'Add skills and tools you have used. Saved rows wait for manager approval.'
               : 'Add skills used by this person. Managers approve rows and set the final level.'}
           </p>
           {employeeName && (
             <p className="text-sm mt-1" style={{ color: 'rgb(var(--text-2))' }}>
               <span className="font-semibold" style={{ color: 'rgb(var(--text-1))' }}>
-                Selected Resource:
+                Selected Person:
               </span>{' '}
               {employeeName}
             </p>
@@ -764,7 +764,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2 items-center">
         <input
           type="text"
-          placeholder="Search by skill area, skill, or technology..."
+          placeholder="Search by skill area, skill, or tool..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="field w-full h-10"
@@ -800,7 +800,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
 
       {isInitializing && (
         <div className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}>
-          Loading existing assessments...
+          Loading saved skill rows...
         </div>
       )}
 
@@ -809,7 +809,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           <colgroup>
             <col style={{ width: '14%' }} />{/* Skill Area */}
             <col style={{ width: '18%' }} />{/* Skill */}
-            <col style={{ width: '18%' }} />{/* Technology */}
+            <col style={{ width: '18%' }} />{/* Tool */}
             <col style={{ width: '10%' }} />{/* Type */}
             <col style={{ width: '7%'  }} />{/* Projects */}
             <col style={{ width: '9%'  }} />{/* Level */}
@@ -820,10 +820,10 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
             <tr style={{ backgroundColor: 'rgb(var(--surface-2))', borderBottom: '1px solid rgb(var(--border))' }}>
               <TableHeader label="Skill Area" sortKey="domain" help="A group of related skills, such as Cloud, SRE, or Security." />
               <TableHeader label="Skill" sortKey="competency" help="The skill being assessed." />
-              <TableHeader label="Technology" sortKey="technology" help="The specific tool or technology used for this skill." />
-              <TableHeader label="Type" sortKey="type" help="How important this technology is for the skill." />
-              <TableHeader label="Projects" sortKey="projects" help="How many real projects used this technology." />
-              <PlainHeader label="Level" help="How strong the person is in this technology." />
+              <TableHeader label="Tool" sortKey="technology" help="The tool used for this skill." />
+              <TableHeader label="Importance" sortKey="type" help="How important this tool is for the skill." />
+              <TableHeader label="Projects" sortKey="projects" help="How many real projects used this tool." />
+              <PlainHeader label="Level" help="How strong the person is in this tool." />
               <PlainHeader label="Score" help="Auto-calculated from importance, projects, and level." />
               <PlainHeader label="Actions" />
             </tr>
@@ -884,10 +884,10 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                     }
                   </td>
 
-                  {/* Technology */}
+                  {/* Tool */}
                   <td className="px-2.5 py-2 align-middle">
                     {rowEditable
-                      ? <SearchableSelect value={row.technologyId ? String(row.technologyId) : ''} onChange={(v) => updateRow(row.id, 'technologyId', v ? Number(v) : null)} disabled={!row.competencyId} invalid={enriched.error?.includes('Technology')} className="w-full" placeholder="Search technology..." options={[{ value: '', label: '—' }, ...technologies.map((t) => ({ value: String(t.id), label: t.name }))]} />
+                      ? <SearchableSelect value={row.technologyId ? String(row.technologyId) : ''} onChange={(v) => updateRow(row.id, 'technologyId', v ? Number(v) : null)} disabled={!row.competencyId} invalid={enriched.error?.includes('Tool')} className="w-full" placeholder="Search tool..." options={[{ value: '', label: '—' }, ...technologies.map((t) => ({ value: String(t.id), label: t.name }))]} />
                       : <span className="block truncate text-xs" style={{ color: technologyLabel === '—' ? 'rgb(var(--text-3))' : 'rgb(var(--text-1))' }}>{technologyLabel}</span>
                     }
                   </td>
@@ -949,7 +949,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                           onClick={() => handleSaveRow(row.id)}
                           disabled={savingRowIds.has(row.id)}
                           className="btn-ghost w-7 h-7 p-0 rounded-md flex items-center justify-center"
-                          title={isApproving ? 'Approve & save' : 'Save this row'}
+                          title={isApproving ? 'Approve and save' : 'Save this row'}
                         >
                           {savingRowIds.has(row.id)
                             ? <span className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: isApproving ? '#f97316' : 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
@@ -985,7 +985,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                         onClick={() => deleteRow(row.id)}
                         disabled={savingRowIds.has(row.id) || deleteAssessment.isPending}
                         className="btn-ghost w-7 h-7 p-0 rounded-md flex items-center justify-center"
-                        title="Delete row"
+                          title="Delete row"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -996,7 +996,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
                           style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#f97316' }}
                         >
-                          Pending Approval
+                          Waiting
                         </span>
                       )}
 

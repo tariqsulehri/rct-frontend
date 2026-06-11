@@ -51,7 +51,7 @@ export const EmployeeResultSheetTab: React.FC = () => {
     .sort((a, b) => b.gap - a.gap);
 
   const overallScorePct = Math.round((promoRow?.overall_score ?? gapResult?.overall_score ?? 0) * 100);
-  const meetsCoveragePct = promoRow && promoRow.total_competencies > 0
+  const meetsCheckedPct = promoRow && promoRow.total_competencies > 0
     ? Math.round((promoRow.meets_count / promoRow.total_competencies) * 100)
     : gapResult && gapResult.total_competencies > 0
       ? Math.round((gapResult.meets_count / gapResult.total_competencies) * 100)
@@ -62,8 +62,8 @@ export const EmployeeResultSheetTab: React.FC = () => {
 
   const summaryChartData = [
     { label: 'Overall Score', value: overallScorePct, fill: c.accent },
-    { label: 'Meets Coverage', value: meetsCoveragePct, fill: c.success },
-    { label: 'Required Score', value: thresholdPct ?? 0, fill: c.warning },
+    { label: 'Meets Checked', value: meetsCheckedPct, fill: c.success },
+    { label: 'Needed Score', value: thresholdPct ?? 0, fill: c.warning },
   ];
 
   const domainChartData = domainRows.slice(0, 10).map((d) => ({
@@ -73,8 +73,8 @@ export const EmployeeResultSheetTab: React.FC = () => {
   }));
 
   const gapChartData = topGaps.slice(0, 8).map((g) => ({
-    competency: g.competency_name.length > 16 ? `${g.competency_name.slice(0, 16)}…` : g.competency_name,
-    fullCompetency: g.competency_name,
+    skill: g.competency_name.length > 16 ? `${g.competency_name.slice(0, 16)}…` : g.competency_name,
+    fullSkill: g.competency_name,
     score: Math.round(g.score * 100),
     target: Math.round(g.threshold * 100),
     gap: Math.round(g.gap * 100),
@@ -203,7 +203,7 @@ export const EmployeeResultSheetTab: React.FC = () => {
         <div class="sheet">
           <div class="header">
             <h1 class="title">Person Result Sheet</h1>
-            <p class="subtitle">Generated on ${generatedOn}</p>
+            <p class="subtitle">Created on ${generatedOn}</p>
             <div class="meta">
               <div class="item"><div class="label">Person</div><div class="value">${employeeName}</div></div>
               <div class="item"><div class="label">Person Code</div><div class="value">${empCode}</div></div>
@@ -352,7 +352,7 @@ export const EmployeeResultSheetTab: React.FC = () => {
                   </>
                 )}
               </div>
-              <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-2))' }}>{thresholdPct !== null ? 'Achieved / Required' : 'Required score: N/A'}</p>
+              <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-2))' }}>{thresholdPct !== null ? 'Achieved / Required' : 'Needed score: N/A'}</p>
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface))' }}>
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Skills Met</p>
@@ -418,7 +418,7 @@ export const EmployeeResultSheetTab: React.FC = () => {
                           <div style={tooltipStyle(c)}>
                             <p className="font-semibold text-xs mb-1" style={{ color: c.accent }}>{d.fullDomain}</p>
                             <p style={{ color: c.text }}>Score: {d.score}%</p>
-                            {thresholdPct !== null && <p style={{ color: meets ? c.success : c.danger }}>Required: {thr}% ({meets ? '✓ Meets' : '✗ Below'})</p>}
+                            {thresholdPct !== null && <p style={{ color: meets ? c.success : c.danger }}>Needed: {thr}% ({meets ? '✓ Meets' : '✗ Below'})</p>}
                           </div>
                         );
                       }}
@@ -462,7 +462,7 @@ export const EmployeeResultSheetTab: React.FC = () => {
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={gapChartData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }} barCategoryGap="18%">
-                  <XAxis dataKey="competency" tick={{ fontSize: 9, fill: c.text }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="skill" tick={{ fontSize: 9, fill: c.text }} axisLine={false} tickLine={false} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: c.text }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
                   <Tooltip
                     cursor={{ fill: c.grid, opacity: 0.2 }}
@@ -471,9 +471,9 @@ export const EmployeeResultSheetTab: React.FC = () => {
                       const d = payload[0].payload;
                       return (
                         <div style={tooltipStyle(c)}>
-                          <p className="font-semibold text-xs mb-1" style={{ color: c.warning }}>{d.fullCompetency}</p>
+                          <p className="font-semibold text-xs mb-1" style={{ color: c.warning }}>{d.fullSkill}</p>
                           <p style={{ color: c.text }}>Current: {d.score}%</p>
-                          <p style={{ color: c.text }}>Required: {d.target}%</p>
+                          <p style={{ color: c.text }}>Needed: {d.target}%</p>
                           <p style={{ color: c.danger }}>Gap: {d.gap}%</p>
                         </div>
                       );
@@ -521,7 +521,7 @@ export const EmployeeResultSheetTab: React.FC = () => {
                                 backgroundColor: c.warning,
                                 transform: 'translateX(-50%)',
                               }}
-                              title={`Required: ${domThreshold}%`}
+                              title={`Needed: ${domThreshold}%`}
                             />
                           )}
                         </div>

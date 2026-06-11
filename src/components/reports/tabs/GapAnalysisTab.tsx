@@ -57,7 +57,7 @@ export const GapAnalysisTab: React.FC = () => {
   const [gradeFilter,     setGradeFilter]     = useState<string>('all');
   const [selectedEmpCode, setSelectedEmpCode] = useState<string>('all');
   const [resourceSearch,  setResourceSearch]  = useState<string>('');
-  const [breakdownView,   setBreakdownView]   = useState<'domain-resource' | 'competency-resource' | 'domain' | 'competency'>('domain-resource');
+  const [breakdownView,   setBreakdownView]   = useState<'domain-resource' | 'skill-resource' | 'domain' | 'skill'>('domain-resource');
   const [downloading,     setDownloading]     = useState(false);
 
   const handleDownload = async () => {
@@ -115,13 +115,13 @@ export const GapAnalysisTab: React.FC = () => {
   // ── Grouped table: Domain → Grade → employees ────────────────────────────
   type EmpRow = {
     emp: GapMatrixEmployee;
-    area: string;       // domain name (domain view) or competency name (comp view)
+    area: string;       // domain name (domain view) or skill name (comp view)
     score: number;
     threshold: number;
     gap: number;
     meets: boolean;
     is_critical?: boolean;
-    domain?: string;    // only in competency view
+    domain?: string;    // only in skill view
   };
 
   // Build nested structure: domain → grade → rows
@@ -178,11 +178,11 @@ export const GapAnalysisTab: React.FC = () => {
   };
 
   const groupedData = buildGroups();
-  const isCompetencyMode = breakdownView === 'competency' || breakdownView === 'competency-resource';
-  const showResources    = breakdownView === 'domain-resource' || breakdownView === 'competency-resource';
-  const totalCols        = showResources
-    ? (isCompetencyMode ? 10 : 9)
-    : (isCompetencyMode ? 8 : 7);
+  const isSkillMode = breakdownView === 'skill' || breakdownView === 'skill-resource';
+  const showPeople    = breakdownView === 'domain-resource' || breakdownView === 'skill-resource';
+  const totalCols        = showPeople
+    ? (isSkillMode ? 10 : 9)
+    : (isSkillMode ? 8 : 7);
 
   return (
     <div className="space-y-5">
@@ -191,9 +191,9 @@ export const GapAnalysisTab: React.FC = () => {
       {isManager && (
         <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
           <div className="flex flex-wrap gap-2 items-center justify-between">
-            <p className="text-xs font-semibold" style={{ color: 'rgb(var(--text-2))' }}>Filter Resources</p>
+            <p className="text-xs font-semibold" style={{ color: 'rgb(var(--text-2))' }}>Filter People</p>
             <p className="text-xs" style={{ color: 'rgb(var(--text-3))' }}>
-              <b style={{ color: 'rgb(var(--text-1))' }}>{visibleEmps.length}</b> of {allEmployees.length} resources
+              <b style={{ color: 'rgb(var(--text-1))' }}>{visibleEmps.length}</b> of {allEmployees.length} people
             </p>
           </div>
           <div className="flex flex-wrap gap-2 items-center">
@@ -206,7 +206,7 @@ export const GapAnalysisTab: React.FC = () => {
             <select value={selectedEmpCode} onChange={(e) => { setSelectedEmpCode(e.target.value); setGradeFilter('all'); setResourceSearch(''); }}
               className="rounded-lg px-3 py-1.5 text-xs border"
               style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))', minWidth: 200 }}>
-              <option value="all">All Resources</option>
+              <option value="all">All People</option>
               {allEmployees.slice().sort((a, b) => a.full_name.localeCompare(b.full_name)).map((e) => (
                 <option key={e.emp_code} value={e.emp_code}>{e.full_name} ({e.emp_code})</option>
               ))}
@@ -230,10 +230,10 @@ export const GapAnalysisTab: React.FC = () => {
       <div className="flex flex-wrap gap-3 items-stretch">
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 flex-1">
           {[
-            { label: 'Resources',   value: `${visibleEmps.length}`,              sub: `of ${allEmployees.length} total`,               color: 'rgb(var(--accent))' },
-            { label: 'Team Score',  value: `${Math.round(avgScore * 100)}%`,     sub: `Required: ${Math.round(avgThreshold * 100)}%`, color: avgScore >= avgThreshold ? 'rgb(var(--success))' : 'rgb(var(--warning))' },
+            { label: 'People',   value: `${visibleEmps.length}`,              sub: `of ${allEmployees.length} total`,               color: 'rgb(var(--accent))' },
+            { label: 'Team Score',  value: `${Math.round(avgScore * 100)}%`,     sub: `Needed: ${Math.round(avgThreshold * 100)}%`, color: avgScore >= avgThreshold ? 'rgb(var(--success))' : 'rgb(var(--warning))' },
             { label: 'Avg Gap',     value: `${avgGap >= 0 ? '+' : ''}${Math.round(avgGap * 100)}%`, sub: avgGap >= 0 ? 'On target' : 'Below target', color: avgGap >= 0 ? 'rgb(var(--success))' : 'rgb(var(--danger))' },
-            { label: 'Ready',       value: `${readyCount} / ${visibleEmps.length}`, sub: 'Meets all required skills',                  color: 'rgb(var(--success))' },
+            { label: 'Ready',       value: `${readyCount} / ${visibleEmps.length}`, sub: 'Meets all needed skills',                  color: 'rgb(var(--success))' },
           ].map(({ label, value, sub, color }) => (
             <div key={label} className="card p-4">
               <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'rgb(var(--text-3))' }}>{label}</p>
@@ -255,11 +255,11 @@ export const GapAnalysisTab: React.FC = () => {
         )}
       </div>
 
-      {/* Parallel charts — Domain (left) + Competency (right) */}
+      {/* Parallel charts — Domain (left) + Skill (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {([
-          { title: 'Achieved vs Required — by Skill Area', subtitle: `${domainChartData.length} skill areas`, data: domainChartData,  yWidth: 122, gradId: 'grad-domain' },
-          { title: 'Achieved vs Required — by Skill',      subtitle: `${compChartData.length} skills`,       data: compChartData,    yWidth: 192, gradId: 'grad-comp'   },
+          { title: 'Achieved vs Needed — by Skill Area', subtitle: `${domainChartData.length} skill areas`, data: domainChartData,  yWidth: 122, gradId: 'grad-domain' },
+          { title: 'Achieved vs Needed — by Skill',      subtitle: `${compChartData.length} skills`,       data: compChartData,    yWidth: 192, gradId: 'grad-comp'   },
         ] as const).map(({ title, subtitle, data, yWidth, gradId }) => {
           const chartH = Math.max(280, data.length * 34);
           return (
@@ -268,7 +268,7 @@ export const GapAnalysisTab: React.FC = () => {
               <div className="px-4 pt-4 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                 <p className="text-sm font-bold" style={{ color: '#ffffff' }}>{title}</p>
                 <p className="text-xs mt-0.5" style={{ color: '#9db0c8' }}>
-                  Avg across <span style={{ color: '#f5c518', fontWeight: 600 }}>{visibleEmps.length}</span> resources · {subtitle}
+                  Avg across <span style={{ color: '#f5c518', fontWeight: 600 }}>{visibleEmps.length}</span> people · {subtitle}
                 </p>
                 <div className="flex items-center gap-5 mt-2">
                   <div className="flex items-center gap-1.5">
@@ -377,7 +377,7 @@ export const GapAnalysisTab: React.FC = () => {
         })}
       </div>
 
-      {/* Detail table — with By Domain / By Competency toggle */}
+      {/* Detail table — with By Domain / By Skill toggle */}
       <div className="card p-0 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
           <div className="flex items-center gap-1.5">
@@ -387,9 +387,9 @@ export const GapAnalysisTab: React.FC = () => {
           <div className="flex rounded-lg border overflow-hidden" style={{ borderColor: 'rgb(var(--border))' }}>
             {([
               { v: 'domain-resource',    label: 'By Skill Area & Person'     },
-              { v: 'competency-resource',label: 'By Skill & Person'          },
+              { v: 'skill-resource',label: 'By Skill & Person'          },
               { v: 'domain',             label: 'By Skill Area'              },
-              { v: 'competency',         label: 'By Skill'                   },
+              { v: 'skill',         label: 'By Skill'                   },
             ] as const).map(({ v, label }) => (
               <button key={v} onClick={() => setBreakdownView(v)}
                 className="px-3 py-1.5 text-xs font-medium transition-colors"
@@ -404,11 +404,11 @@ export const GapAnalysisTab: React.FC = () => {
             <thead>
               <tr style={{ backgroundColor: 'rgb(var(--surface-3))', borderBottom: '2px solid rgb(var(--border))' }}>
                 {[
-                  showResources ? { label: 'Resource',     w: 160 } : null,
-                  showResources ? { label: 'Grade',        w: 60  } : null,
-                  { label: isCompetencyMode ? 'Skill' : 'Skill Area', w: 160 },
-                  isCompetencyMode ? { label: 'Skill Area', w: 100 } : null,
-                  !showResources ? { label: 'Met', w: 72 } : null,
+                  showPeople ? { label: 'Resource',     w: 160 } : null,
+                  showPeople ? { label: 'Grade',        w: 60  } : null,
+                  { label: isSkillMode ? 'Skill' : 'Skill Area', w: 160 },
+                  isSkillMode ? { label: 'Skill Area', w: 100 } : null,
+                  !showPeople ? { label: 'Met', w: 72 } : null,
                   { label: 'Score',        w: 72  },
                   { label: 'Required',     w: 72  },
                   { label: 'Level',        w: 52  },
@@ -442,7 +442,7 @@ export const GapAnalysisTab: React.FC = () => {
                   {dg.grades.map((gg) => (
                     <>
                       {/* ── Employee rows (resource tabs only) ── */}
-                      {showResources && gg.rows.map((row, ri) => (
+                      {showPeople && gg.rows.map((row, ri) => (
                         <tr key={`${row.emp.emp_code}-${row.area}`}
                           style={{ borderBottom: '1px solid rgb(var(--border))', backgroundColor: ri % 2 === 0 ? 'transparent' : 'rgb(var(--surface-2) / 0.3)' }}
                           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(var(--accent-soft) / 0.15)')}
@@ -461,8 +461,8 @@ export const GapAnalysisTab: React.FC = () => {
                             <span className="font-medium" style={{ color: 'rgb(var(--text-1))' }}>{row.area}</span>
                             {row.is_critical && <span className="ml-1 text-[9px] font-bold" style={{ color: 'rgb(var(--danger))' }}>⚡</span>}
                           </td>
-                          {/* Domain (competency-resource only) */}
-                          {isCompetencyMode && (
+                          {/* Domain (skill-resource only) */}
+                          {isSkillMode && (
                             <td className="px-3 py-2 text-[10px]" style={{ color: 'rgb(var(--text-3))' }}>{row.domain}</td>
                           )}
                           <td className="px-3 py-2 text-center font-bold" style={{ color: 'rgb(var(--accent))' }}>
@@ -505,12 +505,12 @@ export const GapAnalysisTab: React.FC = () => {
                       <tr key={`gt-${dg.domain}-${gg.grade}`}
                         style={{ backgroundColor: '#000000', borderBottom: '2px solid #0f2044' }}>
                         {/* Label spans Resource + Grade cols when in resource view, else fills area col */}
-                        {showResources ? (
+                        {showPeople ? (
                           <>
                             <td className="px-3 py-2 font-bold text-[11px]" style={{ color: '#f5c518' }}>
                               {dg.domain} / {gg.grade} Total
                               <span className="ml-2 font-normal text-[10px]" style={{ color: '#a8b8d8' }}>
-                                ({gg.rows.length} {gg.rows.length === 1 ? 'resource' : 'resources'})
+                                ({gg.rows.length} {gg.rows.length === 1 ? 'person' : 'people'})
                               </span>
                             </td>
                             <td className="px-3 py-2 text-center text-[10px]" style={{ color: '#a8b8d8' }}>—</td>
@@ -519,7 +519,7 @@ export const GapAnalysisTab: React.FC = () => {
                           <td className="px-3 py-2 font-bold text-[11px]" style={{ color: '#f5c518' }}>
                             {dg.domain} / {gg.grade} Total
                             <span className="ml-2 font-normal text-[10px]" style={{ color: '#a8b8d8' }}>
-                              ({gg.rows.length} {gg.rows.length === 1 ? 'resource' : 'resources'})
+                              ({gg.rows.length} {gg.rows.length === 1 ? 'person' : 'people'})
                             </span>
                           </td>
                         )}
@@ -527,8 +527,8 @@ export const GapAnalysisTab: React.FC = () => {
                         <td className="px-3 py-2 text-[10px] font-semibold" style={{ color: '#a8b8d8' }}>
                           {gg.metCount}/{gg.rows.filter(r => r.threshold > 0).length} met
                         </td>
-                        {/* Extra domain col for competency modes */}
-                        {isCompetencyMode && <td />}
+                        {/* Extra domain col for skill modes */}
+                        {isSkillMode && <td />}
                         {/* Avg Score */}
                         <td className="px-3 py-2 text-center font-bold" style={{ color: '#7ec8f0' }}>
                           {gg.avgScore > 0 ? `${Math.round(gg.avgScore * 100)}%` : '—'}
@@ -583,7 +583,7 @@ export const GapAnalysisTab: React.FC = () => {
           ].map(({ label, style }) => (
             <span key={label} className="px-2 py-0.5 rounded font-bold" style={style}>{label}</span>
           ))}
-          <span style={{ color: 'rgb(var(--text-3))' }}>⚡ Critical competency</span>
+          <span style={{ color: 'rgb(var(--text-3))' }}>⚡ Critical skill</span>
           <span className="ml-auto" style={{ color: 'rgb(var(--text-3))' }}>
             Level: L1 &lt;40% · L2 40–60% · L3 60–75% · L4 75–95% · L5 ≥95%
           </span>

@@ -81,7 +81,7 @@ const DuplicateModal: React.FC<{
           <div className="flex items-center gap-2">
             <AlertCircle size={18} style={{ color: 'rgb(var(--warning))' }} />
             <h3 className="text-base font-bold" style={{ color: 'rgb(var(--text-1))' }}>
-              Assessment Exists
+              Skill Already Checked
             </h3>
           </div>
           <button
@@ -94,7 +94,7 @@ const DuplicateModal: React.FC<{
 
         <div className="p-6 space-y-4">
           <p style={{ color: 'rgb(var(--text-2))' }} className="text-sm">
-            This skill has already been assessed with a score of{' '}
+            This skill already has a score of{' '}
             <span className="font-bold" style={{ color: LEVEL_COLORS[existingAssessment.computed?.levelLabel || ''] }}>
               {(existingAssessment.computed?.score ?? 0 * 100).toFixed(0)}%
             </span>
@@ -103,7 +103,7 @@ const DuplicateModal: React.FC<{
 
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase" style={{ color: 'rgb(var(--text-3))' }}>
-              Current Assessment
+              Current Skill Check
             </p>
             <div
               className="rounded-lg p-3"
@@ -131,13 +131,13 @@ const DuplicateModal: React.FC<{
               disabled={isUpdating}
               className="btn-primary flex-1"
             >
-              {isUpdating ? 'Updating…' : 'Update Assessment'}
+              {isUpdating ? 'Updating...' : 'Update Skill Check'}
             </button>
             <button
               onClick={onSelectDifferent}
               className="btn-secondary flex-1"
             >
-              Select Different Skill
+              Choose Another Skill
             </button>
           </div>
         </div>
@@ -240,7 +240,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
     setResult(null);
 
     if (!selectedDomainId || !selectedCompetencyId || !selectedTechnologyId) {
-      setError('Please select Skill, Skill Area, and Technology.');
+      setError('Please select a skill area, skill, and tool.');
       return;
     }
 
@@ -284,7 +284,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
       // Close modal after 2 seconds
       setTimeout(() => onClose?.(), 2000);
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, 'Failed to save assessment.'));
+      setError(getApiErrorMessage(err, 'Could not save this skill check.'));
     }
   };
 
@@ -311,7 +311,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
       // Close modal after 2 seconds
       setTimeout(() => onClose?.(), 2000);
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, 'Failed to update assessment.'));
+      setError(getApiErrorMessage(err, 'Could not update this skill check.'));
       setDuplicateModal({ show: false, assessment: null });
     }
   };
@@ -355,12 +355,12 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
           >
             3
           </span>
-          <span>Technology</span>
+          <span>Tool</span>
         </div>
 
         {/* Step 1: Skill Area (Domain) */}
         <div>
-          <label className="field-label">Skill Area (Domain)</label>
+          <label className="field-label">Skill Area</label>
           {hierarchyLoading ? (
             <div className="field flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-3))' }}>
               <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -368,7 +368,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
             </div>
           ) : (
             <select value={selectedDomainId || ''} onChange={(e) => handleDomainChange(Number(e.target.value))} className="field">
-              <option value="">— Select a Skill Area —</option>
+              <option value="">Select a skill area</option>
               {hierarchy.map((domain) => (
                 <option key={domain.domainId} value={domain.domainId}>
                   {domain.domainName}
@@ -380,14 +380,14 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
 
         {/* Step 2: Skill (Competency) */}
         <div>
-          <label className="field-label">Skill (Competency)</label>
+          <label className="field-label">Skill</label>
           {!selectedDomain ? (
             <div className="field text-sm" style={{ color: 'rgb(var(--text-3))' }}>
-              Select a Skill Area first
+              Select a skill area first
             </div>
           ) : (
             <select value={selectedCompetencyId || ''} onChange={(e) => handleCompetencyChange(Number(e.target.value))} className="field">
-              <option value="">— Select a Skill —</option>
+              <option value="">Select a skill</option>
               {selectedDomain.competencies.map((comp) => (
                 <option key={comp.competencyId} value={comp.competencyId}>
                   {comp.competencyName}
@@ -400,14 +400,14 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
 
         {/* Step 3: Technology */}
         <div>
-          <label className="field-label">Technology</label>
+          <label className="field-label">Tool</label>
           {!selectedCompetency ? (
             <div className="field text-sm" style={{ color: 'rgb(var(--text-3))' }}>
-              Select a Skill first
+              Select a skill first
             </div>
           ) : (
             <select value={selectedTechnologyId || ''} onChange={(e) => handleTechnologyChange(Number(e.target.value))} className="field">
-              <option value="">— Select a Technology —</option>
+              <option value="">Select a tool</option>
               {selectedCompetency.technologies.map((tech) => (
                 <option key={tech.id} value={tech.id}>
                   {tech.name}
@@ -433,7 +433,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
         {/* Type + Projects + Level grid */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="field-label">Type</label>
+            <label className="field-label">Skill Importance</label>
             <div className="space-y-2">
               {(['Primary', 'Secondary', 'Tertiary'] as const).map((t) => (
                 <label key={t} className="flex items-center gap-2 cursor-pointer">
@@ -458,7 +458,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
 
           <div className="flex flex-col gap-4">
             <div>
-              <label className="field-label">Number of Projects</label>
+              <label className="field-label">Projects Used In</label>
               <select value={String(projects)} onChange={(e) => setProjects(Number(e.target.value))} className="field">
                 {projectOptions.map((o) => (
                   <option key={o.value} value={String(o.value)}>
@@ -469,7 +469,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
             </div>
 
             <div>
-              <label className="field-label">Proficiency Level</label>
+              <label className="field-label">Skill Level</label>
               <div className="space-y-2">
                 {levelOptions.map((levelOption) => (
                   <label key={levelOption.value} className="flex items-center gap-2 cursor-pointer">
@@ -514,7 +514,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
                 {result.levelLabel}
               </p>
               <p className="text-xs" style={{ color: 'rgb(var(--text-2))' }}>
-                Competency score: {(result.score * 100).toFixed(0)}%
+                Skill score: {(result.score * 100).toFixed(0)}%
               </p>
             </div>
           </div>

@@ -12,7 +12,7 @@ const SUB_TABS: Array<{ id: SubTab; label: string; icon: React.ElementType; help
   { id: 'promotion',    label: 'Readiness',          icon: TrendingUp,      helper: 'Who is ready' },
   { id: 'competency',   label: 'Skill Scores',       icon: BarChart2,       helper: 'Current skill levels' },
   { id: 'gap',          label: 'Skill Gaps',         icon: PieIcon,         helper: 'What is missing' },
-  { id: 'result-sheet', label: 'Person Sheet',       icon: Download,        helper: 'One-person summary' },
+  { id: 'result-sheet', label: 'Person Sheet',       icon: Download,        helper: 'One person summary' },
 ];
 
 const REPORT_GROUPS: Array<{
@@ -26,32 +26,32 @@ const REPORT_GROUPS: Array<{
   {
     id: 'promotion',
     title: 'Readiness',
-    short: 'Who can move to the next grade?',
-    details: 'Use this for ready, near-ready, needs-attention resources, score bands, grade groups, and closest-to-ready people.',
+    short: 'Who is ready for the next grade?',
+    details: 'Use this to see ready people, almost ready people, people who need help, and grade groups.',
     icon: TrendingUp,
     tone: 'rgb(var(--success))',
   },
   {
     id: 'competency',
     title: 'Skill Scores',
-    short: 'How strong are the skills today?',
-    details: 'Use this for person-by-skill heatmaps, team averages, skill area coverage, and skill scores.',
+    short: 'How strong are the skills now?',
+    details: 'Use this to see skill scores for each person, team averages, and skill area scores.',
     icon: BarChart2,
     tone: 'rgb(var(--accent))',
   },
   {
     id: 'gap',
     title: 'Skill Gaps',
-    short: 'What is below the required target?',
-    details: 'Use this for achieved vs required, gaps by skill area, gaps by skill, and Excel download.',
+    short: 'What is below target?',
+    details: 'Use this to compare current score with needed score and download gaps to Excel.',
     icon: PieIcon,
     tone: 'rgb(var(--warning))',
   },
   {
     id: 'result-sheet',
     title: 'Person Sheet',
-    short: 'What should I share for one employee?',
-    details: 'Use this for a single-person result sheet with score, gaps, skill area bars, and printable output.',
+    short: 'What can I share for one employee?',
+    details: 'Use this for one person score, gaps, skill area bars, and print view.',
     icon: Download,
     tone: 'rgb(var(--text-1))',
   },
@@ -64,7 +64,7 @@ const ReportsGuide: React.FC<{ onOpen: (tab: SubTab) => void }> = ({ onOpen }) =
         Choose one report for one question
       </p>
       <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
-        Use reports when you want to compare people, find gaps, or export a result. Use the guide below to pick the clearest place for each answer.
+        Use reports to compare people, find gaps, or export results. Pick the report that matches your question.
       </p>
     </div>
 
@@ -97,15 +97,15 @@ const ReportsGuide: React.FC<{ onOpen: (tab: SubTab) => void }> = ({ onOpen }) =
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
         <div>
           <p className="font-bold" style={{ color: 'rgb(var(--success))' }}>Ready</p>
-          <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Use Readiness when the question is who can move to the next grade.</p>
+          <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Use Readiness to see who can move to the next grade.</p>
         </div>
         <div>
           <p className="font-bold" style={{ color: 'rgb(var(--accent))' }}>Score</p>
-          <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Use Skill Scores when the question is current ability.</p>
+          <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Use Skill Scores to see current skill level.</p>
         </div>
         <div>
           <p className="font-bold" style={{ color: 'rgb(var(--warning))' }}>Gap</p>
-          <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Use Skill Gaps when the question is what must improve.</p>
+          <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Use Skill Gaps to see what must improve.</p>
         </div>
       </div>
     </div>
@@ -120,7 +120,7 @@ export const ReportsSection: React.FC = () => {
       <div className="card p-0 overflow-hidden">
         <div className="px-6 pt-5 pb-0">
           <h2 className="section-title">Reports</h2>
-          <p className="section-desc mb-4">Simple report groups for readiness, current skill scores, gaps, and one-person sheets</p>
+          <p className="section-desc mb-4">Simple reports for readiness, skill scores, gaps, and one person sheets.</p>
         </div>
         <div className="flex gap-0 border-t overflow-x-auto" style={{ borderColor: 'rgb(var(--border))' }}>
           {SUB_TABS.map(({ id, label, helper, icon: Icon }) => (

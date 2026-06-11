@@ -6,16 +6,16 @@ import { queryClient } from '@/lib/queryClient';
 import { getApiErrorMessage } from '@/lib/apiError';
 
 const DEMO = [
-  { role: 'Admin',    user: 'admin',     icon: '⚡', desc: 'Full platform access' },
-  { role: 'Manager',  user: 'manager',   icon: '👥', desc: 'Team & reports access' },
-  { role: 'Engineer', user: 'engineer1', icon: '🔧', desc: 'Personal assessments' },
+  { role: 'Admin',    user: 'admin',     icon: '⚡', desc: 'Can use all app areas' },
+  { role: 'Manager',  user: 'manager',   icon: '👥', desc: 'Can see team and reports' },
+  { role: 'Engineer', user: 'engineer1', icon: '🔧', desc: 'Can update own skills' },
 ];
 
 const STATS = [
   { value: '28',  label: 'Engineers' },
-  { value: '21',  label: 'Competencies' },
-  { value: '9',   label: 'Career Levels' },
-  { value: '266', label: 'Technologies' },
+  { value: '21',  label: 'Skills' },
+  { value: '9',   label: 'Grades' },
+  { value: '266', label: 'Tools' },
 ];
 
 export const LoginPage: React.FC = () => {
@@ -86,19 +86,19 @@ export const LoginPage: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-xl">
               🚀
             </div>
-            <span className="text-white font-bold text-lg tracking-tight">DevOps Skills & Promotion Readiness</span>
+            <span className="text-white font-bold text-lg tracking-tight">DevOps Skills Readiness</span>
           </div>
 
           {/* Hero text */}
           <div className="mb-10">
             <h1 className="text-4xl font-bold text-white leading-tight tracking-tight mb-4">
-              Map your path to<br />
+              See your path to<br />
               <span className="bg-gradient-to-r from-violet-300 to-cyan-300 bg-clip-text text-transparent">
-                engineering excellence
+                the next grade
               </span>
             </h1>
             <p className="text-white/60 text-base leading-relaxed">
-              Assess competencies, identify gaps, and track career progression across 21 DevOps skill areas.
+              Check skills, see gaps, and track progress across DevOps skill areas.
             </p>
           </div>
 
@@ -120,11 +120,11 @@ export const LoginPage: React.FC = () => {
         <div className="relative z-10">
           <div className="rounded-xl p-4 border border-white/10 bg-white/5 backdrop-blur-sm">
             <p className="text-white/70 text-sm leading-relaxed italic">
-              "The only way to do great work is to have a clear map of where you're going."
+              "Clear goals make progress easier to see."
             </p>
             <div className="flex items-center gap-2 mt-3">
               <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-400 to-cyan-400 flex items-center justify-center text-xs">✦</div>
-              <span className="text-white/40 text-xs">Skills & Promotion Readiness Platform</span>
+              <span className="text-white/40 text-xs">Skills Readiness App</span>
             </div>
           </div>
         </div>
@@ -147,7 +147,7 @@ export const LoginPage: React.FC = () => {
               Welcome back
             </h2>
             <p className="text-sm mt-1" style={{ color: 'rgb(var(--text-2))' }}>
-              Sign in to your account to continue
+              Sign in to continue
             </p>
           </div>
 

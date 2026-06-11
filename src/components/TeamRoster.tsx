@@ -118,7 +118,7 @@ export const TeamRoster: React.FC = () => {
   if (!user)
     return (
       <p className="text-sm" style={{ color: "rgb(var(--danger))" }}>
-        Please log in to view team roster.
+        Please sign in to view the team list.
       </p>
     );
 
@@ -127,15 +127,15 @@ export const TeamRoster: React.FC = () => {
       {/* Header row */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="section-title">Team Roster</h2>
-          <p className="section-desc">{filteredRoster.length} of {rosterRows.length} resources shown</p>
+          <h2 className="section-title">Team List</h2>
+          <p className="section-desc">{filteredRoster.length} of {rosterRows.length} people shown</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2 rounded-lg px-3 py-2 border" style={{ backgroundColor: "rgb(var(--surface-2))", borderColor: "rgb(var(--border))" }}>
             <Search size={13} style={{ color: "rgb(var(--text-3))" }} />
             <input
               type="text"
-              placeholder="Search name, code, department…"
+              placeholder="Search name, code, or department..."
               value={teamSearch}
               onChange={(e) => setTeamSearch(e.target.value)}
               className="bg-transparent text-sm outline-none w-64"
@@ -178,15 +178,15 @@ export const TeamRoster: React.FC = () => {
             <div>
               <div className="flex items-center gap-1">
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "rgb(var(--text-3))" }}>Team Members</p>
-                <InfoTip text="Number of people currently visible after filters." />
+                <InfoTip text="Number of people shown after filters." />
               </div>
               <p className="text-2xl font-bold leading-tight mt-1" style={{ color: "rgb(var(--text-1))" }}>{filteredRoster.length}</p>
-              <p className="text-xs mt-1" style={{ color: "rgb(var(--text-2))" }}>resources shown</p>
+              <p className="text-xs mt-1" style={{ color: "rgb(var(--text-2))" }}>people shown</p>
             </div>
             <div>
               <div className="flex items-center gap-1">
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "rgb(var(--text-3))" }}>Main Grade Move</p>
-                <InfoTip text="The most common current-grade to target-grade path in this filtered team." />
+                <InfoTip text="The most common move from current grade to next grade." />
               </div>
               <p className="text-lg font-bold leading-tight mt-1" style={{ color: "rgb(var(--text-1))" }}>{topTransition}</p>
               <p className="text-xs mt-1" style={{ color: "rgb(var(--text-2))" }}>{topTransitionCount} member{topTransitionCount === 1 ? "" : "s"}</p>
@@ -194,7 +194,7 @@ export const TeamRoster: React.FC = () => {
             <div>
               <div className="flex items-center gap-1">
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "rgb(var(--text-3))" }}>Team Score</p>
-                <InfoTip text="Average current score for assessed visible resources, compared with the average required target." />
+                <InfoTip text="Average current score compared with the needed score." />
               </div>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="text-2xl font-bold leading-tight"
@@ -207,13 +207,13 @@ export const TeamRoster: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs mt-1" style={{ color: "rgb(var(--text-2))" }}>
-                {teamGap === null ? "current / required" : `${teamGap >= 0 ? "+" : ""}${teamGap} points vs target`}
+                {teamGap === null ? "current / needed" : `${teamGap >= 0 ? "+" : ""}${teamGap} points vs target`}
               </p>
             </div>
             <div>
               <div className="flex items-center gap-1">
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "rgb(var(--text-3))" }}>Skills Completed</p>
-                <InfoTip text="How many required skills are complete across the visible resources." />
+                <InfoTip text="How many needed skills are complete for the people shown." />
               </div>
               <p className="text-2xl font-bold leading-tight mt-1" style={{ color: "rgb(var(--text-1))" }}>
                 {totalCompetencies === 0 ? 'N/A' : `${meetsCount} / ${totalCompetencies}`}
@@ -223,7 +223,7 @@ export const TeamRoster: React.FC = () => {
             <div>
               <div className="flex items-center gap-1">
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "rgb(var(--text-3))" }}>Team Health</p>
-                <InfoTip text="Healthy means many resources are ready and the team score is strong. Needs Attention means the team is below target." />
+                <InfoTip text="Healthy means many people are ready. Needs Attention means the team is below target." />
               </div>
               <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold" style={{ backgroundColor: statusBg, color: statusColor }}>
                 {statusLabel}
@@ -237,7 +237,7 @@ export const TeamRoster: React.FC = () => {
       {/* Error */}
       {error && (
         <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: "rgb(var(--danger-soft))", color: "rgb(var(--danger))" }}>
-          Error loading team roster.
+          Could not load the team list.
         </div>
       )}
 
@@ -245,7 +245,7 @@ export const TeamRoster: React.FC = () => {
       {isLoading && (
         <div className="text-center py-12 text-sm" style={{ color: "rgb(var(--text-2))" }}>
           <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-3" style={{ borderColor: "rgb(var(--accent))", borderTopColor: "transparent" }} />
-          Loading team roster…
+          Loading team list...
         </div>
       )}
 
@@ -273,12 +273,12 @@ export const TeamRoster: React.FC = () => {
                 <HeaderCell label="Department" />
                 <HeaderCell label="Now" help="The person's current grade." />
                 <HeaderCell label="Goal" help="The target grade this person is being measured against." />
-                <HeaderCell label="Achieved" help="Current score from approved assessments." />
-                <HeaderCell label="Required" help="Target score expected for this person's goal grade." />
-                <HeaderCell label="Gap" help="Difference between achieved score and required score." />
-                <HeaderCell label="Skills Met" help="Required skills completed for the target grade." />
-                <HeaderCell label="Ready?" help="Yes means all required target-grade skills are met." />
-                <HeaderCell label="Skill Entries" help="Number of individual skill or technology entries recorded for this person." />
+                <HeaderCell label="Current" help="Current score from approved skill checks." />
+                <HeaderCell label="Needed" help="Score needed for this person's goal grade." />
+                <HeaderCell label="Gap" help="Difference between current score and needed score." />
+                <HeaderCell label="Skills Met" help="Needed skills completed for the goal grade." />
+                <HeaderCell label="Ready?" help="Yes means all needed skills are met." />
+                <HeaderCell label="Skill Rows" help="Number of skill or tool rows saved for this person." />
                 <HeaderCell label="Actions" />
               </tr>
             </thead>
@@ -373,7 +373,7 @@ export const TeamRoster: React.FC = () => {
                         onClick={() => setModal({ isOpen: true, employeeId: member.emp_code, employeeName: member.full_name })}
                         className="btn-secondary text-xs py-1.5 px-3 whitespace-nowrap"
                       >
-                        Assess Skills
+                        Check Skills
                       </button>
                     </td>
                   </tr>

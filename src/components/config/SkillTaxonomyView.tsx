@@ -118,7 +118,7 @@ const SkillTaxonomyView: React.FC = () => {
     { label: 'Skill Areas',  value: (domains ?? []).length,      color: '#6366f1' },
     { label: 'Categories',   value: (categories ?? []).length,   color: '#ec4899' },
     { label: 'Skills',       value: (competencies ?? []).length, color: '#06b6d4' },
-    { label: 'Technologies', value: (technologies ?? []).length, color: '#f97316' },
+    { label: 'Tools', value: (technologies ?? []).length, color: '#f97316' },
   ];
 
   // ── Loading skeleton ───────────────────────────────────────────────────────
@@ -362,7 +362,7 @@ const SkillTaxonomyView: React.FC = () => {
                                         </div>
                                       </button>
 
-                                      {/* ── Technology pills ────────────── */}
+                                      {/* ── Tool pills ──────────────────── */}
                                       {compOpen && (
                                         <div
                                           className="flex flex-wrap gap-2"

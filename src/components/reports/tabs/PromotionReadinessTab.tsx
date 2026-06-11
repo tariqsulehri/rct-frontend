@@ -35,7 +35,7 @@ export const PromotionReadinessTab: React.FC = () => {
   const readyCount = rows.filter(r => r.promotion_ready).length;
   const readinessRate = Math.round((readyCount / rows.length) * 100);
   const avgScore = Math.round((rows.reduce((sum, r) => sum + r.overall_score, 0) / rows.length) * 100);
-  const avgRequired = rows.some(r => r.avg_threshold > 0)
+  const avgNeeded = rows.some(r => r.avg_threshold > 0)
     ? Math.round((rows.filter(r => r.avg_threshold > 0).reduce((sum, r) => sum + r.avg_threshold, 0) / rows.filter(r => r.avg_threshold > 0).length) * 100)
     : 0;
 const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
@@ -70,7 +70,7 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
     ...bucket,
     employees: rows.filter(r => r.overall_score >= bucket.min && r.overall_score < bucket.max).length,
     share: Math.round((rows.filter(r => r.overall_score >= bucket.min && r.overall_score < bucket.max).length / rows.length) * 100),
-    containsTarget: avgRequired > 0 && avgRequired / 100 >= bucket.min && avgRequired / 100 < bucket.max,
+    containsTarget: avgNeeded > 0 && avgNeeded / 100 >= bucket.min && avgNeeded / 100 < bucket.max,
   }));
 
   const gradeSummary = Object.entries(
@@ -95,7 +95,7 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
       total: v.total,
       readinessRate: Math.round((v.ready / Math.max(1, v.total)) * 100),
       avgScore: Math.round((v.scoreSum / Math.max(1, v.total)) * 100),
-      avgRequired: v.thresholdCount > 0 ? Math.round((v.thresholdSum / v.thresholdCount) * 100) : avgRequired,
+      avgNeeded: v.thresholdCount > 0 ? Math.round((v.thresholdSum / v.thresholdCount) * 100) : avgNeeded,
     }))
     .sort((a, b) => a.grade.localeCompare(b.grade, undefined, { numeric: true }));
 
@@ -137,7 +137,7 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
             <InfoTip text="Shows who is ready for their target grade and who still needs work." />
           </div>
           <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
-            Simple view of current score, required target, and readiness across {rows.length} resources
+            Simple view of current score, needed score, and readiness for {rows.length} people.
           </p>
         </div>
         <ViewToggle view={view} onChange={setView} />
@@ -145,10 +145,10 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {[
-          { label: 'Resources', value: rows.length,         sub: `${rows.length} assessed`,          color: 'rgb(var(--text-1))', bg: 'rgb(var(--surface-2))' },
+          { label: 'People', value: rows.length,         sub: `${rows.length} checked`,          color: 'rgb(var(--text-1))', bg: 'rgb(var(--surface-2))' },
           { label: 'Ready',     value: readyCount,          sub: `${readinessRate}% of team`,        color: 'rgb(var(--success))', bg: 'rgb(var(--success-soft))' },
-          { label: 'Readiness', value: `${readinessRate}%`, sub: avgRequired > 0 ? `Target score: ${avgRequired}%` : 'No required score set', color: 'rgb(var(--success))', bg: 'rgb(var(--surface-2))' },
-          { label: 'Needs Attention', value: needsAttentionCount, sub: `${rows.length - readyCount} below required`, color: 'rgb(var(--danger))', bg: 'rgb(var(--danger-soft))' },
+          { label: 'Readiness', value: `${readinessRate}%`, sub: avgNeeded > 0 ? `Needed score: ${avgNeeded}%` : 'No needed score set', color: 'rgb(var(--success))', bg: 'rgb(var(--surface-2))' },
+          { label: 'Needs Attention', value: needsAttentionCount, sub: `${rows.length - readyCount} below target`, color: 'rgb(var(--danger))', bg: 'rgb(var(--danger-soft))' },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-xl p-3 border" style={{ borderColor: 'rgb(var(--border))', backgroundColor: kpi.bg }}>
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>{kpi.label}</p>
@@ -157,23 +157,23 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
           </div>
         ))}
 
-        {/* Avg Score — Achieved / Required */}
+        {/* Avg Score — Achieved / Needed */}
         <div className="rounded-xl p-3 border" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--accent-soft))' }}>
           <div className="flex items-center gap-1">
-            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Avg Achieved / Required</p>
-            <InfoTip text="Achieved is the current score. Required is the target score expected for the grade." />
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Avg Current / Needed</p>
+            <InfoTip text="Current is the score now. Needed is the score expected for the grade." />
           </div>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-2xl font-bold leading-none"
-              style={{ color: avgRequired > 0 ? (avgScore >= avgRequired ? 'rgb(var(--success))' : 'rgb(var(--danger))') : 'rgb(var(--accent))' }}>
+              style={{ color: avgNeeded > 0 ? (avgScore >= avgNeeded ? 'rgb(var(--success))' : 'rgb(var(--danger))') : 'rgb(var(--accent))' }}>
               {avgScore}%
             </span>
             <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-3))' }}>/</span>
             <span className="text-sm font-semibold" style={{ color: 'rgb(var(--text-2))' }}>
-              {avgRequired > 0 ? `${avgRequired}%` : 'N/A'}
+              {avgNeeded > 0 ? `${avgNeeded}%` : 'N/A'}
             </span>
           </div>
-          <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-2))' }}>Achieved / Required</p>
+          <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-2))' }}>Current / Needed</p>
         </div>
       </div>
 
@@ -185,20 +185,20 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
                 Highest Current Scores
               </p>
               <p className="text-xs mb-3" style={{ color: 'rgb(var(--text-3))' }}>
-                Highest scoring resources with readiness status and grade move context
+                People with the highest scores and their readiness status.
               </p>
               <ResponsiveContainer width="100%" height={Math.max(340, scoreBarData.length * 28)}>
                 <BarChart data={scoreBarData} layout="vertical" margin={{ left: 6, right: 40, top: 4, bottom: 4 }}>
                   <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: c.text }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10, fill: c.text }} axisLine={false} tickLine={false} />
                   <Tooltip content={<ScoreBarTooltip />} cursor={{ fill: c.grid, opacity: 0.25 }} />
-                  {avgRequired > 0 && (
+                  {avgNeeded > 0 && (
                     <ReferenceLine
-                      x={avgRequired}
+                      x={avgNeeded}
                       stroke={c.warning}
                       strokeDasharray="4 3"
                       strokeWidth={1.5}
-                      label={{ value: `Required: ${avgRequired}%`, position: 'insideTopRight', fill: c.warning, fontSize: 9, fontWeight: 600 }}
+                      label={{ value: `Needed: ${avgNeeded}%`, position: 'insideTopRight', fill: c.warning, fontSize: 9, fontWeight: 600 }}
                     />
                   )}
                   <Bar dataKey="score" radius={[0, 6, 6, 0]} maxBarSize={20}>
@@ -219,7 +219,7 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
                     <Pie data={donutData} cx="50%" cy="50%" innerRadius={58} outerRadius={86} paddingAngle={3} dataKey="value">
                       {donutData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                     </Pie>
-                  <Tooltip formatter={(value: number, name: string) => [`${value} resources`, name]} contentStyle={tooltipStyle(c)} />
+                  <Tooltip formatter={(value: number, name: string) => [`${value} people`, name]} contentStyle={tooltipStyle(c)} />
                     <Legend iconType="circle" iconSize={8} formatter={(value) => <span style={{ color: c.text, fontSize: 11 }}>{value}</span>} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -239,16 +239,16 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
                 </p>
                 <div className="space-y-2">
                   {notReadyPipeline.length === 0 ? (
-                    <p className="text-xs py-3 text-center" style={{ color: 'rgb(var(--text-3))' }}>All assessed resources are ready.</p>
+                    <p className="text-xs py-3 text-center" style={{ color: 'rgb(var(--text-3))' }}>All assessed people are ready.</p>
                   ) : notReadyPipeline.map((r) => {
                     const scorePct  = Math.round(r.overall_score * 100);
                     const barWidthPct = (r.overall_score / pipelineMax) * 100;
-                    const thrPos    = avgRequired > 0 ? Math.min((avgRequired / 100 / pipelineMax) * 100, 100) : 0;
+                    const thrPos    = avgNeeded > 0 ? Math.min((avgNeeded / 100 / pipelineMax) * 100, 100) : 0;
                     return (
                       <div key={r.employee_id}>
                         <div className="flex items-center justify-between text-xs mb-1">
                           <span className="truncate pr-2" style={{ color: 'rgb(var(--text-1))' }}>{shortName(r.full_name)}</span>
-                          <span style={{ color: scorePct >= avgRequired ? 'rgb(var(--success))' : c.text }}>{scorePct}%{avgRequired > 0 ? ` / ${avgRequired}%` : ''}</span>
+                          <span style={{ color: scorePct >= avgNeeded ? 'rgb(var(--success))' : c.text }}>{scorePct}%{avgNeeded > 0 ? ` / ${avgNeeded}%` : ''}</span>
                         </div>
                         <div className="h-2 rounded-full relative" style={{ backgroundColor: 'rgb(var(--surface-3))' }}>
                           <div
@@ -259,7 +259,7 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
                             <div
                               className="absolute top-0 bottom-0 w-0.5 rounded-full"
                               style={{ left: `${thrPos}%`, backgroundColor: c.warning, transform: 'translateX(-50%)' }}
-                              title={`Required: ${avgRequired}%`}
+                              title={`Needed: ${avgNeeded}%`}
                             />
                           )}
                         </div>
@@ -282,10 +282,10 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
                     Resource count by achieved overall-score band. Highlight marks the required-score band.
                   </p>
                 </div>
-                {avgRequired > 0 && (
+                {avgNeeded > 0 && (
                   <span className="text-[11px] font-semibold px-2 py-1 rounded-md shrink-0"
                     style={{ color: c.warning, backgroundColor: 'rgb(var(--warning-soft))' }}>
-                    Required {avgRequired}%
+                    Needed {avgNeeded}%
                   </span>
                 )}
               </div>
@@ -301,9 +301,9 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
                       return (
                         <div style={tooltipStyle(c)}>
                           <p className="font-semibold text-xs" style={{ color: d.color }}>{d.range}%</p>
-                          <p style={{ color: c.text }}>{d.employees} resources</p>
+                          <p style={{ color: c.text }}>{d.employees} people</p>
                           <p style={{ color: c.text }}>{d.share}% of team</p>
-                          {d.containsTarget && <p style={{ color: c.warning }}>Required target band</p>}
+                          {d.containsTarget && <p style={{ color: c.warning }}>Needed target band</p>}
                         </div>
                       );
                     }}
@@ -328,7 +328,7 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
                 Grade-wise Readiness
               </p>
               <p className="text-xs mb-3" style={{ color: 'rgb(var(--text-3))' }}>
-                Ready vs not-ready resources by current grade, with readiness-rate trend.
+                Ready vs not-ready people by current grade, with readiness-rate trend.
               </p>
               <ResponsiveContainer width="100%" height={220}>
                 <ComposedChart data={gradeSummary} margin={{ top: 12, right: 14, bottom: 0, left: -12 }} barCategoryGap="36%">
@@ -347,7 +347,7 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
                           <p style={{ color: c.warning }}>Not Ready: {d?.notReady ?? 0}</p>
                           <p style={{ color: c.text }}>Readiness: {d?.readinessRate ?? 0}%</p>
                           <p style={{ color: c.text }}>Avg Score: {d?.avgScore ?? 0}%</p>
-                          <p style={{ color: c.warning }}>Avg Required: {d?.avgRequired ?? 0}%</p>
+                          <p style={{ color: c.warning }}>Avg Needed: {d?.avgNeeded ?? 0}%</p>
                         </div>
                       );
                     }}
@@ -399,7 +399,7 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
 
             <div className="rounded-xl border p-4" style={{ borderColor: 'rgb(var(--border))' }}>
               <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'rgb(var(--text-2))' }}>
-                Achieved vs Required by Grade
+                Achieved vs Needed by Grade
               </p>
               <p className="text-xs mb-3" style={{ color: 'rgb(var(--text-3))' }}>
                 Average achieved score compared with the required threshold for each grade group.
@@ -413,23 +413,23 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       const d = gradeSummary.find(g => g.grade === label);
-                      const gap = (d?.avgScore ?? 0) - (d?.avgRequired ?? 0);
+                      const gap = (d?.avgScore ?? 0) - (d?.avgNeeded ?? 0);
                       return (
                         <div style={tooltipStyle(c)}>
                           <p className="font-semibold text-xs mb-1" style={{ color: c.accent }}>Grade {label}</p>
-                          <p style={{ color: c.text }}>Avg Achieved: {d?.avgScore ?? 0}%</p>
-                          <p style={{ color: c.warning }}>Avg Required: {d?.avgRequired ?? 0}%</p>
+                          <p style={{ color: c.text }}>Avg Current: {d?.avgScore ?? 0}%</p>
+                          <p style={{ color: c.warning }}>Avg Needed: {d?.avgNeeded ?? 0}%</p>
                           <p style={{ color: gap >= 0 ? c.success : c.danger }}>Gap: {gap >= 0 ? '+' : ''}{gap}%</p>
-                          <p style={{ color: c.text }}>Resources: {d?.total ?? 0}</p>
+                          <p style={{ color: c.text }}>People: {d?.total ?? 0}</p>
                         </div>
                       );
                     }}
                   />
                   <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: c.text, fontSize: 11 }}>{v}</span>} />
-                  <Bar dataKey="avgScore" name="Avg Achieved" fill={c.accent} radius={[4, 4, 0, 0]} maxBarSize={28}>
+                  <Bar dataKey="avgScore" name="Avg Current" fill={c.accent} radius={[4, 4, 0, 0]} maxBarSize={28}>
                     <LabelList dataKey="avgScore" position="top" formatter={(v: number) => `${v}%`} style={{ fontSize: 10, fill: c.text }} />
                   </Bar>
-                  <Line type="monotone" dataKey="avgRequired" name="Avg Required" stroke={c.warning} strokeWidth={2} dot={{ r: 3, fill: c.warning }} />
+                  <Line type="monotone" dataKey="avgNeeded" name="Avg Needed" stroke={c.warning} strokeWidth={2} dot={{ r: 3, fill: c.warning }} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -460,7 +460,7 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
                   style={{ color: 'rgb(var(--text-2))' }}
                   title={r.total_competencies === 0
                     ? 'No target-grade requirements are configured.'
-                    : `${r.meets_count} of ${r.total_competencies} required target-grade skills are met.`}
+                    : `${r.meets_count} of ${r.total_competencies} needed goal-grade skills are met.`}
                 >
                   {r.total_competencies === 0 ? 'N/A' : `${r.meets_count}/${r.total_competencies}`}
                 </td>
@@ -469,8 +469,8 @@ const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
                   <span
                     className="badge"
                     title={r.promotion_ready
-                      ? 'Ready because every required target-grade skill is met.'
-                      : `Not ready because ${Math.max(0, r.total_competencies - r.meets_count)} required target-grade skills are still below threshold.`}
+                      ? 'Ready because every needed target-grade skill is met.'
+                      : `Not ready because ${Math.max(0, r.total_competencies - r.meets_count)} needed goal-grade skills are still below threshold.`}
                     style={r.promotion_ready
                       ? { backgroundColor: 'rgb(var(--success-soft))', color: 'rgb(var(--success))' }
                       : { backgroundColor: 'rgb(var(--warning-soft))', color: 'rgb(var(--warning))' }}

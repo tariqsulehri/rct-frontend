@@ -8,7 +8,7 @@ import { isLeaderRole } from '@/types/rbac';
 import { Empty, InfoTip, Loading } from '../shared';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ── Competency Matrix (Scores) ────────────────────────────────────────────────
+// ── Skill Matrix (Scores) ────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Score cell colour helper
@@ -78,7 +78,7 @@ export const CompetencyScoresTab: React.FC = () => {
   });
 
   if (isLoading) return <Loading />;
-  if (isError || !data) return <Empty msg="Failed to load competency matrix." />;
+  if (isError || !data) return <Empty msg="Failed to load skill matrix." />;
 
   // Summary stats
   const avgScore = allEmployees.length > 0
@@ -93,7 +93,7 @@ export const CompetencyScoresTab: React.FC = () => {
       domain: comp.domain,
       is_critical: comp.is_critical,
       avg: assessed.length > 0 ? assessed.reduce((a, b) => a + b, 0) / assessed.length : 0,
-      coverage: Math.round((assessed.length / allEmployees.length) * 100),
+      checked: Math.round((assessed.length / allEmployees.length) * 100),
     };
   }).sort((a, b) => b.avg - a.avg);
 
@@ -101,7 +101,7 @@ export const CompetencyScoresTab: React.FC = () => {
   const worstComp = compAvgs[compAvgs.length - 1];
   const zeroComps = compAvgs.filter((c) => c.avg === 0).length;
 
-  // Domain-grouped competency averages (for cards + charts)
+  // Domain-grouped skill averages (for cards + charts)
   const domainGroups = domains.filter((d) => d !== 'All').map((domain, di) => {
     const comps = compAvgs.filter((c) => c.domain === domain);
     const domAvg = comps.length > 0 ? comps.reduce((s: number, c) => s + c.avg, 0) / comps.length : 0;
@@ -118,9 +118,9 @@ export const CompetencyScoresTab: React.FC = () => {
       ? Math.round((thresholds.reduce((sum, threshold) => sum + threshold, 0) / thresholds.length) * 100)
       : 0;
   };
-  const avgCompetencyThresholdPct = (competency: string) => {
+  const avgSkillThresholdPct = (skill: string) => {
     const thresholds = visibleGapRows
-      .map((e) => e.competency_gaps[competency]?.threshold ?? 0)
+      .map((e) => e.competency_gaps[skill]?.threshold ?? 0)
       .filter((threshold) => threshold > 0);
     return thresholds.length > 0
       ? Math.round((thresholds.reduce((sum, threshold) => sum + threshold, 0) / thresholds.length) * 100)
@@ -132,13 +132,13 @@ export const CompetencyScoresTab: React.FC = () => {
     return { domain: dg.domain, score, required, meets: required > 0 && score >= required, color: dg.color };
   });
 
-  // Chart data: bar chart of all competency team averages
+  // Chart data: bar chart of all skill team averages
   const barData = (domainFilter === 'All' ? compAvgs : compAvgs.filter((c) => c.domain === domainFilter))
     .map((comp) => ({
       name: comp.name.length > 16 ? comp.name.slice(0, 16) + '…' : comp.name,
       fullName: comp.name,
       avg: Math.round(comp.avg * 100),
-      coverage: comp.coverage,
+      checked: comp.checked,
       domain: comp.domain,
       is_critical: comp.is_critical,
       color: domainGroups.find((d) => d.domain === comp.domain)?.color ?? c.accent,
@@ -157,7 +157,7 @@ export const CompetencyScoresTab: React.FC = () => {
     selected: selectedEmpData
       ? Math.round((selectedEmpData.competency_scores[comp.name]?.score ?? 0) * 100)
       : undefined,
-    required: avgCompetencyThresholdPct(comp.name),
+    required: avgSkillThresholdPct(comp.name),
     color: domainGroups.find((d) => d.domain === comp.domain)?.color ?? c.accent,
   }));
 
@@ -221,7 +221,7 @@ export const CompetencyScoresTab: React.FC = () => {
               className="rounded-lg px-3 py-1.5 text-xs border"
               style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))', minWidth: 200 }}
             >
-              <option value="all">All Resources</option>
+              <option value="all">All People</option>
               {allEmployees.slice().sort((a, b) => a.full_name.localeCompare(b.full_name)).map((e) => (
                 <option key={e.emp_code} value={e.emp_code}>{e.full_name} ({e.emp_code})</option>
               ))}
@@ -244,7 +244,7 @@ export const CompetencyScoresTab: React.FC = () => {
               </button>
             )}
             <span className="text-xs ml-auto" style={{ color: 'rgb(var(--text-3))' }}>
-              <b style={{ color: 'rgb(var(--text-1))' }}>{visibleEmps.length}</b> of {allEmployees.length} resources
+              <b style={{ color: 'rgb(var(--text-1))' }}>{visibleEmps.length}</b> of {allEmployees.length} people
             </span>
           </div>
         )}
@@ -253,7 +253,7 @@ export const CompetencyScoresTab: React.FC = () => {
       {/* Summary cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {[
-          { label: 'Resources',   value: `${visibleEmps.length}`,                   sub: `of ${allEmployees.length} total`,                                                   color: 'rgb(var(--accent))' },
+          { label: 'People',   value: `${visibleEmps.length}`,                   sub: `of ${allEmployees.length} total`,                                                   color: 'rgb(var(--accent))' },
           { label: 'Team Score',  value: `${Math.round(avgScore * 100)}%`,           sub: `${visibleComps.length} skills`,                                                     color: avgScore >= 0.6 ? 'rgb(var(--success))' : avgScore >= 0.4 ? 'rgb(var(--warning))' : 'rgb(var(--danger))' },
           { label: 'Best',        value: bestComp?.name ?? '—',                      sub: `${Math.round((bestComp?.avg ?? 0) * 100)}% avg`,                                   color: 'rgb(var(--success))' },
           { label: 'Needs Focus', value: worstComp?.name ?? '—',                     sub: `${Math.round((worstComp?.avg ?? 0) * 100)}% avg · ${zeroComps} no data`,           color: 'rgb(var(--danger))' },
@@ -270,14 +270,14 @@ export const CompetencyScoresTab: React.FC = () => {
       {view === 'charts' && (
         <div className="space-y-5">
 
-          {/* Team average per competency — horizontal bar */}
+          {/* Team average per skill — horizontal bar */}
           <div className="card p-5">
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-bold mb-0.5" style={{ color: 'rgb(var(--text-1))' }}>Team Average by Skill</p>
-              <InfoTip text="Average current score for each skill across the selected resources." />
+              <InfoTip text="Average current score for each skill across the selected people." />
             </div>
             <p className="text-xs mb-4" style={{ color: 'rgb(var(--text-3))' }}>
-              Avg score across {allEmployees.length} resources · {domainFilter !== 'All' ? domainFilter : 'All skill areas'}
+              Avg score across {allEmployees.length} people · {domainFilter !== 'All' ? domainFilter : 'All skill areas'}
             </p>
             <ResponsiveContainer width="100%" height={Math.max(280, barData.length * 28)}>
               <BarChart data={barData} layout="vertical" margin={{ left: 8, right: 60, top: 4, bottom: 4 }}>
@@ -294,7 +294,7 @@ export const CompetencyScoresTab: React.FC = () => {
                         <p className="font-bold text-xs mb-1" style={{ color: d.color }}>{d.fullName}</p>
                         <p style={{ color: c.text }}>Skill Area: {d.domain}</p>
                         <p style={{ color: c.text }}>Team avg: <b style={{ color: d.color }}>{d.avg}%</b></p>
-                        <p style={{ color: c.text }}>Coverage: <b>{d.coverage}%</b> of resources</p>
+                        <p style={{ color: c.text }}>Checked: <b>{d.checked}%</b> of people</p>
                         {d.is_critical && <p style={{ color: 'rgb(var(--danger))' }}>Important skill</p>}
                       </div>
                     );
@@ -330,7 +330,7 @@ export const CompetencyScoresTab: React.FC = () => {
             {/* Domain-level radar — 12 spokes, clean overview */}
             <div className="card p-5">
               <div className="flex items-center gap-1.5">
-                <p className="text-sm font-bold mb-0.5" style={{ color: 'rgb(var(--text-1))' }}>Skill Area Coverage</p>
+                <p className="text-sm font-bold mb-0.5" style={{ color: 'rgb(var(--text-1))' }}>Skill Area Checked</p>
                 <InfoTip text="Team average score for each skill area." />
               </div>
               <p className="text-xs mb-3" style={{ color: 'rgb(var(--text-3))' }}>Team average score per skill area</p>
@@ -369,7 +369,7 @@ export const CompetencyScoresTab: React.FC = () => {
                           <p style={{ color: c.text }}>Score: <b>{d.score}%</b></p>
                           {d.required > 0 && (
                             <p style={{ color: d.meets ? 'rgb(var(--success))' : 'rgb(var(--danger))' }}>
-                              Required: {d.required}% ({d.meets ? 'Meets' : 'Below'})
+                              Needed: {d.required}% ({d.meets ? 'Meets' : 'Below'})
                             </p>
                           )}
                         </div>
@@ -427,7 +427,7 @@ export const CompetencyScoresTab: React.FC = () => {
             </div>
           </div>
 
-          {/* Row 3: Full Competency Radar */}
+          {/* Row 3: Full Skill Radar */}
           <div className="grid grid-cols-1 gap-5">
 
             {/* Team radar */}
@@ -465,7 +465,7 @@ export const CompetencyScoresTab: React.FC = () => {
                       const ux = dx / dist;
                       const uy = dy / dist;
 
-                      // Domain colour for this competency
+                      // Domain colour for this skill
                       const labelColor = radarData[index]?.color ?? '#d1d5db';
 
                       // 3-tier stagger keeps dense labels readable around the radar.
