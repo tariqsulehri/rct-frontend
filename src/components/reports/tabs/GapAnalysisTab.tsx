@@ -36,14 +36,6 @@ function gapCellBg(gap: number): React.CSSProperties {
   return { backgroundColor: 'rgb(var(--danger-soft))', color: 'rgb(var(--danger))' };
 }
 
-interface GapBarLabelProps {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  index?: number;
-}
-
 interface GapHeader {
   label: string;
   w: number;
@@ -277,7 +269,7 @@ export const GapAnalysisTab: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div style={{ width: 14, height: 0, borderTop: '2px dashed #f5c518' }} />
-                    <span style={{ fontSize: 10, color: '#f5c518' }}>Required</span>
+                    <span style={{ fontSize: 10, color: '#f5c518' }}>Needed score</span>
                   </div>
                 </div>
               </div>
@@ -330,30 +322,10 @@ export const GapAnalysisTab: React.FC = () => {
                         );
                       }}
                     />
-                    {/* Current bar with one clear needed-score label beside the dashed line. */}
+                    {/* Current score bar. The needed score is shown by the dashed yellow line. */}
                     <Bar dataKey="score" name="Achieved" fill={`url(#${gradId})`}
                       radius={[0, 3, 3, 0]} maxBarSize={20}
                       background={{ fill: 'rgba(255,255,255,0.04)', radius: 3 }}
-                      label={(props: GapBarLabelProps) => {
-                        const { x = 0, width = 0, y = 0, height = 0, index = 0 } = props;
-                        const d = data[index];
-                        if (!d) return <g />;
-                        const midY = y + height / 2;
-                        // Correct targetX: plot area starts at x (right edge of Y-axis).
-                        // plotWidth = width / (score/100). targetX = x + plotWidth * (target/100)
-                        //           = x + width * target / score
-                        const plotWidth  = d.score > 0 ? (width * 100 / d.score) : 400;
-                        const targetX    = x + plotWidth * d.target / 100;
-                        const targetLblX = targetX + 10;
-                        return (
-                          <g>
-                            {d.target > 0 && (
-                              <text x={targetLblX} y={midY} dominantBaseline="middle" textAnchor="start"
-                                fontSize={9} fontWeight={700} fill="#f5c518">{d.target}%</text>
-                            )}
-                          </g>
-                        );
-                      }}
                     />
                     {/* Target dashed line */}
                     <Line dataKey="target" name="Target" stroke="#f5c518" strokeWidth={1.5}
