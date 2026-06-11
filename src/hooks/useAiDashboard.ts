@@ -1,6 +1,6 @@
 import apiClient from '@/lib/api';
 import { useProtectedQueryEnabled } from '@/hooks/useProtectedQueryEnabled';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
 export type AiFocus = 'executive' | 'risk' | 'skills' | 'readiness';
 export type AiPriority = 'critical' | 'warning' | 'positive' | 'neutral';
@@ -72,6 +72,35 @@ export interface AiDashboardData {
   suggestedQuestions: string[];
 }
 
+export interface AiChatEvidence {
+  label: string;
+  value: string;
+  detail: string;
+  tone: 'danger' | 'warning' | 'success' | 'info' | 'neutral';
+}
+
+export interface AiChatAction {
+  title: string;
+  detail: string;
+  owner: string;
+  timeframe: string;
+  priority: AiPriority;
+}
+
+export interface AiChatResponse {
+  generatedAt: string;
+  model: string | null;
+  aiEnabled: boolean;
+  source: 'openai' | 'deterministic';
+  answer: string;
+  explanation: string;
+  evidence: AiChatEvidence[];
+  actions: AiChatAction[];
+  relatedPeople: AiRiskPerson[];
+  relatedSkills: AiSkillArea[];
+  suggestedQuestions: string[];
+}
+
 export const useAiDashboard = (focus: AiFocus) => {
   const enabled = useProtectedQueryEnabled(['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER']);
   return useQuery<AiDashboardData>({
@@ -84,5 +113,17 @@ export const useAiDashboard = (focus: AiFocus) => {
     },
     enabled,
     staleTime: 60_000,
+  });
+};
+
+export const useAiChat = () => {
+  return useMutation<AiChatResponse, unknown, { question: string; focus: AiFocus }>({
+    mutationFn: async ({ question, focus }) => {
+      const res = await apiClient.post<{ success: boolean; data: AiChatResponse }>('/ai/chat', {
+        question,
+        focus,
+      });
+      return res.data.data;
+    },
   });
 };

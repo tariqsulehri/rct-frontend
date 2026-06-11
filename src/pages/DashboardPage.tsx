@@ -20,7 +20,7 @@ import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
 import { ConfigSection } from '@/components/config/ConfigSection';
 import { ReportsSection } from '@/components/reports/ReportsSection';
 import { usePromotionReadiness, useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
-import { useAiDashboard, type AiFocus, type AiPriority } from '@/hooks/useAiDashboard';
+import { useAiChat, useAiDashboard, type AiChatResponse, type AiFocus, type AiPriority } from '@/hooks/useAiDashboard';
 import {
   useConfigAssessmentLevels,
   useConfigAssessmentProjects,
@@ -1722,6 +1722,7 @@ type AiChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   text: string;
+  response?: AiChatResponse;
 };
 
 const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavigate }) => {
@@ -1735,6 +1736,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
   const [blockerDomain, setBlockerDomain] = useState('all');
   const [blockerSeverity, setBlockerSeverity] = useState<'all' | 'critical' | 'warning' | 'watch'>('all');
   const { data: analysis, isLoading, isFetching, isError, refetch } = useAiDashboard(focus);
+  const aiChat = useAiChat();
   const generatedAt = analysis?.generatedAt
     ? new Date(analysis.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : 'not available';
@@ -1798,7 +1800,6 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
   }
 
   const topWeakArea = analysis.skillAreas[0];
-  const topBlocker = analysis.blockers[0];
   const topRiskPerson = analysis.riskPeople[0];
   const topRecommendation = analysis.recommendations[0];
   const dynamicSuggestions = [
@@ -1809,47 +1810,33 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
     topRecommendation ? `Explain: ${topRecommendation.title}` : 'What should leaders do this week?',
   ].filter(Boolean);
 
-  const answerAiQuestion = (question: string) => {
-    const q = question.toLowerCase();
-
-    if (q.includes('critical') || q.includes('gap') || q.includes('blocker')) {
-      if (!topBlocker) return 'No critical gaps are showing right now. Keep checking readiness and review new assessments when they are added.';
-      const nextBlockers = analysis.blockers.slice(0, 3).map((item) => `${item.employee}: ${item.competency} in ${item.domain} is short by ${item.gapPct} points`).join('\n');
-      return `Start with these gaps:\n${nextBlockers}\n\nBest next step: assign short coaching or practice work for these exact skills, then recheck the score after the next assessment.`;
-    }
-
-    if (q.includes('weak') || q.includes('skill area') || q.includes('domain')) {
-      if (!topWeakArea) return 'No weak skill area is available yet. Add or approve more skill checks so the dashboard has enough data.';
-      return `${topWeakArea.domain} is the weakest skill area at ${topWeakArea.averagePct}%. ${topWeakArea.recommendation}\n\nSimple action: create a small training plan for this area and review progress every week.`;
-    }
-
-    if (q.includes('ready') || q.includes('readiness') || q.includes('promotion')) {
-      return `${analysis.kpis.readyResources} of ${analysis.kpis.totalResources} people are ready. That is ${readinessPct}% readiness.\n\nTo improve this, focus on people with small gaps first, then handle the biggest critical gaps. This gives faster visible progress.`;
-    }
-
-    if (q.includes('person') || q.includes('people') || q.includes('help') || q.includes('risk')) {
-      if (!topRiskPerson) return 'No high-risk person is listed right now. Use the critical gaps list to watch new risks.';
-      return `${topRiskPerson.name} needs attention first. Current path: ${topRiskPerson.currentGrade} to ${topRiskPerson.targetGrade}. Gap: ${topRiskPerson.gapPct} points.\n\nSuggested action: ${topRiskPerson.action}`;
-    }
-
-    if (q.includes('recommend') || q.includes('action') || q.includes('this week') || q.includes('leader')) {
-      if (!topRecommendation) return 'No recommendation is available yet. Re-analyze after more assessment data is added.';
-      return `${topRecommendation.title}\n\nWhy it matters: ${topRecommendation.insight}\n\nAction: ${topRecommendation.action}\nOwner: ${topRecommendation.owner}\nTime: ${topRecommendation.timeframe}`;
-    }
-
-    return `${analysis.summary || analysis.executiveNarrative}\n\nKey numbers: average score is ${analysis.kpis.avgAchievedPct}%, needed score is ${analysis.kpis.avgRequiredPct || 'N/A'}%, and readiness is ${readinessPct}%. Ask about gaps, weak skill areas, people needing help, or next actions for a sharper answer.`;
-  };
-
-  const askAi = (question: string) => {
+  const askAi = async (question: string) => {
     const cleanQuestion = question.trim();
     if (!cleanQuestion) return;
 
+    const requestId = Date.now();
+    setChatInput('');
     setChatMessages((messages) => [
       ...messages,
-      { id: `user-${Date.now()}`, role: 'user', text: cleanQuestion },
-      { id: `assistant-${Date.now()}`, role: 'assistant', text: answerAiQuestion(cleanQuestion) },
+      { id: `user-${requestId}`, role: 'user', text: cleanQuestion },
     ]);
-    setChatInput('');
+
+    try {
+      const response = await aiChat.mutateAsync({ question: cleanQuestion, focus });
+      setChatMessages((messages) => [
+        ...messages,
+        { id: `assistant-${requestId}`, role: 'assistant', text: response.answer, response },
+      ]);
+    } catch {
+      setChatMessages((messages) => [
+        ...messages,
+        {
+          id: `assistant-${requestId}`,
+          role: 'assistant',
+          text: 'I could not get the AI answer right now. Please try again after checking the backend AI service.',
+        },
+      ]);
+    }
   };
 
   const visibleChatMessages = chatMessages.length > 0
@@ -1859,7 +1846,109 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
         role: 'assistant' as const,
         text: 'Ask me about readiness, critical gaps, weak skill areas, people needing help, or what leaders should do next.',
       }];
-  const renderAssistantAnswer = (text: string) => {
+  const latestChatResponse = [...chatMessages].reverse().find((message) => message.response)?.response;
+  const currentSuggestions = latestChatResponse?.suggestedQuestions?.length ? latestChatResponse.suggestedQuestions : dynamicSuggestions;
+  const toneStyle = (tone: 'danger' | 'warning' | 'success' | 'info' | 'neutral') => {
+    if (tone === 'danger') return { color: c.danger, bg: 'rgb(var(--danger-soft))' };
+    if (tone === 'warning') return { color: c.warning, bg: 'rgb(var(--warning-soft))' };
+    if (tone === 'success') return { color: c.success, bg: 'rgb(var(--success-soft))' };
+    if (tone === 'info') return { color: c.accent, bg: 'rgb(var(--accent-soft))' };
+    return { color: 'rgb(var(--text-2))', bg: 'rgb(var(--surface-2))' };
+  };
+  const renderAssistantAnswer = (text: string, response?: AiChatResponse) => {
+    if (response) {
+      return (
+        <div className="space-y-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: 'rgb(var(--text-3))' }}>Answer</p>
+            <p className="text-sm font-semibold leading-relaxed" style={{ color: 'rgb(var(--text-1))' }}>{response.answer}</p>
+          </div>
+
+          <div className="rounded-lg border px-3 py-2"
+            style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}>
+            <p className="text-[11px] font-bold uppercase tracking-wide mb-1">Why it matters</p>
+            <p className="text-xs leading-relaxed">{response.explanation}</p>
+          </div>
+
+          {response.evidence.length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: 'rgb(var(--text-3))' }}>Evidence</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {response.evidence.map((item, index) => {
+                  const style = toneStyle(item.tone);
+                  return (
+                    <div key={`${item.label}-${index}`} className="rounded-lg px-3 py-2" style={{ backgroundColor: style.bg }}>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{item.label}</p>
+                        <p className="text-xs font-bold shrink-0" style={{ color: style.color }}>{item.value}</p>
+                      </div>
+                      <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'rgb(var(--text-2))' }}>{item.detail}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {response.actions.length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: 'rgb(var(--text-3))' }}>Recommended Actions</p>
+              <div className="space-y-2">
+                {response.actions.map((item, index) => {
+                  const style = priorityStyles(item.priority, c);
+                  return (
+                    <div key={`${item.title}-${index}`} className="rounded-lg border px-3 py-2" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-bold" style={{ color: style.color }}>{item.title}</p>
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 capitalize" style={{ color: style.color, backgroundColor: style.bg }}>
+                          {item.priority}
+                        </span>
+                      </div>
+                      <p className="text-xs mt-1 leading-relaxed" style={{ color: 'rgb(var(--text-2))' }}>{item.detail}</p>
+                      <p className="text-[11px] mt-2 font-semibold" style={{ color: 'rgb(var(--text-3))' }}>
+                        {item.owner} · {item.timeframe}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {(response.relatedPeople.length > 0 || response.relatedSkills.length > 0) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {response.relatedPeople.length > 0 && (
+                <div className="rounded-lg border p-3" style={{ borderColor: 'rgb(var(--border))' }}>
+                  <p className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: 'rgb(var(--text-3))' }}>People to Review</p>
+                  <div className="space-y-1.5">
+                    {response.relatedPeople.slice(0, 3).map((person) => (
+                      <div key={`${person.empCode}-${person.name}`} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="truncate" style={{ color: 'rgb(var(--text-2))' }}>{person.name}</span>
+                        <span className="font-bold shrink-0" style={{ color: c.danger }}>{person.gapPct} pts</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {response.relatedSkills.length > 0 && (
+                <div className="rounded-lg border p-3" style={{ borderColor: 'rgb(var(--border))' }}>
+                  <p className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: 'rgb(var(--text-3))' }}>Skill Areas</p>
+                  <div className="space-y-1.5">
+                    {response.relatedSkills.slice(0, 3).map((skill) => (
+                      <div key={skill.domain} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="truncate" style={{ color: 'rgb(var(--text-2))' }}>{skill.domain}</span>
+                        <span className="font-bold shrink-0" style={{ color: skill.priority === 'critical' ? c.danger : skill.priority === 'warning' ? c.warning : c.accent }}>{skill.averagePct}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     const blocks = text.split('\n').filter((line) => line.trim().length > 0);
 
     return (
@@ -2000,7 +2089,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
                           boxShadow: message.role === 'assistant' ? '0 10px 30px rgba(0,0,0,0.08)' : 'none',
                         }}
                       >
-                        {message.role === 'assistant' ? renderAssistantAnswer(message.text) : message.text}
+                        {message.role === 'assistant' ? renderAssistantAnswer(message.text, message.response) : message.text}
                       </div>
                     </div>
                     {message.role === 'user' && (
@@ -2011,12 +2100,24 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
                     )}
                   </div>
                 ))}
+                {aiChat.isPending && (
+                  <div className="flex gap-3 justify-start">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent))' }}>
+                      <Bot size={17} />
+                    </div>
+                    <div className="rounded-xl px-4 py-3 text-sm border"
+                      style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))', color: 'rgb(var(--text-2))' }}>
+                      Building answer with evidence and actions...
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
                 <p className="text-xs font-semibold mb-2" style={{ color: 'rgb(var(--text-3))' }}>Suggested questions</p>
                 <div className="flex flex-wrap gap-2">
-                  {dynamicSuggestions.map((question) => (
+                  {currentSuggestions.map((question) => (
                     <button
                       key={question}
                       type="button"
@@ -2041,11 +2142,12 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
                   value={chatInput}
                   onChange={(event) => setChatInput(event.target.value)}
                   placeholder="Ask about gaps, readiness, weak areas, or next steps..."
+                  disabled={aiChat.isPending}
                   className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none"
                   style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))', color: 'rgb(var(--text-1))' }}
                 />
-                <button type="submit" className="btn-primary px-3 py-2 inline-flex items-center gap-2 text-sm">
-                  <Send size={14} /> Ask
+                <button type="submit" disabled={aiChat.isPending} className="btn-primary px-3 py-2 inline-flex items-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                  <Send size={14} /> {aiChat.isPending ? 'Asking...' : 'Ask'}
                 </button>
               </form>
             </div>
