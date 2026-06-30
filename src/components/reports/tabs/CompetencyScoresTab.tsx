@@ -79,6 +79,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
       ? !gapEmployee.promotion_ready && gapEmployee.total_with_threshold > 0 && gapEmployee.meets_count / gapEmployee.total_with_threshold >= 0.75
       : false;
     if (reportSearch && !`${e.full_name} ${e.emp_code}`.toLowerCase().includes(reportSearch)) return false;
+    if (reportFilters.department !== 'all' && e.department !== reportFilters.department) return false;
     if (reportFilters.currentGrade !== 'all' && e.current_grade !== reportFilters.currentGrade) return false;
     if (reportFilters.targetGrade !== 'all' && e.target_grade !== reportFilters.targetGrade) return false;
     if (reportFilters.readiness === 'ready' && !gapEmployee?.promotion_ready) return false;

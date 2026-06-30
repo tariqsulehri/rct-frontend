@@ -15,13 +15,6 @@ const DEMO = [
   { role: 'Engineer', user: '2754', password: TEST_PASSWORD, icon: '🔧', desc: 'Can update own skills' },
 ];
 
-const STATS = [
-  { value: '28',  label: 'Engineers' },
-  { value: '21',  label: 'Skills' },
-  { value: '9',   label: 'Grades' },
-  { value: '266', label: 'Tools' },
-];
-
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { setUser, setTokens } = useAuthStore();
@@ -113,18 +106,6 @@ export const LoginPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Stats grid */}
-          <div className="grid grid-cols-2 gap-3">
-            {STATS.map((s) => (
-              <div
-                key={s.label}
-                className="rounded-xl p-4 border border-white/10 bg-white/5 backdrop-blur-sm"
-              >
-                <p className="text-2xl font-bold text-white">{s.value}</p>
-                <p className="text-white/50 text-xs font-medium mt-0.5">{s.label}</p>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Bottom quote */}

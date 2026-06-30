@@ -3,10 +3,10 @@ import { Table2, PieChart as PieIcon, Info } from 'lucide-react';
 import { Stars as StarMeter } from '@/components/ui/Stars';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-export interface PromotionRow { employee_id: number; emp_code: string; full_name: string; current_grade: string; target_grade: string; overall_score: number; avg_threshold: number; meets_count: number; total_competencies: number; promotion_ready: boolean; star_rating: number; }
-export interface CompetencyRow { employee_id: number; full_name: string; emp_code: string; current_grade: string; target_grade: string; domain_scores: Record<string, number>; overall_score: number; }
+export interface PromotionRow { employee_id: number; emp_code: string; full_name: string; department: string; current_grade: string; target_grade: string; overall_score: number; avg_threshold: number; meets_count: number; total_competencies: number; promotion_ready: boolean; star_rating: number; }
+export interface CompetencyRow { employee_id: number; full_name: string; emp_code: string; department: string; current_grade: string; target_grade: string; domain_scores: Record<string, number>; overall_score: number; }
 export interface GapRow { competency_id: number; competency_name: string; domain_name: string; score: number; threshold: number; gap: number; meets_grade: boolean; is_critical: boolean; }
-export interface GapResult { employee: { id: number; emp_code: string; full_name: string; current_grade: string; target_grade: string; }; overall_score: number; promotion_ready: boolean; total_competencies: number; meets_count: number; gaps: GapRow[]; }
+export interface GapResult { employee: { id: number; emp_code: string; full_name: string; department: string; current_grade: string; target_grade: string; }; overall_score: number; promotion_ready: boolean; total_competencies: number; meets_count: number; gaps: GapRow[]; }
 
 export function Stars({ n }: { n: number }) {
   return <StarMeter count={n} emptyColor="rgb(var(--surface-3))" />;

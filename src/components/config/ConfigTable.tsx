@@ -68,7 +68,8 @@ export const TableShell: React.FC<{
   page: number;
   total: number;
   onPage: (p: number) => void;
-}> = ({ tabKey, title, onAdd, addLabel, headers, children, loading, error, q, onSearch, page, total, onPage }) => (
+  toolbarExtra?: React.ReactNode;
+}> = ({ tabKey, title, onAdd, addLabel, headers, children, loading, error, q, onSearch, page, total, onPage, toolbarExtra }) => (
   <div className="card p-0 overflow-hidden">
     <PanelHeader
       title={title}
@@ -86,18 +87,25 @@ export const TableShell: React.FC<{
       ) : undefined}
     />
 
-    <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgb(var(--border))' }}>
-      <Search size={14} style={{ color: 'rgb(var(--text-3))' }} />
-      <input
-        value={q}
-        onChange={e => onSearch(e.target.value)}
-        placeholder="Search..."
-        className="bg-transparent text-sm outline-none flex-1"
-        style={{ color: 'rgb(var(--text-1))' }}
-      />
-      {q && (
-        <button onClick={() => onSearch('')} className="text-xs px-1.5 py-0.5 rounded"
-          style={{ color: 'rgb(var(--text-3))' }}>x</button>
+    <div className="px-4 py-3 border-b flex flex-col gap-3 md:flex-row md:items-center" style={{ borderColor: 'rgb(var(--border))' }}>
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <Search size={14} style={{ color: 'rgb(var(--text-3))' }} />
+        <input
+          value={q}
+          onChange={e => onSearch(e.target.value)}
+          placeholder="Search..."
+          className="bg-transparent text-sm outline-none flex-1 min-w-0"
+          style={{ color: 'rgb(var(--text-1))' }}
+        />
+        {q && (
+          <button onClick={() => onSearch('')} className="text-xs px-1.5 py-0.5 rounded"
+            style={{ color: 'rgb(var(--text-3))' }}>x</button>
+        )}
+      </div>
+      {toolbarExtra && (
+        <div className="w-full md:w-64 shrink-0">
+          {toolbarExtra}
+        </div>
       )}
     </div>
 

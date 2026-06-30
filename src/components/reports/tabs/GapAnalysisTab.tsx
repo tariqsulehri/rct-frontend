@@ -113,6 +113,7 @@ export const GapAnalysisTab: React.FC<{ reportFilters?: ReportFilters }> = ({ re
     const reportSearch = reportFilters.search.trim().toLowerCase();
     const nearReady = !e.promotion_ready && e.total_with_threshold > 0 && e.meets_count / e.total_with_threshold >= 0.75;
     if (reportSearch && !`${e.full_name} ${e.emp_code}`.toLowerCase().includes(reportSearch)) return false;
+    if (reportFilters.department !== 'all' && e.department !== reportFilters.department) return false;
     if (reportFilters.currentGrade !== 'all' && e.current_grade !== reportFilters.currentGrade) return false;
     if (reportFilters.targetGrade !== 'all' && e.target_grade !== reportFilters.targetGrade) return false;
     if (reportFilters.readiness === 'ready' && !e.promotion_ready) return false;

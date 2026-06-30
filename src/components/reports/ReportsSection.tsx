@@ -122,19 +122,23 @@ export const ReportsSection: React.FC = () => {
   const { data: competencyData } = useCompetencyMatrix();
 
   const filterOptions = useMemo(() => {
+    const departments = new Set<string>();
     const currentGrades = new Set<string>();
     const targetGrades = new Set<string>();
     const skillAreas = new Set<string>();
 
     for (const row of readinessRows ?? []) {
+      if (row.department) departments.add(row.department);
       currentGrades.add(row.current_grade);
       targetGrades.add(row.target_grade);
     }
     for (const employee of gapData?.employees ?? []) {
+      if (employee.department) departments.add(employee.department);
       currentGrades.add(employee.current_grade);
       targetGrades.add(employee.target_grade);
     }
     for (const employee of competencyData?.employees ?? []) {
+      if (employee.department) departments.add(employee.department);
       currentGrades.add(employee.current_grade);
       targetGrades.add(employee.target_grade);
     }
@@ -142,6 +146,7 @@ export const ReportsSection: React.FC = () => {
     for (const competency of competencyData?.competencies ?? []) skillAreas.add(competency.domain);
 
     return {
+      departments: [...departments].sort(),
       currentGrades: [...currentGrades].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
       targetGrades: [...targetGrades].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
       skillAreas: [...skillAreas].sort(),
@@ -153,6 +158,7 @@ export const ReportsSection: React.FC = () => {
     return (readinessRows ?? []).filter((row) => {
       const nearReady = !row.promotion_ready && row.total_competencies > 0 && row.meets_count / row.total_competencies >= 0.75;
       const matchesSearch = !q || `${row.full_name} ${row.emp_code}`.toLowerCase().includes(q);
+      const matchesDepartment = reportFilters.department === 'all' || row.department === reportFilters.department;
       const matchesCurrent = reportFilters.currentGrade === 'all' || row.current_grade === reportFilters.currentGrade;
       const matchesTarget = reportFilters.targetGrade === 'all' || row.target_grade === reportFilters.targetGrade;
       const matchesReadiness =
@@ -160,7 +166,7 @@ export const ReportsSection: React.FC = () => {
         (reportFilters.readiness === 'ready' && row.promotion_ready) ||
         (reportFilters.readiness === 'near-ready' && nearReady) ||
         (reportFilters.readiness === 'not-ready' && !row.promotion_ready && !nearReady);
-      return matchesSearch && matchesCurrent && matchesTarget && matchesReadiness;
+      return matchesSearch && matchesDepartment && matchesCurrent && matchesTarget && matchesReadiness;
     });
   }, [readinessRows, reportFilters]);
 
@@ -171,6 +177,7 @@ export const ReportsSection: React.FC = () => {
       const readiness = readinessByCode.get(employee.emp_code);
       const nearReady = !employee.promotion_ready && employee.total_with_threshold > 0 && employee.meets_count / employee.total_with_threshold >= 0.75;
       const matchesSearch = !q || `${employee.full_name} ${employee.emp_code}`.toLowerCase().includes(q);
+      const matchesDepartment = reportFilters.department === 'all' || employee.department === reportFilters.department;
       const matchesCurrent = reportFilters.currentGrade === 'all' || employee.current_grade === reportFilters.currentGrade;
       const matchesTarget = reportFilters.targetGrade === 'all' || employee.target_grade === reportFilters.targetGrade;
       const matchesReadiness =
@@ -178,7 +185,7 @@ export const ReportsSection: React.FC = () => {
         (reportFilters.readiness === 'ready' && (readiness?.promotion_ready ?? employee.promotion_ready)) ||
         (reportFilters.readiness === 'near-ready' && nearReady) ||
         (reportFilters.readiness === 'not-ready' && !(readiness?.promotion_ready ?? employee.promotion_ready) && !nearReady);
-      return matchesSearch && matchesCurrent && matchesTarget && matchesReadiness;
+      return matchesSearch && matchesDepartment && matchesCurrent && matchesTarget && matchesReadiness;
     });
   }, [gapData, readinessRows, reportFilters]);
 
@@ -298,7 +305,7 @@ export const ReportsSection: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,1fr)_150px_150px_190px_150px] gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,1fr)_170px_150px_150px_190px_150px] gap-2">
           <input
             value={reportFilters.search}
             onChange={(event) => updateFilter('search', event.target.value)}
@@ -306,6 +313,15 @@ export const ReportsSection: React.FC = () => {
             className="rounded-lg border px-3 py-2 text-xs outline-none"
             style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))', color: 'rgb(var(--text-1))' }}
           />
+          <select
+            value={reportFilters.department}
+            onChange={(event) => updateFilter('department', event.target.value)}
+            className="rounded-lg border px-3 py-2 text-xs outline-none"
+            style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))', color: 'rgb(var(--text-1))' }}
+          >
+            <option value="all">All departments</option>
+            {filterOptions.departments.map((department) => <option key={department} value={department}>{department}</option>)}
+          </select>
           <select
             value={reportFilters.currentGrade}
             onChange={(event) => updateFilter('currentGrade', event.target.value)}
@@ -346,18 +362,64 @@ export const ReportsSection: React.FC = () => {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
           {[
-            { label: 'People Shown', value: reportDecision.people, detail: 'after filters', color: 'rgb(var(--accent))' },
-            { label: 'Ready', value: `${reportDecision.readyCount}`, detail: `${reportDecision.readinessRate}% ready`, color: 'rgb(var(--success))' },
-            { label: 'Near Ready', value: reportDecision.nearReadyCount, detail: 'fix small gaps first', color: 'rgb(var(--warning))' },
-            { label: 'Big Skill Gaps', value: reportDecision.criticalGapCount, detail: 'fix first', color: 'rgb(var(--danger))' },
-            { label: 'Weakest Area', value: reportDecision.weakestSkillArea?.domain ?? 'N/A', detail: reportDecision.weakestSkillArea ? `${reportDecision.weakestSkillArea.avg}% avg` : 'no data', color: 'rgb(var(--text-1))' },
+            {
+              label: 'People Shown',
+              value: reportDecision.people,
+              detail: 'after filters',
+              meaning: 'How many employees are included in the reports below.',
+              effect: 'All totals and averages are calculated from only these people.',
+              color: 'rgb(var(--accent))',
+            },
+            {
+              label: 'Ready',
+              value: `${reportDecision.readyCount}`,
+              detail: `${reportDecision.readinessRate}% ready`,
+              meaning: 'People who already meet the target-grade skill requirements.',
+              effect: 'A higher number means the team is closer to promotion readiness.',
+              color: 'rgb(var(--success))',
+            },
+            {
+              label: 'Near Ready',
+              value: reportDecision.nearReadyCount,
+              detail: 'small gaps remain',
+              meaning: 'People who are close but still missing a few requirements.',
+              effect: 'These are usually the quickest wins for coaching or training.',
+              color: 'rgb(var(--warning))',
+            },
+            {
+              label: 'Big Skill Gaps',
+              value: reportDecision.criticalGapCount,
+              detail: 'fix first',
+              meaning: 'Required skill checks that are at least 30 points below target.',
+              effect: 'These can block readiness and should be handled before small gaps.',
+              color: 'rgb(var(--danger))',
+            },
+            {
+              label: 'Weakest Area',
+              value: reportDecision.weakestSkillArea?.domain ?? 'N/A',
+              detail: reportDecision.weakestSkillArea ? `${reportDecision.weakestSkillArea.avg}% avg` : 'no data',
+              meaning: 'The skill area with the lowest average current score.',
+              effect: 'Use it to pick the training topic with the biggest team impact.',
+              color: 'rgb(var(--text-1))',
+            },
           ].map((item) => (
-            <div key={item.label} className="rounded-xl border p-3" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>{item.label}</p>
-              <p className="text-lg font-bold mt-1 truncate" style={{ color: item.color }}>{item.value}</p>
-              <p className="text-xs mt-1 truncate" style={{ color: 'rgb(var(--text-3))' }}>{item.detail}</p>
+            <div
+              key={item.label}
+              className="rounded-xl border p-3 min-h-[142px] flex flex-col"
+              style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}
+              title={`${item.label}: ${item.meaning} ${item.effect}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase" style={{ color: 'rgb(var(--text-3))', letterSpacing: 0 }}>{item.label}</p>
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0" style={{ color: item.color, backgroundColor: 'rgb(var(--surface))' }}>
+                  {item.detail}
+                </span>
+              </div>
+              <p className="text-2xl font-bold mt-2 break-words leading-tight" style={{ color: item.color }}>{item.value}</p>
+              <p className="text-xs mt-2 leading-snug" style={{ color: 'rgb(var(--text-2))' }}>{item.meaning}</p>
+              <p className="text-[11px] mt-auto pt-2 leading-snug" style={{ color: 'rgb(var(--text-3))' }}>{item.effect}</p>
             </div>
           ))}
         </div>

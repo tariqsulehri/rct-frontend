@@ -1150,6 +1150,7 @@ const GradesSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigGrade | null>(null);
+  const [departmentFilter, setDepartmentFilter] = useState('');
   const [form, setForm] = useState({ department_id: '', code: '', title: '', level: '', experience_years: '', performance_note: '' });
 
   const defaultDepartmentId = departments?.[0]?.id ? String(departments[0].id) : '';
@@ -1179,7 +1180,12 @@ const GradesSection: React.FC = () => {
     setModal(null);
   };
 
-  const ts = useTableState(grades, (g, q) =>
+  const filteredGrades = useMemo(
+    () => (grades ?? []).filter((grade) => !departmentFilter || String(grade.department_id) === departmentFilter),
+    [grades, departmentFilter],
+  );
+
+  const ts = useTableState(filteredGrades, (g, q) =>
     g.code.toLowerCase().includes(q) || g.title.toLowerCase().includes(q) || gradeDepartmentLabel(g).toLowerCase().includes(q),
     (a, b) => gradeDepartmentLabel(a).localeCompare(gradeDepartmentLabel(b)) || a.level - b.level || a.code.localeCompare(b.code));
 
@@ -1189,7 +1195,18 @@ const GradesSection: React.FC = () => {
       <TableShell tabKey="grades" title="Grades" onAdd={openCreate} addLabel="Add Grade"
         headers={['Department', 'Code', 'Title', 'Level', 'Exp. Years', 'Note']}
         loading={isLoading} error={isError}
-        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
+        toolbarExtra={(
+          <SearchableSelect
+            value={departmentFilter}
+            onChange={(value) => {
+              setDepartmentFilter(value);
+              ts.setPage(1);
+            }}
+            placeholder="All departments"
+            options={departmentOptions}
+          />
+        )}>
         {ts.paged.map((g, idx) => (
           <TR key={g.id} idx={idx}>
             <TD>{gradeDepartmentLabel(g)}</TD>

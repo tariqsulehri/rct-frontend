@@ -6,6 +6,7 @@ export interface PromotionRow {
   employee_id: number;
   emp_code: string;
   full_name: string;
+  department: string;
   current_grade: string;
   target_grade: string;
   overall_score: number;
@@ -20,6 +21,7 @@ export interface CompetencyRow {
   employee_id: number;
   full_name: string;
   emp_code: string;
+  department: string;
   current_grade: string;
   current_grade_title?: string;
   target_grade: string;
@@ -68,6 +70,7 @@ export interface CompetencyMatrixEmployee {
   employee_id: number;
   emp_code: string;
   full_name: string;
+  department: string;
   current_grade: string;
   target_grade: string;
   overall_score: number;
@@ -94,6 +97,7 @@ export const useCompetencyMatrix = () => {
 export interface GapMatrixCompetency { name: string; domain: string; is_critical: boolean; }
 export interface GapMatrixEmployee {
   employee_id: number; emp_code: string; full_name: string;
+  department: string;
   current_grade: string; target_grade: string;
   overall_score: number; overall_threshold: number; overall_gap: number;
   meets_count: number; total_with_threshold: number; promotion_ready: boolean;

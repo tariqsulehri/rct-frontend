@@ -17,13 +17,14 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
   const c = useChartColors();
 
   const personOptions = useMemo(() => {
-    const people = new Map<string, { emp_code: string; full_name: string; current_grade?: string; target_grade?: string }>();
+    const people = new Map<string, { emp_code: string; full_name: string; department?: string; current_grade?: string; target_grade?: string }>();
     const promoByCode = new Map((promoData ?? []).map((row) => [row.emp_code, row]));
     const compByCode = new Map((compData ?? []).map((row) => [row.emp_code, row]));
     for (const row of promoData ?? []) {
       people.set(row.emp_code, {
         emp_code: row.emp_code,
         full_name: row.full_name,
+        department: row.department,
         current_grade: row.current_grade,
         target_grade: row.target_grade,
       });
@@ -33,6 +34,7 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
         people.set(row.emp_code, {
           emp_code: row.emp_code,
           full_name: row.full_name,
+          department: row.department,
           current_grade: row.current_grade,
           target_grade: row.target_grade,
         });
@@ -51,6 +53,7 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
           promo.meets_count / promo.total_competencies >= 0.75
         );
         const matchesSearch = !q || `${person.full_name} ${person.emp_code}`.toLowerCase().includes(q);
+        const matchesDepartment = reportFilters.department === 'all' || person.department === reportFilters.department;
         const matchesCurrent = reportFilters.currentGrade === 'all' || person.current_grade === reportFilters.currentGrade;
         const matchesTarget = reportFilters.targetGrade === 'all' || person.target_grade === reportFilters.targetGrade;
         const matchesSkillArea = reportFilters.skillArea === 'all' || comp?.domain_scores?.[reportFilters.skillArea] !== undefined;
@@ -59,7 +62,7 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
           (reportFilters.readiness === 'ready' && isReady) ||
           (reportFilters.readiness === 'near-ready' && nearReady) ||
           (reportFilters.readiness === 'not-ready' && !isReady && !nearReady);
-        return matchesSearch && matchesCurrent && matchesTarget && matchesSkillArea && matchesReadiness;
+        return matchesSearch && matchesDepartment && matchesCurrent && matchesTarget && matchesSkillArea && matchesReadiness;
       })
       .sort((a, b) => a.full_name.localeCompare(b.full_name));
   }, [compData, promoData, reportFilters]);
@@ -136,6 +139,7 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
 
     const employeeName = esc(gapResult.employee.full_name);
     const empCode = esc(gapResult.employee.emp_code);
+    const department = esc(gapResult.employee.department);
     const gradeText = esc(`${gapResult.employee.current_grade} -> ${gapResult.employee.target_grade}`);
     const generatedOn = esc(new Date().toLocaleString());
     // Use same source as the preview: promoRow (domain-level avg) with gapResult as fallback
@@ -244,6 +248,7 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
             <div class="meta">
               <div class="item"><div class="label">Person</div><div class="value">${employeeName}</div></div>
               <div class="item"><div class="label">Person Code</div><div class="value">${empCode}</div></div>
+              <div class="item"><div class="label">Department</div><div class="value">${department}</div></div>
               <div class="item"><div class="label">Grade Path</div><div class="value">${gradeText}</div></div>
               <div class="item"><div class="label">Status</div><div class="value"><span class="badge" style="background:${promoRow?.promotion_ready ? '#dcfce7' : '#fef3c7'};color:${promoRow?.promotion_ready ? '#166534' : '#92400e'};">${promoRow?.promotion_ready ? 'Ready' : 'Not Ready'}</span></div></div>
             </div>
@@ -335,6 +340,7 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
             {personOptions.map(person => (
               <option key={person.emp_code} value={person.emp_code}>
                 {person.full_name} ({person.emp_code})
+                {person.department ? ` - ${person.department}` : ''}
                 {person.current_grade && person.target_grade ? ` - ${person.current_grade} -> ${person.target_grade}` : ''}
               </option>
             ))}
@@ -365,7 +371,7 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
             <div>
               <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{gapResult.employee.full_name}</p>
               <p className="text-xs" style={{ color: 'rgb(var(--text-3))' }}>
-                {gapResult.employee.emp_code} • {gapResult.employee.current_grade} {'->'} {gapResult.employee.target_grade}
+                {gapResult.employee.emp_code} • {gapResult.employee.department} • {gapResult.employee.current_grade} {'->'} {gapResult.employee.target_grade}
               </p>
             </div>
             <span className="badge" style={statusStyle}>{statusText}</span>
