@@ -64,6 +64,7 @@ type EmployeePayload = {
   department_id: number | null;
 };
 type GradePayload = {
+  department_id: number;
   code: string;
   title: string;
   level: number;
@@ -1027,7 +1028,9 @@ const EmployeesSection: React.FC = () => {
     (e.current_grade?.code ?? '').toLowerCase().includes(q),
     (a, b) => a.full_name.localeCompare(b.full_name));
 
-  const gradeOptions = (grades ?? []).map(g => ({ value: String(g.id), label: `${g.code} – ${g.title}` }));
+  const selectedDepartmentId = form.department_id ? Number(form.department_id) : null;
+  const departmentGrades = (grades ?? []).filter((grade) => selectedDepartmentId && grade.department_id === selectedDepartmentId);
+  const gradeOptions = departmentGrades.map(g => ({ value: String(g.id), label: `${g.code} – ${g.title}` }));
   const empOptions = (employees ?? []).map(e => ({ value: String(e.id), label: e.full_name, sub: e.emp_code }));
   const deptOptions = (departments ?? []).map(d => ({ value: String(d.id), label: d.name }));
 
@@ -1098,7 +1101,16 @@ const EmployeesSection: React.FC = () => {
               <div><label className={L}>Department</label>
                 <SearchableSelect value={form.department_id} onChange={v => {
                   const dept = departments?.find(d => String(d.id) === v);
-                  setForm({ ...form, department_id: v, department: dept?.name ?? form.department });
+                  const gradeBelongsToDepartment = (gradeId: string) => (
+                    !gradeId || (grades ?? []).some((grade) => String(grade.id) === gradeId && String(grade.department_id) === v)
+                  );
+                  setForm({
+                    ...form,
+                    department_id: v,
+                    department: dept?.name ?? form.department,
+                    current_grade_id: gradeBelongsToDepartment(form.current_grade_id) ? form.current_grade_id : '',
+                    target_grade_id: gradeBelongsToDepartment(form.target_grade_id) ? form.target_grade_id : '',
+                  });
                 }} placeholder="Select department…" options={deptOptions} />
               </div>
               <div><label className={L}>Email</label><input type="email" className={F} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
@@ -1106,11 +1118,11 @@ const EmployeesSection: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div><label className={L}>Current Grade</label>
                 <SearchableSelect value={form.current_grade_id} onChange={v => setForm({ ...form, current_grade_id: v })}
-                  placeholder="Select grade…" options={gradeOptions} />
+                  placeholder={form.department_id ? 'Select grade…' : 'Select department first'} options={gradeOptions} />
               </div>
               <div><label className={L}>Target Grade</label>
                 <SearchableSelect value={form.target_grade_id} onChange={v => setForm({ ...form, target_grade_id: v })}
-                  placeholder="Select grade…" options={gradeOptions} />
+                  placeholder={form.department_id ? 'Select grade…' : 'Select department first'} options={gradeOptions} />
               </div>
             </div>
             <div><label className={L}>Manager (optional)</label>
@@ -1130,6 +1142,7 @@ const EmployeesSection: React.FC = () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 const GradesSection: React.FC = () => {
   const { data: grades, isLoading, isError } = useConfigGrades();
+  const { data: departments } = useConfigDepartments();
   const createGrade = useCreateGrade();
   const updateGrade = useUpdateGrade();
   const deleteGrade = useDeleteGrade();
@@ -1137,31 +1150,42 @@ const GradesSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigGrade | null>(null);
-  const [form, setForm] = useState({ code: '', title: '', level: '', experience_years: '', performance_note: '' });
+  const [form, setForm] = useState({ department_id: '', code: '', title: '', level: '', experience_years: '', performance_note: '' });
 
-  const openCreate = () => { setForm({ code: '', title: '', level: '', experience_years: '', performance_note: '' }); setEditing(null); setModal('create'); };
-  const openEdit = (g: ConfigGrade) => { setForm({ code: g.code, title: g.title, level: String(g.level), experience_years: String(g.experience_years), performance_note: g.performance_note ?? '' }); setEditing(g); setModal('edit'); };
+  const defaultDepartmentId = departments?.[0]?.id ? String(departments[0].id) : '';
+  const departmentOptions = (departments ?? []).map((department) => ({ value: String(department.id), label: department.name }));
+
+  const openCreate = () => { setForm({ department_id: defaultDepartmentId, code: '', title: '', level: '', experience_years: '', performance_note: '' }); setEditing(null); setModal('create'); };
+  const openEdit = (g: ConfigGrade) => { setForm({ department_id: String(g.department_id), code: g.code, title: g.title, level: String(g.level), experience_years: String(g.experience_years), performance_note: g.performance_note ?? '' }); setEditing(g); setModal('edit'); };
 
   const handleSave = async () => {
-    const payload: GradePayload = { code: form.code, title: form.title, level: Number(form.level), experience_years: Number(form.experience_years), performance_note: form.performance_note || undefined };
+    const payload: GradePayload = {
+      department_id: Number(form.department_id),
+      code: form.code,
+      title: form.title,
+      level: Number(form.level),
+      experience_years: Number(form.experience_years),
+      performance_note: form.performance_note || undefined,
+    };
     if (modal === 'create') await createGrade.mutateAsync(payload);
     else if (editing) await updateGrade.mutateAsync({ id: editing.id, data: payload });
     setModal(null);
   };
 
   const ts = useTableState(grades, (g, q) =>
-    g.code.toLowerCase().includes(q) || g.title.toLowerCase().includes(q),
-    (a, b) => a.code.localeCompare(b.code));
+    g.code.toLowerCase().includes(q) || g.title.toLowerCase().includes(q) || (g.department?.name ?? '').toLowerCase().includes(q),
+    (a, b) => (a.department?.name ?? '').localeCompare(b.department?.name ?? '') || a.level - b.level || a.code.localeCompare(b.code));
 
   return (
     <>
       {confirmDialog}
       <TableShell tabKey="grades" title="Grades" onAdd={openCreate} addLabel="Add Grade"
-        headers={['Code', 'Title', 'Level', 'Exp. Years', 'Note']}
+        headers={['Department', 'Code', 'Title', 'Level', 'Exp. Years', 'Note']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
         {ts.paged.map((g, idx) => (
           <TR key={g.id} idx={idx}>
+            <TD>{g.department?.name ?? `#${g.department_id}`}</TD>
             <TD><span className="badge badge-accent font-bold">{g.code}</span></TD>
             <TD>{g.title}</TD>
             <TD>
@@ -1180,6 +1204,15 @@ const GradesSection: React.FC = () => {
       {modal && (
         <Modal onClose={() => setModal(null)} wide title={modal === 'create' ? 'Create Grade' : 'Edit Grade'}>
           <div className="space-y-4">
+            <div>
+              <label className={L}>Department</label>
+              <SearchableSelect
+                value={form.department_id}
+                onChange={value => setForm({ ...form, department_id: value })}
+                placeholder="Select department..."
+                options={departmentOptions}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div><label className={L}>Code</label><input className={F} value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} /></div>
               <div><label className={L}>Title</label><input className={F} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
@@ -1322,8 +1355,10 @@ const CompetencyThresholdMatrix: React.FC = () => {
   }, [thresholds]);
 
   const orderedGrades = useMemo(
-    () => [...(grades ?? [])].sort((a, b) => a.level - b.level),
-    [grades]
+    () => [...(grades ?? [])]
+      .filter((grade) => selectedDepartmentId ? grade.department_id === selectedDepartmentId : false)
+      .sort((a, b) => a.level - b.level || a.code.localeCompare(b.code)),
+    [grades, selectedDepartmentId]
   );
 
   const orderedCompetencies = useMemo(

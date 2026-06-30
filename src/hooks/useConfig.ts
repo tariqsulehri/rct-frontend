@@ -120,11 +120,13 @@ export interface ConfigEmployee {
 
 export interface ConfigGrade {
   id: number;
+  department_id: number;
   code: string;
   title: string;
   level: number;
   experience_years: number;
   performance_note: string | null;
+  department?: ConfigDepartment;
 }
 
 export interface ConfigSkillDomain {
@@ -770,6 +772,7 @@ export const useCreateGrade = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: {
+      department_id: number;
       code: string;
       title: string;
       level: number;
@@ -791,7 +794,7 @@ export const useUpdateGrade = () => {
       data,
     }: {
       id: number;
-      data: Partial<{ code: string; title: string; level: number; experience_years: number; performance_note: string }>;
+      data: Partial<{ department_id: number; code: string; title: string; level: number; experience_years: number; performance_note: string }>;
     }) => {
       const res = await apiClient.patch<{ success: boolean; data: ConfigGrade }>(`/config/grades/${id}`, data);
       return res.data.data;
