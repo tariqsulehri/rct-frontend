@@ -37,6 +37,7 @@ import {
 } from '@/hooks/useConfig';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { queryClient } from '@/lib/queryClient';
+import apiClient from '@/lib/api';
 import { isLeaderRole, type RoleCode } from '@/types/rbac';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
@@ -2913,11 +2914,36 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
 /* ── Main Dashboard ─────────────────────────────────────────────────────── */
 
 export const DashboardPage: React.FC = () => {
-  const { user, logout } = useAuthStore();
+  const { user, logout, setUser } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>(() => defaultDashboardTabForRole(user?.role));
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const visibleNav = NAV.filter(n => user?.role && n.roles.includes(user.role));
+
+  useEffect(() => {
+    let cancelled = false;
+
+    apiClient.get<{ user: User }>('/auth/me')
+      .then((response) => {
+        if (cancelled) return;
+        const freshUser = response.data.user;
+        const roleChanged = user?.role && user.role !== freshUser.role;
+        setUser(freshUser);
+        if (roleChanged) {
+          queryClient.invalidateQueries({ queryKey: ['reports'] });
+          queryClient.invalidateQueries({ queryKey: ['ai'] });
+          queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+          queryClient.invalidateQueries({ queryKey: ['assessments'] });
+        }
+      })
+      .catch(() => {
+        // Global API interceptor handles expired sessions.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setUser, user?.role]);
 
   useEffect(() => {
     const canSeeActiveTab = visibleNav.some((item) => item.id === activeTab);

@@ -7,6 +7,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { SearchableMultiSelect } from '@/components/ui/SearchableMultiSelect';
 import { PanelHeader } from '@/components/ui/PanelHeader';
 import { getApiErrorMessage } from '@/lib/apiError';
+import { useAuthStore } from '@/store/authStore';
 import { ActionBtns, TableShell, TD, TR } from './ConfigTable';
 import { HEADER_GRADIENTS, useTableState } from './ConfigTableState';
 import {
@@ -645,6 +646,8 @@ const UsersSection: React.FC = () => {
   const { data: users, isLoading, isError } = useConfigUsers();
   const { data: employees } = useConfigEmployees();
   const { data: roles } = useConfigRoles();
+  const currentUser = useAuthStore((state) => state.user);
+  const setCurrentUser = useAuthStore((state) => state.setUser);
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
@@ -682,7 +685,23 @@ const UsersSection: React.FC = () => {
           is_active: form.is_active,
         };
         if (form.password) data.password = form.password;
-        await updateUser.mutateAsync({ id: editing.id, data });
+        const updated = await updateUser.mutateAsync({ id: editing.id, data });
+        if (currentUser?.id === updated.id) {
+          const selectedEmployee = (employees ?? []).find((employee) => employee.id === updated.employee_id);
+          setCurrentUser({
+            ...currentUser,
+            username: updated.username,
+            role: updated.role,
+            employeeId: updated.employee_id,
+            empCode: updated.employee?.emp_code ?? currentUser.empCode,
+            employeeName: updated.employee?.full_name ?? currentUser.employeeName,
+            department: updated.employee?.department ?? currentUser.department,
+            currentGrade: selectedEmployee?.current_grade?.code ?? currentUser.currentGrade,
+            currentGradeTitle: selectedEmployee?.current_grade?.title ?? currentUser.currentGradeTitle,
+            targetGrade: selectedEmployee?.target_grade?.code ?? currentUser.targetGrade,
+            targetGradeTitle: selectedEmployee?.target_grade?.title ?? currentUser.targetGradeTitle,
+          });
+        }
       }
       setModal(null);
     } catch (err: unknown) {

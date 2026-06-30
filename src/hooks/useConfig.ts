@@ -640,7 +640,12 @@ export const useCreateUser = () => {
       const res = await apiClient.post<{ success: boolean; data: ConfigUser }>('/config/users', data);
       return res.data.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'users'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['ai'] });
+      queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+    },
   });
 };
 
@@ -657,7 +662,13 @@ export const useUpdateUser = () => {
       const res = await apiClient.patch<{ success: boolean; data: ConfigUser }>(`/config/users/${id}`, data);
       return res.data.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'users'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['ai'] });
+      queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+      queryClient.invalidateQueries({ queryKey: ['assessments'] });
+    },
   });
 };
 
@@ -667,7 +678,13 @@ export const useDeleteUser = () => {
     mutationFn: async (id: number) => {
       await apiClient.delete(`/config/users/${id}`);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'users'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['ai'] });
+      queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+      queryClient.invalidateQueries({ queryKey: ['assessments'] });
+    },
   });
 };
 
