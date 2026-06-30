@@ -4,9 +4,16 @@ import type { RoleCode } from '@/types/rbac';
 
 export interface User {
   id: number;
+  employeeId: number;
   empCode: string;     // Real employee code e.g. "1818" — use this for all employee identification
   username: string;
   role: RoleCode;
+  employeeName: string;
+  department: string;
+  currentGrade: string;
+  currentGradeTitle: string;
+  targetGrade: string;
+  targetGradeTitle: string;
 }
 
 interface AuthStore {

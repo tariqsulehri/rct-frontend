@@ -5,10 +5,14 @@ import apiClient from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
 import { getApiErrorMessage } from '@/lib/apiError';
 
+const TEST_PASSWORD = 'password123';
+
 const DEMO = [
-  { role: 'Admin',    user: 'admin',     icon: '⚡', desc: 'Can use all app areas' },
-  { role: 'Manager',  user: 'manager',   icon: '👥', desc: 'Can see team and reports' },
-  { role: 'Engineer', user: 'engineer1', icon: '🔧', desc: 'Can update own skills' },
+  { role: 'Admin',    user: '1363', password: TEST_PASSWORD, icon: '⚡', desc: 'Can use all app areas' },
+  { role: 'Top Management', user: '1139', password: TEST_PASSWORD, icon: '🏢', desc: 'Can see leadership reports' },
+  { role: 'Manager',  user: '2166', password: TEST_PASSWORD, icon: '👥', desc: 'Can see team and reports' },
+  { role: 'Line Manager', user: '1818', password: TEST_PASSWORD, icon: '🧭', desc: 'Can review assigned people' },
+  { role: 'Engineer', user: '2754', password: TEST_PASSWORD, icon: '🔧', desc: 'Can update own skills' },
 ];
 
 const STATS = [
@@ -27,7 +31,7 @@ export const LoginPage: React.FC = () => {
   // No useEffect redirect — PublicRoute wrapper handles auth→dashboard redirect
   // synchronously at render time, avoiding StrictMode double-fire issues.
 
-  const fill = (username: string) => setForm({ username, password: 'password123' });
+  const fill = (username: string, password: string) => setForm({ username, password });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,9 +44,16 @@ export const LoginPage: React.FC = () => {
       setTokens(data.accessToken);
       setUser({
         id: data.user.id,
+        employeeId: data.user.employeeId,
         empCode: data.user.empCode,
         username: data.user.username,
         role: data.user.role,
+        employeeName: data.user.employeeName,
+        department: data.user.department,
+        currentGrade: data.user.currentGrade,
+        currentGradeTitle: data.user.currentGradeTitle,
+        targetGrade: data.user.targetGrade,
+        targetGradeTitle: data.user.targetGradeTitle,
       });
       navigate('/dashboard', { replace: true });
     } catch (err: unknown) {
@@ -212,11 +223,11 @@ export const LoginPage: React.FC = () => {
 
           {/* Demo account cards */}
           <div className="space-y-2.5">
-            {DEMO.map(({ role, user, icon, desc }) => (
+            {DEMO.map(({ role, user, password, icon, desc }) => (
               <button
                 key={user}
                 type="button"
-                onClick={() => fill(user)}
+                onClick={() => fill(user, password)}
                 className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border text-left transition-all duration-150 hover:scale-[1.01] group"
                 style={{
                   backgroundColor: 'rgb(var(--surface))',
@@ -236,14 +247,14 @@ export const LoginPage: React.FC = () => {
                   <p className="text-xs truncate" style={{ color: 'rgb(var(--text-3))' }}>{desc}</p>
                 </div>
                 <div className="text-xs font-mono shrink-0" style={{ color: 'rgb(var(--text-3))' }}>
-                  {user}
+                  {user} / {password}
                 </div>
               </button>
             ))}
           </div>
 
           <p className="text-center text-xs mt-4" style={{ color: 'rgb(var(--text-3))' }}>
-            All demo accounts use password <code className="font-mono">password123</code>
+            Test accounts use employee-code usernames.
           </p>
         </div>
       </div>

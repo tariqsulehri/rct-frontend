@@ -4,10 +4,16 @@ import type { RoleCode } from '@/types/rbac';
 
 export interface User {
   id: number;
-  employeeId: string;
+  employeeId: number;
+  empCode: string;
   username: string;
-  email: string;
   role: RoleCode;
+  employeeName: string;
+  department: string;
+  currentGrade: string;
+  currentGradeTitle: string;
+  targetGrade: string;
+  targetGradeTitle: string;
 }
 
 export interface AuthTokens {

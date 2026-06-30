@@ -79,16 +79,45 @@ const defaultDashboardTabForRole = (role?: string | null): TabType => (
   role === 'ADMIN' ? 'admin' : 'overview'
 );
 
-const InfoTip: React.FC<{ text: string }> = ({ text }) => (
-  <button
-    type="button"
-    className="btn-ghost w-6 h-6 p-0 rounded-lg inline-flex items-center justify-center shrink-0"
-    title={text}
-    aria-label={text}
-  >
-    <Info size={13} />
-  </button>
-);
+const InfoTip: React.FC<{ text: string }> = ({ text }) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <span
+      className="relative inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        className="btn-ghost w-6 h-6 p-0 rounded-lg inline-flex items-center justify-center shrink-0"
+        title={text}
+        aria-label={text}
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((value) => !value);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+      >
+        <Info size={13} />
+      </button>
+      {open && (
+        <span
+          role="tooltip"
+          className="absolute right-0 bottom-full z-30 mb-2 w-64 max-w-[calc(100vw-2rem)] rounded-lg border px-3 py-2 text-xs leading-relaxed shadow-lg"
+          style={{
+            borderColor: 'rgb(var(--border))',
+            backgroundColor: 'rgb(var(--surface))',
+            color: 'rgb(var(--text-2))',
+          }}
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  );
+};
 
 /* ── Theme Switcher ─────────────────────────────────────────────────────── */
 
@@ -653,17 +682,65 @@ const AdminDashboardTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onN
     (assessmentStatuses?.length ?? 0) + (assessmentProjects?.length ?? 0);
 
   const statCards = [
-    { label: 'Active Users', value: String(activeUsers), detail: `${inactiveUsers} not active`, icon: Users, color: 'from-violet-500 to-purple-600' },
-    { label: 'Employees', value: String(employees?.length ?? 0), detail: `${unassignedEmployees} without a department`, icon: ClipboardCheck, color: 'from-blue-500 to-indigo-600' },
-    { label: 'Departments', value: String(departments?.length ?? 0), detail: 'team groups', icon: Settings2, color: 'from-emerald-500 to-teal-600' },
-    { label: 'Scoring Rules', value: String(scoringRows), detail: 'score settings', icon: Target, color: 'from-amber-500 to-orange-600' },
+    {
+      label: 'Active Users',
+      value: String(activeUsers),
+      detail: `${inactiveUsers} not active`,
+      help: 'People who can sign in right now. If someone is inactive, they may exist in employee records but cannot use the app until activated.',
+      icon: Users,
+      color: 'from-violet-500 to-purple-600',
+    },
+    {
+      label: 'Employees',
+      value: String(employees?.length ?? 0),
+      detail: `${unassignedEmployees} without a department`,
+      help: 'Employee records used for grade, department, manager, and assessment reporting. Missing departments can make team reports incomplete.',
+      icon: ClipboardCheck,
+      color: 'from-blue-500 to-indigo-600',
+    },
+    {
+      label: 'Departments',
+      value: String(departments?.length ?? 0),
+      detail: 'team groups',
+      help: 'Company teams or departments used to group people in dashboards, reports, and manager views.',
+      icon: Settings2,
+      color: 'from-emerald-500 to-teal-600',
+    },
+    {
+      label: 'Scoring Rules',
+      value: String(scoringRows),
+      detail: 'score settings',
+      help: 'Assessment types, levels, statuses, and projects that tell the system how to organize and interpret skill assessments.',
+      icon: Target,
+      color: 'from-amber-500 to-orange-600',
+    },
   ];
 
   const setupGroups = [
-    { label: 'People Setup', value: `${users?.length ?? 0} users / ${employees?.length ?? 0} employees`, ready: (users?.length ?? 0) > 0 && (employees?.length ?? 0) > 0 },
-    { label: 'Company Setup', value: `${departments?.length ?? 0} departments / ${grades?.length ?? 0} grades`, ready: (departments?.length ?? 0) > 0 && (grades?.length ?? 0) > 0 },
-    { label: 'Skill Setup', value: `${skillDomains?.length ?? 0} areas / ${competencies?.length ?? 0} skills / ${technologies?.length ?? 0} tools`, ready: (skillDomains?.length ?? 0) > 0 && (competencies?.length ?? 0) > 0 },
-    { label: 'Score Setup', value: `${scoringRows} rows set`, ready: scoringRows > 0 },
+    {
+      label: 'People Setup',
+      value: `${users?.length ?? 0} users / ${employees?.length ?? 0} employees`,
+      help: 'Ready means the app has both login users and employee profiles. Both are needed to identify a person and show their grade, role, and assessments.',
+      ready: (users?.length ?? 0) > 0 && (employees?.length ?? 0) > 0,
+    },
+    {
+      label: 'Company Setup',
+      value: `${departments?.length ?? 0} departments / ${grades?.length ?? 0} grades`,
+      help: 'Ready means departments and grade levels exist, so reports can show where people belong and what promotion level they are working toward.',
+      ready: (departments?.length ?? 0) > 0 && (grades?.length ?? 0) > 0,
+    },
+    {
+      label: 'Skill Setup',
+      value: `${skillDomains?.length ?? 0} areas / ${competencies?.length ?? 0} skills / ${technologies?.length ?? 0} tools`,
+      help: 'Ready means skill areas and competencies exist. These are the actual skills people are measured against.',
+      ready: (skillDomains?.length ?? 0) > 0 && (competencies?.length ?? 0) > 0,
+    },
+    {
+      label: 'Score Setup',
+      value: `${scoringRows} rows set`,
+      help: 'Ready means the scoring reference data exists, so assessments can be categorized, scored, and tracked consistently.',
+      ready: scoringRows > 0,
+    },
   ];
 
   return (
@@ -694,13 +771,16 @@ const AdminDashboardTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onN
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {statCards.map(({ label, value, detail, icon: Icon, color }) => (
+        {statCards.map(({ label, value, detail, help, icon: Icon, color }) => (
           <div key={label} className="card p-5 flex items-center gap-4">
             <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shrink-0`}>
               <Icon size={18} color="white" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>{label}</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>{label}</p>
+                <InfoTip text={help} />
+              </div>
               <p className="text-2xl font-bold leading-tight mt-0.5" style={{ color: 'rgb(var(--text-1))' }}>{value}</p>
               <p className="text-xs mt-1 truncate" style={{ color: 'rgb(var(--text-2))' }}>{detail}</p>
             </div>
@@ -721,7 +801,10 @@ const AdminDashboardTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onN
             {setupGroups.map((group) => (
               <div key={group.label} className="flex items-center justify-between gap-3 rounded-xl border p-3" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{group.label}</p>
+                  <div className="flex items-center gap-1">
+                    <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{group.label}</p>
+                    <InfoTip text={group.help} />
+                  </div>
                   <p className="text-xs mt-0.5 truncate" style={{ color: 'rgb(var(--text-2))' }}>{group.value}</p>
                 </div>
                 <span className={group.ready ? 'badge badge-success' : 'badge'}>{group.ready ? 'Ready' : 'Needs setup'}</span>
@@ -763,6 +846,7 @@ const OverviewTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => voi
   const { data: overviewCompData } = useCompetencyScores();
   const { data: overviewGapData } = useGapMatrix();
   const isLeader = isLeaderRole(user?.role);
+  const displayName = user?.employeeName || user?.username || 'there';
 
   const leaderRows = overviewPromoData ?? [];
   const assessedLeaderRows = leaderRows.filter(r => r.overall_score > 0);
@@ -912,7 +996,7 @@ const OverviewTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => voi
         />
         <div className="relative z-10 flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Welcome back, {user?.username}! 👋</h2>
+            <h2 className="text-2xl font-bold text-white mb-1">Welcome back, {displayName}! 👋</h2>
             <p className="text-white/70 text-sm">
               See current scores, required targets, and where attention is needed.
             </p>
@@ -1700,7 +1784,7 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               <BulkAssessmentTable
                 employeeId={user.empCode}
-                employeeName={user.username}
+                employeeName={user.employeeName || user.username}
                 readOnlyLevel
                 onSuccess={() => {}}
                 onClose={() => setShowSkillEditor(false)}
@@ -1722,6 +1806,29 @@ const priorityStyles = (priority: AiPriority, c: ReturnType<typeof useChartColor
   return { color: c.accent, bg: 'rgb(var(--accent-soft))', icon: Sparkles };
 };
 
+const PRIORITY_MEANING: Record<AiPriority, { label: string; meaning: string; action: string }> = {
+  critical: {
+    label: 'Critical',
+    meaning: 'Immediate risk. A person, skill, or team result is far below the needed target and can block readiness.',
+    action: 'Assign an owner, review the listed resources, and plan intervention this week.',
+  },
+  warning: {
+    label: 'Warning',
+    meaning: 'Needs attention. The gap is meaningful but usually recoverable with focused coaching or training.',
+    action: 'Schedule follow-up, track progress, and review again in the next cycle.',
+  },
+  positive: {
+    label: 'Positive',
+    meaning: 'Good signal. This area is healthy or improving and can be used as a benchmark for others.',
+    action: 'Recognize it, keep it stable, and reuse the learning pattern where helpful.',
+  },
+  neutral: {
+    label: 'Neutral',
+    meaning: 'Informational signal. There is no immediate risk, but the item still adds context for planning.',
+    action: 'Monitor it and use it to support balanced planning decisions.',
+  },
+};
+
 type AiChatMessage = {
   id: string;
   role: 'user' | 'assistant';
@@ -1739,6 +1846,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
   const [blockerSearch, setBlockerSearch] = useState('');
   const [blockerDomain, setBlockerDomain] = useState('all');
   const [blockerSeverity, setBlockerSeverity] = useState<'all' | 'critical' | 'warning' | 'watch'>('all');
+  const [selectedPriority, setSelectedPriority] = useState<AiPriority>('critical');
   const { data: analysis, isLoading, isFetching, isError, refetch } = useAiDashboard(focus);
   const aiChat = useAiChat();
   const generatedAt = analysis?.generatedAt
@@ -1746,21 +1854,40 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
     : 'not available';
   const maxSkill = Math.max(...(analysis?.skillAreas ?? []).map((d) => d.averagePct), 10);
   const readinessPct = analysis?.kpis.readinessRatePct ?? 0;
+  const blockerSeverityFor = (gapPct: number): 'critical' | 'warning' | 'watch' => (
+    gapPct >= 30 ? 'critical' : gapPct >= 12 ? 'warning' : 'watch'
+  );
   const priorityMix = (['critical', 'warning', 'positive', 'neutral'] as AiPriority[]).map((priority) => ({
     priority,
     count: analysis?.recommendations.filter((item) => item.priority === priority).length ?? 0,
     ...priorityStyles(priority, c),
   }));
   const maxPriority = Math.max(...priorityMix.map((item) => item.count), 1);
+  const selectedPriorityStyle = priorityStyles(selectedPriority, c);
+  const SelectedPriorityIcon = selectedPriorityStyle.icon;
+  const selectedPriorityMeta = PRIORITY_MEANING[selectedPriority];
+  const selectedRecommendations = analysis?.recommendations.filter((item) => item.priority === selectedPriority) ?? [];
+  const selectedSkillAreas = analysis?.skillAreas.filter((item) => item.priority === selectedPriority) ?? [];
+  const selectedBlockers = (analysis?.blockers ?? []).filter((blocker) => {
+    const severity = blockerSeverityFor(blocker.gapPct);
+    if (selectedPriority === 'critical') return severity === 'critical';
+    if (selectedPriority === 'warning') return severity === 'warning';
+    if (selectedPriority === 'neutral') return severity === 'watch';
+    return false;
+  });
+  const selectedPeople = (analysis?.riskPeople ?? []).filter((person) => {
+    if (selectedPriority === 'critical') return person.gapPct >= 30;
+    if (selectedPriority === 'warning') return person.gapPct >= 12 && person.gapPct < 30;
+    if (selectedPriority === 'neutral') return person.gapPct < 12;
+    return false;
+  });
+  const selectedStrengths = selectedPriority === 'positive' ? (analysis?.strengths ?? []) : [];
   const focusLabels: Record<AiFocus, string> = {
     executive: 'Executive command view',
     risk: 'Risk and intervention view',
     skills: 'Skill-area strategy view',
     readiness: 'Promotion readiness view',
   };
-  const blockerSeverityFor = (gapPct: number): 'critical' | 'warning' | 'watch' => (
-    gapPct >= 30 ? 'critical' : gapPct >= 12 ? 'warning' : 'watch'
-  );
   const blockerDomains = Array.from(new Set((analysis?.blockers ?? []).map((blocker) => blocker.domain))).sort();
   const filteredBlockers = (analysis?.blockers ?? []).filter((blocker) => {
     const q = blockerSearch.trim().toLowerCase();
@@ -2162,14 +2289,37 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
               <p className="text-sm font-bold mb-3" style={{ color: 'rgb(var(--text-1))' }}>Live Data Snapshot</p>
               <div className="space-y-3">
                 {[
-                  { label: 'Readiness', value: `${readinessPct}%`, color: c.success },
-                  { label: 'Ready People', value: `${analysis.kpis.readyResources}/${analysis.kpis.totalResources}`, color: c.success },
-                  { label: 'Critical Gaps', value: String(analysis.kpis.criticalBlockerCount), color: c.danger },
-                  { label: 'Average Score', value: `${analysis.kpis.avgAchievedPct}%`, color: c.accent },
+                  {
+                    label: 'Readiness',
+                    value: `${readinessPct}%`,
+                    color: c.success,
+                    help: 'The share of people who meet the required skill level for their next grade. Higher means fewer people need immediate support.',
+                  },
+                  {
+                    label: 'Ready People',
+                    value: `${analysis.kpis.readyResources}/${analysis.kpis.totalResources}`,
+                    color: c.success,
+                    help: 'How many people are currently ready compared with everyone included in this dashboard view.',
+                  },
+                  {
+                    label: 'Critical Gaps',
+                    value: String(analysis.kpis.criticalBlockerCount),
+                    color: c.danger,
+                    help: 'High-priority missing skills that may block promotion readiness or delivery capability. These should be reviewed first.',
+                  },
+                  {
+                    label: 'Average Score',
+                    value: `${analysis.kpis.avgAchievedPct}%`,
+                    color: c.accent,
+                    help: 'The average current skill achievement across the selected people and assessed skills.',
+                  },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center justify-between gap-3 rounded-lg border p-3"
                     style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
-                    <span className="text-xs font-semibold" style={{ color: 'rgb(var(--text-3))' }}>{item.label}</span>
+                    <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: 'rgb(var(--text-3))' }}>
+                      {item.label}
+                      <InfoTip text={item.help} />
+                    </span>
                     <span className="text-sm font-bold" style={{ color: item.color }}>{item.value}</span>
                   </div>
                 ))}
@@ -2222,15 +2372,24 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
             <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Dataset</p>
+              <div className="flex items-center gap-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Dataset</p>
+                <InfoTip text="The number of people included in this AI dashboard view. All readiness and gap numbers are calculated from this group." />
+              </div>
               <p className="text-sm font-bold mt-1" style={{ color: 'rgb(var(--text-1))' }}>{analysis.kpis.totalResources} people</p>
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Analysis</p>
+              <div className="flex items-center gap-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Analysis</p>
+                <InfoTip text="Shows whether the explanation came from AI or from the built-in fallback rules. The numbers still come from live dashboard data." />
+              </div>
               <p className="text-sm font-bold mt-1 truncate" style={{ color: 'rgb(var(--text-1))' }}>{analysis.aiEnabled ? 'AI ready' : 'Basic ready'}</p>
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Critical Gaps</p>
+              <div className="flex items-center gap-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Critical Gaps</p>
+                <InfoTip text="Skills where the gap is serious enough to need leadership attention, coaching, training, or reassignment planning." />
+              </div>
               <p className="text-sm font-bold mt-1" style={{ color: c.danger }}>{analysis.kpis.criticalBlockerCount} critical gaps</p>
             </div>
           </div>
@@ -2238,7 +2397,10 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
 
         <div className="card p-5 min-h-[260px]">
           <div className="mb-4">
-            <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Readiness Gauge</p>
+            <div className="flex items-center gap-1">
+              <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Readiness Gauge</p>
+              <InfoTip text="A quick health indicator for promotion readiness. Green progress means more people already meet their next-grade expectations." />
+            </div>
             <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Promotion readiness across the current dataset.</p>
           </div>
           <div className="flex items-center justify-center">
@@ -2270,13 +2432,40 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Avg Score', value: `${analysis.kpis.avgAchievedPct}%`, detail: 'Current score', color: c.accent },
-          { label: 'Avg Required', value: analysis.kpis.avgRequiredPct > 0 ? `${analysis.kpis.avgRequiredPct}%` : 'N/A', detail: 'Needed score', color: c.warning },
-          { label: 'Ready People', value: `${analysis.kpis.readyResources}/${analysis.kpis.totalResources}`, detail: `${readinessPct}% ready`, color: c.success },
-          { label: 'Critical Gaps', value: analysis.kpis.criticalBlockerCount, detail: 'Immediate actions', color: c.danger },
+          {
+            label: 'Avg Score',
+            value: `${analysis.kpis.avgAchievedPct}%`,
+            detail: 'Current score',
+            color: c.accent,
+            help: 'The average current assessment score. Think of it as where the team stands today.',
+          },
+          {
+            label: 'Avg Required',
+            value: analysis.kpis.avgRequiredPct > 0 ? `${analysis.kpis.avgRequiredPct}%` : 'N/A',
+            detail: 'Needed score',
+            color: c.warning,
+            help: 'The average target score people need for their next grade or expected capability level.',
+          },
+          {
+            label: 'Ready People',
+            value: `${analysis.kpis.readyResources}/${analysis.kpis.totalResources}`,
+            detail: `${readinessPct}% ready`,
+            color: c.success,
+            help: 'People who meet all measured expectations in this view. This number improves when skill gaps are closed.',
+          },
+          {
+            label: 'Critical Gaps',
+            value: analysis.kpis.criticalBlockerCount,
+            detail: 'Immediate actions',
+            color: c.danger,
+            help: 'The number of serious skill gaps that need action first. Click the critical gap list below to see who and what is affected.',
+          },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-xl border p-4 min-h-[112px]" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
-            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>{kpi.label}</p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>{kpi.label}</p>
+              <InfoTip text={kpi.help} />
+            </div>
             <p className="text-2xl font-bold mt-1 leading-none" style={{ color: kpi.color }}>{kpi.value}</p>
             <p className="text-xs mt-2" style={{ color: 'rgb(var(--text-2))' }}>{kpi.detail}</p>
             <div className="h-1.5 rounded-full overflow-hidden mt-3" style={{ backgroundColor: 'rgb(var(--surface-3))' }}>
@@ -2369,11 +2558,29 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
             );})}
           </div>
           <div className="mt-5 pt-4 border-t" style={{ borderColor: 'rgb(var(--border))' }}>
-            <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Priority Mix</p>
-            <p className="text-xs mt-1 mb-3" style={{ color: 'rgb(var(--text-3))' }}>How urgent the advice is.</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>Priority Mix</p>
+                <p className="text-xs mt-1 mb-3" style={{ color: 'rgb(var(--text-3))' }}>
+                  Select a priority to see meaning and related resources.
+                </p>
+              </div>
+              <Info size={14} className="mt-0.5 shrink-0" style={{ color: 'rgb(var(--text-3))' }} />
+            </div>
             <div className="space-y-3">
-              {priorityMix.map((item) => (
-                <div key={item.priority}>
+              {priorityMix.map((item) => {
+                const active = selectedPriority === item.priority;
+                return (
+                <button
+                  key={item.priority}
+                  type="button"
+                  onClick={() => setSelectedPriority(item.priority)}
+                  className="w-full text-left rounded-lg border p-2 transition-colors"
+                  style={{
+                    borderColor: active ? item.color : 'transparent',
+                    backgroundColor: active ? item.bg : 'transparent',
+                  }}
+                >
                   <div className="flex items-center justify-between text-[11px] mb-1">
                     <span className="font-semibold capitalize" style={{ color: item.color }}>{item.priority}</span>
                     <span style={{ color: 'rgb(var(--text-3))' }}>{item.count}</span>
@@ -2381,8 +2588,110 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
                   <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgb(var(--surface-3))' }}>
                     <div className="h-full rounded-full" style={{ width: `${Math.max(4, (item.count / maxPriority) * 100)}%`, backgroundColor: item.color }} />
                   </div>
+                </button>
+              );})}
+            </div>
+            <div
+              className="mt-4 rounded-xl border p-3"
+              style={{ borderColor: selectedPriorityStyle.color, backgroundColor: selectedPriorityStyle.bg }}
+            >
+              <div className="flex items-start gap-2">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgb(var(--surface))', color: selectedPriorityStyle.color }}>
+                  <SelectedPriorityIcon size={14} />
                 </div>
-              ))}
+                <div className="min-w-0">
+                  <p className="text-xs font-bold" style={{ color: 'rgb(var(--text-1))' }}>
+                    {selectedPriorityMeta.label}
+                  </p>
+                  <p className="text-xs mt-1 leading-relaxed" style={{ color: 'rgb(var(--text-2))' }}>
+                    {selectedPriorityMeta.meaning}
+                  </p>
+                  <p className="text-xs mt-2 font-semibold" style={{ color: selectedPriorityStyle.color }}>
+                    {selectedPriorityMeta.action}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {selectedRecommendations.slice(0, 3).map((item) => (
+                  <div
+                    key={`rec-${item.title}`}
+                    className="w-full rounded-lg border px-3 py-2 text-left"
+                    style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}
+                  >
+                    <p className="text-xs font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{item.title}</p>
+                    <p className="text-[11px] mt-1" style={{ color: 'rgb(var(--text-3))' }}>{item.owner} · {item.timeframe}</p>
+                  </div>
+                ))}
+
+                {selectedBlockers.slice(0, 3).map((item) => (
+                  <button
+                    key={`blocker-${item.employee}-${item.competency}`}
+                    type="button"
+                    onClick={() => {
+                      setShowBlockers(true);
+                      setBlockerSeverity(selectedPriority === 'critical' ? 'critical' : selectedPriority === 'warning' ? 'warning' : 'watch');
+                      setBlockerSearch(item.employee);
+                    }}
+                    className="w-full rounded-lg border px-3 py-2 text-left"
+                    style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}
+                  >
+                    <p className="text-xs font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{item.employee}</p>
+                    <p className="text-[11px] mt-1" style={{ color: 'rgb(var(--text-3))' }}>{item.competency} · {item.domain} · -{item.gapPct} pts</p>
+                  </button>
+                ))}
+
+                {selectedSkillAreas.slice(0, 3).map((item) => (
+                  <div
+                    key={`skill-${item.domain}`}
+                    className="rounded-lg border px-3 py-2"
+                    style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold truncate" style={{ color: 'rgb(var(--text-1))' }}>{item.domain}</p>
+                      <span className="text-[11px] font-bold" style={{ color: selectedPriorityStyle.color }}>{item.averagePct}%</span>
+                    </div>
+                    <p className="text-[11px] mt-1" style={{ color: 'rgb(var(--text-3))' }}>{item.recommendation}</p>
+                  </div>
+                ))}
+
+                {selectedPeople.slice(0, 3).map((item) => (
+                  <div
+                    key={`person-${item.empCode}`}
+                    className="rounded-lg border px-3 py-2"
+                    style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}
+                  >
+                    <p className="text-xs font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{item.name}</p>
+                    <p className="text-[11px] mt-1" style={{ color: 'rgb(var(--text-3))' }}>
+                      ID {item.empCode} · {item.currentGrade} to {item.targetGrade} · -{item.gapPct} pts
+                    </p>
+                  </div>
+                ))}
+
+                {selectedStrengths.slice(0, 3).map((item) => (
+                  <div
+                    key={`strength-${item.domain}`}
+                    className="rounded-lg border px-3 py-2"
+                    style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold truncate" style={{ color: 'rgb(var(--text-1))' }}>{item.domain}</p>
+                      <span className="text-[11px] font-bold" style={{ color: c.success }}>{item.averagePct}%</span>
+                    </div>
+                    <p className="text-[11px] mt-1" style={{ color: 'rgb(var(--text-3))' }}>{item.recommendation}</p>
+                  </div>
+                ))}
+
+                {selectedRecommendations.length === 0 &&
+                  selectedBlockers.length === 0 &&
+                  selectedSkillAreas.length === 0 &&
+                  selectedPeople.length === 0 &&
+                  selectedStrengths.length === 0 && (
+                    <p className="text-xs py-3 text-center" style={{ color: 'rgb(var(--text-3))' }}>
+                      No associated resources for this priority right now.
+                    </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -2621,7 +2930,18 @@ export const DashboardPage: React.FC = () => {
     window.location.href = '/login';
   };
 
-  const initials = user?.username?.slice(0, 2).toUpperCase() ?? '??';
+  const displayName = user?.employeeName || user?.username || 'Unknown User';
+  const roleLabel = user?.role ? user.role.replace(/_/g, ' ') : 'Unknown Role';
+  const gradeLine = user?.currentGrade && user?.targetGrade
+    ? `${user.currentGrade} -> ${user.targetGrade}`
+    : 'Grade not assigned';
+  const identityLine = [user?.empCode ? `ID ${user.empCode}` : null, roleLabel, gradeLine].filter(Boolean).join(' | ');
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || '??';
   const gradient = ROLE_GRADIENT[user?.role ?? ''] ?? 'from-gray-500 to-gray-600';
   const isTeamTab = activeTab === 'team' && isLeaderRole(user?.role);
 
@@ -2697,10 +3017,10 @@ export const DashboardPage: React.FC = () => {
 
             <div className="hidden sm:block ml-1">
               <p className="text-xs font-semibold leading-none" style={{ color: 'rgb(var(--text-1))' }}>
-                {user?.username}
+                {displayName}
               </p>
               <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-3))' }}>
-                {user?.role}
+                {identityLine}
               </p>
             </div>
 
@@ -2778,10 +3098,10 @@ export const DashboardPage: React.FC = () => {
               {sidebarOpen && (
                 <div className="min-w-0">
                   <p className="text-xs font-semibold truncate" style={{ color: 'rgb(var(--text-1))' }}>
-                    {user?.username}
+                    {displayName}
                   </p>
                   <p className="text-xs truncate" style={{ color: 'rgb(var(--text-3))' }}>
-                    {user?.role}
+                    {identityLine}
                   </p>
                 </div>
               )}
