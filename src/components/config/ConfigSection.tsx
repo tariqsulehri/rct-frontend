@@ -1154,9 +1154,16 @@ const GradesSection: React.FC = () => {
 
   const defaultDepartmentId = departments?.[0]?.id ? String(departments[0].id) : '';
   const departmentOptions = (departments ?? []).map((department) => ({ value: String(department.id), label: department.name }));
+  const fallbackDepartmentName = departments?.find((department) => department.name.toLowerCase() === 'devops')?.name
+    ?? departments?.[0]?.name
+    ?? 'Department not assigned';
+  const gradeDepartmentLabel = (grade: ConfigGrade) => (
+    grade.department?.name
+    ?? (grade.department_id ? `#${grade.department_id}` : fallbackDepartmentName)
+  );
 
   const openCreate = () => { setForm({ department_id: defaultDepartmentId, code: '', title: '', level: '', experience_years: '', performance_note: '' }); setEditing(null); setModal('create'); };
-  const openEdit = (g: ConfigGrade) => { setForm({ department_id: String(g.department_id), code: g.code, title: g.title, level: String(g.level), experience_years: String(g.experience_years), performance_note: g.performance_note ?? '' }); setEditing(g); setModal('edit'); };
+  const openEdit = (g: ConfigGrade) => { setForm({ department_id: g.department_id ? String(g.department_id) : defaultDepartmentId, code: g.code, title: g.title, level: String(g.level), experience_years: String(g.experience_years), performance_note: g.performance_note ?? '' }); setEditing(g); setModal('edit'); };
 
   const handleSave = async () => {
     const payload: GradePayload = {
@@ -1173,8 +1180,8 @@ const GradesSection: React.FC = () => {
   };
 
   const ts = useTableState(grades, (g, q) =>
-    g.code.toLowerCase().includes(q) || g.title.toLowerCase().includes(q) || (g.department?.name ?? '').toLowerCase().includes(q),
-    (a, b) => (a.department?.name ?? '').localeCompare(b.department?.name ?? '') || a.level - b.level || a.code.localeCompare(b.code));
+    g.code.toLowerCase().includes(q) || g.title.toLowerCase().includes(q) || gradeDepartmentLabel(g).toLowerCase().includes(q),
+    (a, b) => gradeDepartmentLabel(a).localeCompare(gradeDepartmentLabel(b)) || a.level - b.level || a.code.localeCompare(b.code));
 
   return (
     <>
@@ -1185,7 +1192,7 @@ const GradesSection: React.FC = () => {
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
         {ts.paged.map((g, idx) => (
           <TR key={g.id} idx={idx}>
-            <TD>{g.department?.name ?? `#${g.department_id}`}</TD>
+            <TD>{gradeDepartmentLabel(g)}</TD>
             <TD><span className="badge badge-accent font-bold">{g.code}</span></TD>
             <TD>{g.title}</TD>
             <TD>
