@@ -2061,6 +2061,7 @@ const AccessManagementSection: React.FC = () => {
   const [deptForm, setDeptForm] = useState({
     user_id: '',
     department_id: '',
+    department_ids: [] as string[],
     assignment_type: 'MANAGER',
     can_view: true,
     can_manage: true,
@@ -2208,7 +2209,7 @@ const AccessManagementSection: React.FC = () => {
   };
 
   const openDeptCreate = () => {
-    setDeptForm({ user_id: '', department_id: '', assignment_type: 'MANAGER', can_view: true, can_manage: true, starts_at: '', ends_at: '', is_active: true });
+    setDeptForm({ user_id: '', department_id: '', department_ids: [], assignment_type: 'MANAGER', can_view: true, can_manage: true, starts_at: '', ends_at: '', is_active: true });
     setEditingDept(null);
     setSaveError(null);
     setDeptModal('create');
@@ -2217,6 +2218,7 @@ const AccessManagementSection: React.FC = () => {
     setDeptForm({
       user_id: String(assignment.user_id),
       department_id: String(assignment.department_id),
+      department_ids: [String(assignment.department_id)],
       assignment_type: assignment.assignment_type,
       can_view: assignment.can_view,
       can_manage: assignment.can_manage,
@@ -2233,7 +2235,6 @@ const AccessManagementSection: React.FC = () => {
     try {
       const payload = {
         user_id: Number(deptForm.user_id),
-        department_id: Number(deptForm.department_id),
         assignment_type: deptForm.assignment_type,
         can_view: deptForm.can_view,
         can_manage: deptForm.can_manage,
@@ -2241,12 +2242,18 @@ const AccessManagementSection: React.FC = () => {
         ends_at: fromDateInput(deptForm.ends_at),
         is_active: deptForm.is_active,
       };
-      if (!payload.user_id || !payload.department_id) {
-        setSaveError('Please select both user and department.');
+      const departmentIds = deptModal === 'create'
+        ? deptForm.department_ids.map(Number).filter(Boolean)
+        : [Number(deptForm.department_id)].filter(Boolean);
+      if (!payload.user_id || departmentIds.length === 0) {
+        setSaveError(deptModal === 'create' ? 'Please select a user and at least one department.' : 'Please select both user and department.');
         return;
       }
-      if (deptModal === 'create') await createDeptAssignment.mutateAsync(payload);
-      else if (editingDept) await updateDeptAssignment.mutateAsync({ id: editingDept.id, data: payload });
+      if (deptModal === 'create') {
+        await Promise.all(departmentIds.map(department_id => createDeptAssignment.mutateAsync({ ...payload, department_id })));
+      } else if (editingDept) {
+        await updateDeptAssignment.mutateAsync({ id: editingDept.id, data: { ...payload, department_id: departmentIds[0] } });
+      }
       setDeptModal(null);
     } catch (err) {
       setSaveError(getApiErrorMessage(err, 'Failed to save department access.'));
@@ -2403,7 +2410,7 @@ const AccessManagementSection: React.FC = () => {
         )}
 
         {panel === 'departments' && (
-          <TableShell tabKey="department-access" title="Department Access" onAdd={openDeptCreate} addLabel="Assign Department"
+          <TableShell tabKey="department-access" title="Department Access" onAdd={openDeptCreate} addLabel="Assign Departments"
             headers={['User', 'Department', 'Type', 'Permissions', 'Dates', 'Status']}
             loading={deptLoading} error={deptError}
             q={deptState.q} onSearch={deptState.onSearch} page={deptState.page} total={deptState.filtered.length} onPage={deptState.setPage}>
@@ -2553,11 +2560,26 @@ const AccessManagementSection: React.FC = () => {
       )}
 
       {deptModal && (
-        <Modal onClose={() => setDeptModal(null)} wide title={deptModal === 'create' ? 'Assign Department Access' : 'Edit Department Access'}>
+        <Modal onClose={() => setDeptModal(null)} wide title={deptModal === 'create' ? 'Assign Departments' : 'Edit Department Access'}>
           <div className="space-y-4">
             {saveError && <div className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'rgba(248,113,113,0.35)', backgroundColor: 'rgba(127,29,29,0.20)', color: 'rgb(var(--danger))' }}>{saveError}</div>}
             <div><label className={L}>User</label><SearchableSelect value={deptForm.user_id} onChange={v => setDeptForm({ ...deptForm, user_id: v })} placeholder="Select user..." options={userOptions} /></div>
-            <div><label className={L}>Department</label><SearchableSelect value={deptForm.department_id} onChange={v => setDeptForm({ ...deptForm, department_id: v })} placeholder="Select department..." options={departmentOptions} /></div>
+            {deptModal === 'create' ? (
+              <div>
+                <label className={L}>Departments</label>
+                <SearchableMultiSelect
+                  values={deptForm.department_ids}
+                  onChange={values => setDeptForm({ ...deptForm, department_ids: values })}
+                  placeholder="Select departments..."
+                  options={departmentOptions}
+                  selectAllLabel="Select visible"
+                  itemLabel="department"
+                  searchPlaceholder="Search departments..."
+                />
+              </div>
+            ) : (
+              <div><label className={L}>Department</label><SearchableSelect value={deptForm.department_id} onChange={v => setDeptForm({ ...deptForm, department_id: v })} placeholder="Select department..." options={departmentOptions} /></div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div><label className={L}>Access Type</label><input className={F} value={deptForm.assignment_type} onChange={e => setDeptForm({ ...deptForm, assignment_type: e.target.value })} /></div>
               <div><label className={L}>Start Date</label><input type="date" className={F} value={deptForm.starts_at} onChange={e => setDeptForm({ ...deptForm, starts_at: e.target.value })} /></div>

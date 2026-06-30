@@ -9,6 +9,8 @@ interface SearchableMultiSelectProps {
   placeholder?: string;
   options: SearchableSelectOption[];
   selectAllLabel?: string;
+  itemLabel?: string;
+  searchPlaceholder?: string;
 }
 
 export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
@@ -17,6 +19,8 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
   placeholder = 'Select...',
   options,
   selectAllLabel = 'Select all',
+  itemLabel = 'employee',
+  searchPlaceholder,
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -86,7 +90,7 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
         style={{ color: selected.length ? 'rgb(var(--text-1))' : 'rgb(var(--text-3))' }}
       >
         <span className="truncate">
-          {selected.length ? `${selected.length} employee${selected.length === 1 ? '' : 's'} selected` : placeholder}
+          {selected.length ? `${selected.length} ${itemLabel}${selected.length === 1 ? '' : 's'} selected` : placeholder}
         </span>
         <span style={{ color: 'rgb(var(--text-3))' }}>▾</span>
       </button>
@@ -119,7 +123,7 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
                 autoFocus
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search employees..."
+                placeholder={searchPlaceholder ?? `Search ${itemLabel}s...`}
                 className="bg-transparent text-sm outline-none flex-1"
                 style={{ color: 'rgb(var(--text-1))' }}
               />
