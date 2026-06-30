@@ -21,6 +21,27 @@ export interface SkillAssessment {
   };
 }
 
+export interface PendingApproval {
+  id: number;
+  employee_id: string;
+  employee_name: string;
+  department: string;
+  current_grade: string;
+  target_grade: string;
+  technology_id: number;
+  technology_name: string;
+  competency_name: string;
+  domain_name: string;
+  type: 'Primary' | 'Secondary' | 'Tertiary';
+  projects: number;
+  level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
+  score: number;
+  status: 'pending';
+  submitted_by: string;
+  submitted_at: string;
+  updated_at: string;
+}
+
 export interface TechOption {
   id: number;
   name: string;
@@ -158,6 +179,7 @@ export const useApproveAssessment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
+      queryClient.invalidateQueries({ queryKey: ['assessments', 'pending-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
     },
   });
@@ -199,6 +221,20 @@ export const useEmployeeAssessments = (empCode: string) => {
       return response.data.data;
     },
     enabled: enabled && !!empCode,
+  });
+};
+
+export const usePendingApprovals = () => {
+  const enabled = useProtectedQueryEnabled(['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER']);
+  return useQuery({
+    queryKey: ['assessments', 'pending-approvals'],
+    queryFn: async () => {
+      const response = await apiClient.get<{ success: boolean; data: PendingApproval[] }>(
+        '/assessments/pending-approvals',
+      );
+      return response.data.data;
+    },
+    enabled,
   });
 };
 

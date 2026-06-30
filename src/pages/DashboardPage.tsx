@@ -17,6 +17,7 @@ import { useAuthStore, type User } from '@/store/authStore';
 import { useThemeStore, Theme } from '@/store/themeStore';
 import { TeamRoster } from '@/components/TeamRoster';
 import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
+import { PendingApprovalsPanel } from '@/components/PendingApprovalsPanel';
 import { ConfigSection } from '@/components/config/ConfigSection';
 import { ReportsSection } from '@/components/reports/ReportsSection';
 import { usePromotionReadiness, useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
@@ -1111,6 +1112,7 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
       : 'You';
     return (
       <div className="space-y-4 animate-slide-up">
+        {isPrivileged && <PendingApprovalsPanel />}
         {isPrivileged && rows.length > 0 && (
           <div className="card p-4 flex items-center gap-3">
             <span className="text-sm font-medium shrink-0" style={{ color: 'rgb(var(--text-2))' }}>Viewing:</span>
@@ -1157,6 +1159,8 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
 
   return (
     <div className="space-y-4 animate-slide-up">
+      {isPrivileged && <PendingApprovalsPanel />}
+
       {/* Header */}
       <div className="card p-5 flex items-center justify-between flex-wrap gap-3">
         <div className="flex-1 min-w-0">
