@@ -47,6 +47,7 @@ export const LoginPage: React.FC = () => {
         currentGradeTitle: data.user.currentGradeTitle,
         targetGrade: data.user.targetGrade,
         targetGradeTitle: data.user.targetGradeTitle,
+        permissions: data.user.permissions ?? [],
       });
       navigate('/dashboard', { replace: true });
     } catch (err: unknown) {

@@ -18,7 +18,7 @@ export const apiClient: AxiosInstance = axios.create({
 
 let refreshRequest: Promise<string> | null = null;
 
-async function refreshAccessToken(): Promise<string> {
+export async function refreshAccessToken(): Promise<string> {
   if (!refreshRequest) {
     refreshRequest = axios
       .post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })

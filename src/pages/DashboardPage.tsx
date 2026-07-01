@@ -38,7 +38,7 @@ import {
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { queryClient } from '@/lib/queryClient';
 import apiClient from '@/lib/api';
-import { isLeaderRole, type RoleCode } from '@/types/rbac';
+import { hasPermission, isLeaderRole, type PermissionCode, type RoleCode } from '@/types/rbac';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
@@ -46,13 +46,13 @@ type TabType = 'admin' | 'overview' | 'team' | 'assessments' | 'ai' | 'reports' 
 
 const LEADERS: RoleCode[] = ['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER'];
 
-const NAV: Array<{ id: TabType; label: string; icon: React.ElementType; roles: RoleCode[] }> = [
+const NAV: Array<{ id: TabType; label: string; icon: React.ElementType; roles: RoleCode[]; permission?: PermissionCode }> = [
   { id: 'admin',       label: 'Admin Dashboard', icon: LayoutDashboard, roles: ['ADMIN'] },
   { id: 'overview',    label: 'Overview',     icon: LayoutDashboard, roles: ['TOP_MANAGEMENT','MANAGER','LINE_MANAGER','ENGINEER'] },
   { id: 'team',        label: 'Team Roster',  icon: Users,           roles: LEADERS },
   { id: 'assessments', label: 'Assessments',  icon: ClipboardCheck,  roles: ['ADMIN','TOP_MANAGEMENT','MANAGER','LINE_MANAGER','ENGINEER'] },
   { id: 'ai',          label: 'AI Dashboard',  icon: Bot,             roles: LEADERS },
-  { id: 'reports',     label: 'Reports',      icon: BarChart2,       roles: LEADERS },
+  { id: 'reports',     label: 'Reports',      icon: BarChart2,       roles: LEADERS, permission: 'reports.view' },
   { id: 'config',      label: 'Setup',        icon: Settings2,       roles: ['ADMIN'] },
 ];
 
@@ -847,6 +847,7 @@ const OverviewTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => voi
   const { data: overviewCompData } = useCompetencyScores();
   const { data: overviewGapData } = useGapMatrix();
   const isLeader = isLeaderRole(user?.role);
+  const canViewReports = hasPermission(user?.permissions, 'reports.view');
   const displayName = user?.employeeName || user?.username || 'there';
 
   const leaderRows = overviewPromoData ?? [];
@@ -884,13 +885,18 @@ const OverviewTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => voi
         { label: 'Status',         value: myGapRow?.promotion_ready ? 'Ready' : 'In Progress', icon: Activity, color: 'from-violet-500 to-purple-600', help: 'Ready means all target-grade skills are met.' },
       ];
 
-  const features = [
+  const featureItems: Array<{ id: TabType; icon: string; title: string; desc: string; roles: RoleCode[]; permission?: PermissionCode }> = [
     { id: 'team' as TabType,        icon: '👥', title: 'Team Roster',   desc: 'View people, grades, scores, and gaps.', roles: LEADERS },
     { id: 'ai' as TabType,          icon: '🤖', title: 'AI Dashboard',   desc: 'Find people and skills that need attention.', roles: LEADERS },
-    { id: 'reports' as TabType,     icon: '📊', title: 'Reports',       desc: 'Answer who is ready, what is missing, and what to improve.', roles: LEADERS },
+    { id: 'reports' as TabType,     icon: '📊', title: 'Reports',       desc: 'Answer who is ready, what is missing, and what to improve.', roles: LEADERS, permission: 'reports.view' },
     { id: 'assessments' as TabType, icon: '📝', title: 'Assessments',   desc: 'Review skill progress against the target grade.',   roles: ['ADMIN','TOP_MANAGEMENT','MANAGER','LINE_MANAGER','ENGINEER'] },
     { id: 'config' as TabType,      icon: '⚙️', title: 'Setup',         desc: 'Manage people, grades, skill groups, skills, and technologies.',       roles: ['ADMIN'] },
-  ].filter(f => f.roles.includes(user?.role || ''));
+  ];
+  const features = featureItems.filter(f =>
+    !!user?.role &&
+    f.roles.includes(user.role) &&
+    (!f.permission || hasPermission(user.permissions, f.permission)),
+  );
 
   const summaryItems = isLeader
     ? [
@@ -971,7 +977,7 @@ const OverviewTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => voi
               People → Skills → Targets → Gaps → Action
             </p>
           </div>
-          {isLeader && (
+          {isLeader && canViewReports && (
             <button onClick={() => onNavigate('reports')} className="btn-secondary text-xs">
               Open Reports <ChevronRight size={13} />
             </button>
@@ -1066,6 +1072,7 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
   const { data: gapData }             = useGapMatrix();
   const c = useChartColors();
   const isPrivileged = isLeaderRole(user?.role);
+  const canViewReports = hasPermission(user?.permissions, 'reports.view');
   const [showSkillEditor, setShowSkillEditor] = React.useState(false);
   const [competencySearch, setCompetencySearch] = React.useState('');
   const [competencyDomainFilter, setCompetencyDomainFilter] = React.useState('all');
@@ -1311,7 +1318,7 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
               {avgThreshold > 0 ? 'Achieved / Required' : 'Achieved Score'}
             </p>
           </div>
-          {isPrivileged && (
+          {isPrivileged && canViewReports && (
             <button onClick={() => onNavigate('reports')} className="btn-secondary text-xs">
               Full Reports →
             </button>
@@ -1837,7 +1844,7 @@ type AiChatMessage = {
   response?: AiChatResponse;
 };
 
-const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavigate }) => {
+const AIInsightsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => void }> = ({ user, onNavigate }) => {
   const c = useChartColors();
   const [focus, setFocus] = useState<AiFocus>('executive');
   const [aiView, setAiView] = useState<'overview' | 'ask'>('overview');
@@ -1848,6 +1855,7 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
   const [blockerDomain, setBlockerDomain] = useState('all');
   const [blockerSeverity, setBlockerSeverity] = useState<'all' | 'critical' | 'warning' | 'watch'>('all');
   const [selectedPriority, setSelectedPriority] = useState<AiPriority>('critical');
+  const canViewReports = hasPermission(user?.permissions, 'reports.view');
   const { data: analysis, isLoading, isFetching, isError, refetch } = useAiDashboard(focus);
   const aiChat = useAiChat();
   const generatedAt = analysis?.generatedAt
@@ -2506,9 +2514,11 @@ const AIInsightsTab: React.FC<{ onNavigate: (t: TabType) => void }> = ({ onNavig
               <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>AI Recommendations</p>
               <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Most important notes from current data.</p>
             </div>
-            <button type="button" onClick={() => onNavigate('reports')} className="btn-ghost text-xs px-3 py-2">
-              Open Reports
-            </button>
+            {canViewReports && (
+              <button type="button" onClick={() => onNavigate('reports')} className="btn-ghost text-xs px-3 py-2">
+                Open Reports
+              </button>
+            )}
           </div>
           <div className="space-y-3">
             {analysis.recommendations.map((item) => {
@@ -2918,7 +2928,12 @@ export const DashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(() => defaultDashboardTabForRole(user?.role));
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const visibleNav = NAV.filter(n => user?.role && n.roles.includes(user.role));
+  const canViewReports = hasPermission(user?.permissions, 'reports.view');
+  const visibleNav = NAV.filter(n =>
+    user?.role &&
+    n.roles.includes(user.role) &&
+    (!n.permission || hasPermission(user.permissions, n.permission)),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -2928,7 +2943,7 @@ export const DashboardPage: React.FC = () => {
         if (cancelled) return;
         const freshUser = response.data.user;
         const roleChanged = user?.role && user.role !== freshUser.role;
-        setUser(freshUser);
+        setUser({ ...freshUser, permissions: freshUser.permissions ?? [] });
         if (roleChanged) {
           queryClient.invalidateQueries({ queryKey: ['reports'] });
           queryClient.invalidateQueries({ queryKey: ['ai'] });
@@ -2948,7 +2963,7 @@ export const DashboardPage: React.FC = () => {
   useEffect(() => {
     const canSeeActiveTab = visibleNav.some((item) => item.id === activeTab);
     if (!canSeeActiveTab) setActiveTab(defaultDashboardTabForRole(user?.role));
-  }, [activeTab, user?.role, visibleNav]);
+  }, [activeTab, user?.permissions, user?.role, visibleNav]);
 
   const handleLogout = () => {
     logout();
@@ -3156,10 +3171,10 @@ export const DashboardPage: React.FC = () => {
             {activeTab === 'assessments' && <AssessmentsTab user={user} onNavigate={setActiveTab} />}
 
             {activeTab === 'ai' && isLeaderRole(user?.role) && (
-              <AIInsightsTab onNavigate={setActiveTab} />
+              <AIInsightsTab user={user} onNavigate={setActiveTab} />
             )}
 
-            {activeTab === 'reports' && isLeaderRole(user?.role) && (
+            {activeTab === 'reports' && canViewReports && (
               <div className="animate-slide-up">
                 <ReportsSection />
               </div>

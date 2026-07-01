@@ -7,6 +7,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { SearchableMultiSelect } from '@/components/ui/SearchableMultiSelect';
 import { PanelHeader } from '@/components/ui/PanelHeader';
 import { getApiErrorMessage } from '@/lib/apiError';
+import apiClient from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { ActionBtns, TableShell, TD, TR } from './ConfigTable';
 import { HEADER_GRADIENTS, useTableState } from './ConfigTableState';
@@ -16,9 +17,9 @@ import {
   useConfigAssessmentStatuses, useUpdateAssessmentStatus,
   useConfigAssessmentProjects, useUpdateAssessmentProject,
   useConfigRoles, useUpdateRole,
-  useConfigPermissions, useUpdateRolePermissions,
+  useConfigPermissions,
   useDepartmentAssignments, useCreateDepartmentAssignment, useUpdateDepartmentAssignment, useDeleteDepartmentAssignment,
-  useLineManagerAssignments, useCreateLineManagerAssignment, useUpdateLineManagerAssignment, useDeleteLineManagerAssignment,
+  useLineManagerAssignments, useUpdateLineManagerAssignment, useDeleteLineManagerAssignment, useSyncLineManagerAssignments,
   useAccessAuditLogs,
   useConfigDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment,
   useConfigUsers, useCreateUser, useUpdateUser, useDeleteUser,
@@ -2074,6 +2075,7 @@ const CategoriesSection: React.FC = () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 type AccessPanel = 'roles' | 'departments' | 'line-managers' | 'audit';
 type AssignmentStatusFilter = 'active' | 'inactive' | 'all';
+type ResourceStatusFilter = 'assignable' | 'assigned' | 'all';
 
 const formatUserLabel = (user?: ConfigUser | null) => {
   if (!user) return 'Unknown user';
@@ -2102,15 +2104,16 @@ const AccessManagementSection: React.FC = () => {
   const { data: deptAssignments, isLoading: deptLoading, isError: deptError } = useDepartmentAssignments();
   const { data: lineAssignments, isLoading: lineLoading, isError: lineError } = useLineManagerAssignments();
   const { data: auditLogs, isLoading: auditLoading, isError: auditError } = useAccessAuditLogs();
+  const currentUser = useAuthStore((state) => state.user);
+  const setCurrentUser = useAuthStore((state) => state.setUser);
 
   const updateRole = useUpdateRole();
-  const updateRolePermissions = useUpdateRolePermissions();
   const createDeptAssignment = useCreateDepartmentAssignment();
   const updateDeptAssignment = useUpdateDepartmentAssignment();
   const deleteDeptAssignment = useDeleteDepartmentAssignment();
-  const createLineAssignment = useCreateLineManagerAssignment();
   const updateLineAssignment = useUpdateLineManagerAssignment();
   const deleteLineAssignment = useDeleteLineManagerAssignment();
+  const syncLineAssignments = useSyncLineManagerAssignments();
 
   const [roleModal, setRoleModal] = useState<ConfigRole | null>(null);
   const [roleForm, setRoleForm] = useState({ name: '', description: '', is_active: true, sort_order: 0 });
@@ -2129,8 +2132,10 @@ const AccessManagementSection: React.FC = () => {
     is_active: true,
   });
   const [lineModal, setLineModal] = useState<'edit' | null>(null);
-  const [lineBulkModal, setLineBulkModal] = useState(false);
   const [lineStatusFilter, setLineStatusFilter] = useState<AssignmentStatusFilter>('active');
+  const [resourceStatusFilter, setResourceStatusFilter] = useState<ResourceStatusFilter>('assignable');
+  const [resourceDepartmentFilter, setResourceDepartmentFilter] = useState('');
+  const [resourceGradeFilter, setResourceGradeFilter] = useState('');
   const [editingLine, setEditingLine] = useState<ConfigLineManagerAssignment | null>(null);
   const [lineForm, setLineForm] = useState({
     manager_user_id: '',
@@ -2154,7 +2159,7 @@ const AccessManagementSection: React.FC = () => {
     is_primary: false,
     is_active: true,
   });
-  const [selectedEmployeeSearch, setSelectedEmployeeSearch] = useState('');
+  const [lineEmployeeSearch, setLineEmployeeSearch] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const userOptions = (users ?? []).map(user => ({
@@ -2162,43 +2167,20 @@ const AccessManagementSection: React.FC = () => {
     label: formatUserLabel(user),
     sub: user.role,
   }));
+  const selectedLineManagerUserIds = new Set([lineForm.manager_user_id, lineBulkForm.manager_user_id].filter(Boolean));
+  const lineManagerOptions = (users ?? [])
+    .filter(user => user.is_active || selectedLineManagerUserIds.has(String(user.id)))
+    .map(user => ({
+      value: String(user.id),
+      label: formatUserLabel(user),
+      sub: user.role,
+    }));
   const departmentOptions = (departments ?? []).map(dept => ({
     value: String(dept.id),
     label: dept.name,
     sub: dept.description ?? undefined,
   }));
   const selectedBulkManagerEmployeeId = (users ?? []).find(user => String(user.id) === lineBulkForm.manager_user_id)?.employee_id;
-  const selectedEditManagerEmployeeId = (users ?? []).find(user => String(user.id) === lineForm.manager_user_id)?.employee_id;
-  const lineBulkEmployeeOptions = (employees ?? [])
-    .filter(employee => {
-      if (employee.id === selectedBulkManagerEmployeeId) return false;
-      const activeAssignment = (lineAssignments ?? []).find(assignment =>
-        assignment.employee_id === employee.id &&
-        assignment.is_active &&
-        assignment.relationship_type === lineBulkForm.relationship_type,
-      );
-      return !activeAssignment || String(activeAssignment.manager_user_id) === lineBulkForm.manager_user_id;
-    })
-    .map(employee => ({
-      value: String(employee.id),
-      label: formatEmployeeLabel(employee),
-      sub: employee.current_grade?.code && employee.target_grade?.code ? `${employee.current_grade.code} -> ${employee.target_grade.code}` : undefined,
-    }));
-  const lineEditEmployeeOptions = (employees ?? [])
-    .filter(employee => {
-      if (employee.id === selectedEditManagerEmployeeId) return false;
-      const activeAssignment = (lineAssignments ?? []).find(assignment =>
-        assignment.employee_id === employee.id &&
-        assignment.is_active &&
-        assignment.relationship_type === lineForm.relationship_type,
-      );
-      return !activeAssignment || activeAssignment.id === editingLine?.id;
-    })
-    .map(employee => ({
-      value: String(employee.id),
-      label: formatEmployeeLabel(employee),
-      sub: employee.current_grade?.code && employee.target_grade?.code ? `${employee.current_grade.code} -> ${employee.target_grade.code}` : undefined,
-    }));
   const activeLineAssignments = (lineAssignments ?? []).filter(assignment => assignment.is_active);
   const activeAssignedEmployeeIds = new Set(activeLineAssignments.map(assignment => assignment.employee_id));
   const assignedEmployeeCount = activeAssignedEmployeeIds.size;
@@ -2208,6 +2190,62 @@ const AccessManagementSection: React.FC = () => {
     if (lineStatusFilter === 'inactive') return !assignment.is_active;
     return true;
   });
+  const selectedLineManager = (users ?? []).find(user => String(user.id) === lineBulkForm.manager_user_id);
+  const selectedLineBulkEmployeeIds = new Set(lineBulkForm.employee_ids);
+  const selectedManagerActiveAssignments = activeLineAssignments.filter(assignment =>
+    String(assignment.manager_user_id) === lineBulkForm.manager_user_id &&
+    assignment.relationship_type === lineBulkForm.relationship_type,
+  );
+  const selectedManagerActiveEmployeeIds = new Set(selectedManagerActiveAssignments.map(assignment => String(assignment.employee_id)));
+  const hasLineBulkChanges =
+    selectedManagerActiveEmployeeIds.size !== selectedLineBulkEmployeeIds.size ||
+    Array.from(selectedLineBulkEmployeeIds).some(employeeId => !selectedManagerActiveEmployeeIds.has(employeeId));
+  const activeLineAssignmentByEmployeeId = new Map(
+    activeLineAssignments
+      .filter(assignment => assignment.relationship_type === lineBulkForm.relationship_type)
+      .map(assignment => [assignment.employee_id, assignment]),
+  );
+  const resourceDepartmentOptions = Array.from(new Set((employees ?? [])
+    .map(employee => employee.dept?.name ?? employee.department)
+    .filter((name): name is string => Boolean(name)))).sort();
+  const resourceGradeOptions = Array.from(new Set((employees ?? [])
+    .map(employee => employee.current_grade?.code)
+    .filter((code): code is string => Boolean(code)))).sort();
+  const resourceRows = (employees ?? []).map(employee => {
+    const activeAssignment = activeLineAssignmentByEmployeeId.get(employee.id);
+    const assignedToSelectedManager = activeAssignment?.manager_user_id === Number(lineBulkForm.manager_user_id);
+    const assignedElsewhere = Boolean(activeAssignment && !assignedToSelectedManager);
+    const managerLabel = activeAssignment?.manager_user ? formatUserLabel(activeAssignment.manager_user) : '';
+    const department = employee.dept?.name ?? employee.department;
+    const grade = employee.current_grade?.code ?? '';
+    const targetGrade = employee.target_grade?.code ?? '';
+    const checked = selectedLineBulkEmployeeIds.has(String(employee.id));
+    const newlySelected = checked && !assignedToSelectedManager;
+    const disabled = !lineBulkForm.manager_user_id || employee.id === selectedBulkManagerEmployeeId || assignedElsewhere;
+    return { employee, activeAssignment, assignedToSelectedManager, assignedElsewhere, managerLabel, department, grade, targetGrade, checked, newlySelected, disabled };
+  });
+  const visibleResourceRows = resourceRows.filter(row => {
+    const query = lineEmployeeSearch.trim().toLowerCase();
+    if (row.employee.id === selectedBulkManagerEmployeeId) return false;
+    if (resourceStatusFilter === 'assignable' && row.assignedElsewhere) return false;
+    if (resourceStatusFilter === 'assigned' && !row.assignedToSelectedManager) return false;
+    if (resourceDepartmentFilter && row.department !== resourceDepartmentFilter) return false;
+    if (resourceGradeFilter && row.grade !== resourceGradeFilter) return false;
+    if (!query) return true;
+    return [
+      row.employee.emp_code,
+      row.employee.full_name,
+      row.department,
+      row.grade,
+      row.targetGrade,
+      row.managerLabel,
+    ].some(value => (value ?? '').toLowerCase().includes(query));
+  });
+  const visibleSelectableResourceIds = visibleResourceRows
+    .filter(row => !row.disabled)
+    .map(row => String(row.employee.id));
+  const selectedLineBulkEmployees = resourceRows.filter(row => row.checked);
+  const newlySelectedResourceCount = resourceRows.filter(row => row.newlySelected).length;
 
   const roleState = useTableState(roles, (r, q) =>
     r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || (r.description ?? '').toLowerCase().includes(q),
@@ -2242,7 +2280,7 @@ const AccessManagementSection: React.FC = () => {
       is_active: role.is_active,
       sort_order: role.sort_order,
     });
-    setSelectedPermissionIds((role.role_permissions ?? []).map(item => item.permission_id));
+    setSelectedPermissionIds([...new Set((role.role_permissions ?? []).map(item => item.permission_id))]);
     setRoleModal(role);
     setSaveError(null);
   };
@@ -2251,6 +2289,7 @@ const AccessManagementSection: React.FC = () => {
     if (!roleModal) return;
     setSaveError(null);
     try {
+      const permissionIds = [...new Set(selectedPermissionIds)];
       await updateRole.mutateAsync({
         id: roleModal.id,
         data: {
@@ -2258,9 +2297,13 @@ const AccessManagementSection: React.FC = () => {
           description: roleForm.description || null,
           is_active: roleForm.is_active,
           sort_order: roleForm.sort_order,
+          permission_ids: permissionIds,
         },
       });
-      await updateRolePermissions.mutateAsync({ id: roleModal.id, permissionIds: selectedPermissionIds });
+      if (currentUser?.role === roleModal.code) {
+        const { data } = await apiClient.get<{ user: typeof currentUser }>('/auth/me');
+        setCurrentUser({ ...data.user, permissions: data.user.permissions ?? [] });
+      }
       setRoleModal(null);
     } catch (err) {
       setSaveError(getApiErrorMessage(err, 'Failed to save role.'));
@@ -2319,12 +2362,6 @@ const AccessManagementSection: React.FC = () => {
     }
   };
 
-  const openLineBulk = () => {
-    setLineBulkForm({ manager_user_id: '', employee_ids: [], relationship_type: 'LINE_MANAGER', can_view: true, can_assess: true, starts_at: '', ends_at: '', is_primary: false, is_active: true });
-    setSelectedEmployeeSearch('');
-    setSaveError(null);
-    setLineBulkModal(true);
-  };
   const loadLineBulkManager = (managerUserId: string) => {
     const activeAssignments = (lineAssignments ?? []).filter(a =>
       String(a.manager_user_id) === managerUserId &&
@@ -2336,6 +2373,7 @@ const AccessManagementSection: React.FC = () => {
       manager_user_id: managerUserId,
       employee_ids: activeAssignments.map(a => String(a.employee_id)),
     });
+    setLineEmployeeSearch('');
   };
   const openLineEdit = (assignment: ConfigLineManagerAssignment) => {
     setLineForm({
@@ -2357,8 +2395,6 @@ const AccessManagementSection: React.FC = () => {
     setSaveError(null);
     try {
       const basePayload = {
-        manager_user_id: Number(lineForm.manager_user_id),
-        relationship_type: lineForm.relationship_type,
         can_view: lineForm.can_view,
         can_assess: lineForm.can_assess,
         starts_at: fromDateInput(lineForm.starts_at) ?? undefined,
@@ -2366,12 +2402,7 @@ const AccessManagementSection: React.FC = () => {
         is_primary: lineForm.is_primary,
         is_active: lineForm.is_active,
       };
-      const employeeId = Number(lineForm.employee_id);
-      if (!basePayload.manager_user_id || !employeeId) {
-        setSaveError('Please select both line manager user and employee.');
-        return;
-      }
-      if (editingLine) await updateLineAssignment.mutateAsync({ id: editingLine.id, data: { ...basePayload, employee_id: employeeId } });
+      if (editingLine) await updateLineAssignment.mutateAsync({ id: editingLine.id, data: basePayload });
       setLineModal(null);
     } catch (err) {
       setSaveError(getApiErrorMessage(err, 'Failed to save line-manager access.'));
@@ -2383,47 +2414,36 @@ const AccessManagementSection: React.FC = () => {
       const managerUserId = Number(lineBulkForm.manager_user_id);
       const selectedEmployeeIds = new Set(lineBulkForm.employee_ids.map(Number).filter(Boolean));
       if (!managerUserId) {
-        setSaveError('Please select a line manager user.');
+        setSaveError('Please select a line manager.');
         return;
       }
-      const activeAssignments = (lineAssignments ?? []).filter(a =>
-        a.manager_user_id === managerUserId &&
-        a.is_active &&
-        a.relationship_type === lineBulkForm.relationship_type,
-      );
-      const activeEmployeeIds = new Set(activeAssignments.map(a => a.employee_id));
-      const toAdd = Array.from(selectedEmployeeIds).filter(employeeId => !activeEmployeeIds.has(employeeId));
-      const toRemove = activeAssignments.filter(a => !selectedEmployeeIds.has(a.employee_id));
-
-      await Promise.all([
-        ...toAdd.map(employee_id => createLineAssignment.mutateAsync({
-          manager_user_id: managerUserId,
-          employee_id,
-          relationship_type: lineBulkForm.relationship_type,
-          can_view: lineBulkForm.can_view,
-          can_assess: lineBulkForm.can_assess,
-          starts_at: fromDateInput(lineBulkForm.starts_at) ?? undefined,
-          ends_at: fromDateInput(lineBulkForm.ends_at),
-          is_primary: lineBulkForm.is_primary,
-          is_active: lineBulkForm.is_active,
-        })),
-        ...toRemove.map(assignment => deleteLineAssignment.mutateAsync(assignment.id)),
-      ]);
-      setLineBulkModal(false);
+      await syncLineAssignments.mutateAsync({
+        manager_user_id: managerUserId,
+        employee_ids: Array.from(selectedEmployeeIds),
+        relationship_type: lineBulkForm.relationship_type,
+        can_view: lineBulkForm.can_view,
+        can_assess: lineBulkForm.can_assess,
+        starts_at: fromDateInput(lineBulkForm.starts_at) ?? undefined,
+        ends_at: fromDateInput(lineBulkForm.ends_at),
+        is_primary: lineBulkForm.is_primary,
+        is_active: lineBulkForm.is_active,
+      });
     } catch (err) {
       setSaveError(getApiErrorMessage(err, 'Failed to update line-manager employees.'));
     }
   };
 
   const statusBadge = (active: boolean) => (
-    <span className={active ? 'badge badge-success' : 'badge'}>{active ? 'Active' : 'Inactive'}</span>
+    <span className={active ? 'badge badge-success' : 'badge'}>{active ? 'Active' : 'Removed'}</span>
   );
-  const selectedLineBulkEmployees = lineBulkEmployeeOptions.filter(option => lineBulkForm.employee_ids.includes(option.value));
-  const visibleSelectedLineBulkEmployees = selectedLineBulkEmployees.filter(employee => {
-    const query = selectedEmployeeSearch.trim().toLowerCase();
-    if (!query) return true;
-    return employee.label.toLowerCase().includes(query) || (employee.sub ?? '').toLowerCase().includes(query);
-  });
+  const toggleLineBulkEmployee = (employeeId: string) => {
+    setLineBulkForm(current => ({
+      ...current,
+      employee_ids: current.employee_ids.includes(employeeId)
+        ? current.employee_ids.filter(id => id !== employeeId)
+        : [...current.employee_ids, employeeId],
+    }));
+  };
 
   return (
     <>
@@ -2502,11 +2522,170 @@ const AccessManagementSection: React.FC = () => {
                 </div>
               ))}
             </div>
+
+            <div className="rounded-lg border overflow-hidden" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
+              <div className="px-4 py-3 border-b flex items-center justify-between gap-3 flex-wrap"
+                style={{ borderColor: 'rgb(var(--border))', background: 'linear-gradient(135deg, #0f766e 0%, #7c3aed 100%)' }}>
+                <div>
+                  <p className="text-sm font-extrabold text-white">Line Manager Resource Assignment</p>
+                  <p className="text-xs text-white/75">{selectedLineManager ? formatUserLabel(selectedLineManager) : 'Select a line manager to assign employee resources.'}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="rounded-md px-2.5 py-1 text-xs font-bold bg-white/15 text-white">{selectedLineBulkEmployees.length} selected</span>
+                  {newlySelectedResourceCount > 0 && (
+                    <span className="rounded-md px-2.5 py-1 text-xs font-bold" style={{ backgroundColor: 'rgba(34,197,94,0.26)', color: 'white' }}>
+                      {newlySelectedResourceCount} new
+                    </span>
+                  )}
+                  <span className="rounded-md px-2.5 py-1 text-xs font-bold bg-white/15 text-white">{visibleResourceRows.length} shown</span>
+                  <button type="button" className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.18)' }}
+                    disabled={!lineBulkForm.manager_user_id || syncLineAssignments.isPending || !hasLineBulkChanges}
+                    onClick={saveLineBulkAssignments}>
+                    <Save size={13} /> Save Assignments
+                  </button>
+                </div>
+              </div>
+
+              {saveError && <div className="mx-4 mt-3 rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'rgba(248,113,113,0.35)', backgroundColor: 'rgba(127,29,29,0.20)', color: 'rgb(var(--danger))' }}>{saveError}</div>}
+
+              <div className="p-4 grid grid-cols-1 lg:grid-cols-4 gap-3 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
+                <div className="lg:col-span-2">
+                  <label className={L}>Line Manager</label>
+                  <SearchableSelect value={lineBulkForm.manager_user_id} onChange={loadLineBulkManager} placeholder="Select line manager..." options={lineManagerOptions} />
+                </div>
+                <div><label className={L}>Relationship</label><input className={F} value={lineBulkForm.relationship_type} onChange={e => {
+                  const relationshipType = e.target.value;
+                  const activeAssignments = (lineAssignments ?? []).filter(a =>
+                    String(a.manager_user_id) === lineBulkForm.manager_user_id &&
+                    a.is_active &&
+                    a.relationship_type === relationshipType,
+                  );
+                  setLineBulkForm({ ...lineBulkForm, relationship_type: relationshipType, employee_ids: activeAssignments.map(a => String(a.employee_id)) });
+                }} /></div>
+                <div className="flex items-center gap-4 pt-7 flex-wrap">
+                  <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.can_view} onChange={e => setLineBulkForm({ ...lineBulkForm, can_view: e.target.checked })} /> View</label>
+                  <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.can_assess} onChange={e => setLineBulkForm({ ...lineBulkForm, can_assess: e.target.checked })} /> Assess</label>
+                  <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.is_primary} onChange={e => setLineBulkForm({ ...lineBulkForm, is_primary: e.target.checked })} /> Primary</label>
+                  <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.is_active} onChange={e => setLineBulkForm({ ...lineBulkForm, is_active: e.target.checked })} /> Active</label>
+                </div>
+                <div><label className={L}>Start Date</label><input type="date" className={F} value={lineBulkForm.starts_at} onChange={e => setLineBulkForm({ ...lineBulkForm, starts_at: e.target.value })} /></div>
+                <div><label className={L}>End Date</label><input type="date" className={F} value={lineBulkForm.ends_at} onChange={e => setLineBulkForm({ ...lineBulkForm, ends_at: e.target.value })} /></div>
+                <div>
+                  <label className={L}>Department</label>
+                  <SearchableSelect value={resourceDepartmentFilter} onChange={setResourceDepartmentFilter} placeholder="All departments" options={resourceDepartmentOptions.map(name => ({ value: name, label: name }))} />
+                </div>
+                <div>
+                  <label className={L}>Current Grade</label>
+                  <SearchableSelect value={resourceGradeFilter} onChange={setResourceGradeFilter} placeholder="All grades" options={resourceGradeOptions.map(code => ({ value: code, label: code }))} />
+                </div>
+              </div>
+
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg min-w-[280px] flex-1" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
+                    <Search size={15} style={{ color: 'rgb(var(--text-3))' }} />
+                    <input
+                      value={lineEmployeeSearch}
+                      onChange={event => setLineEmployeeSearch(event.target.value)}
+                      placeholder="Search employee code, name, department, grade, manager..."
+                      className="bg-transparent text-sm outline-none flex-1"
+                      style={{ color: 'rgb(var(--text-1))' }}
+                    />
+                    {lineEmployeeSearch && <button type="button" className="text-xs" style={{ color: 'rgb(var(--text-3))' }} onClick={() => setLineEmployeeSearch('')}>Clear</button>}
+                  </div>
+                  <div className="card p-1.5 flex gap-1">
+                    {[
+                      { id: 'assignable' as const, label: 'Assignable' },
+                      { id: 'assigned' as const, label: 'Assigned' },
+                      { id: 'all' as const, label: 'All' },
+                    ].map(item => (
+                      <button key={item.id} type="button" onClick={() => setResourceStatusFilter(item.id)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                        style={{
+                          backgroundColor: resourceStatusFilter === item.id ? 'rgb(var(--accent))' : 'transparent',
+                          color: resourceStatusFilter === item.id ? 'white' : 'rgb(var(--text-2))',
+                        }}>
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs rounded-lg font-medium"
+                      disabled={!lineBulkForm.manager_user_id || visibleSelectableResourceIds.length === 0}
+                      onClick={() => setLineBulkForm(current => ({ ...current, employee_ids: Array.from(new Set([...current.employee_ids, ...visibleSelectableResourceIds])) }))}>
+                      Select Visible
+                    </button>
+                    <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs rounded-lg font-medium"
+                      disabled={selectedLineBulkEmployees.length === 0}
+                      onClick={() => setLineBulkForm(current => ({ ...current, employee_ids: [] }))}>
+                      Clear Selection
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border overflow-hidden" style={{ borderColor: 'rgb(var(--border))' }}>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}>
+                        <tr>
+                          <th className="px-3 py-2 text-left w-12">Assign</th>
+                          <th className="px-3 py-2 text-left">Employee Resource</th>
+                          <th className="px-3 py-2 text-left">Department</th>
+                          <th className="px-3 py-2 text-left">Grade</th>
+                          <th className="px-3 py-2 text-left">Current Line Manager</th>
+                          <th className="px-3 py-2 text-left">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {!lineBulkForm.manager_user_id ? (
+                          <tr><td colSpan={6} className="px-3 py-8 text-center" style={{ color: 'rgb(var(--text-3))' }}>Select a line manager first.</td></tr>
+                        ) : visibleResourceRows.length === 0 ? (
+                          <tr><td colSpan={6} className="px-3 py-8 text-center" style={{ color: 'rgb(var(--text-3))' }}>No employee resources match the filters.</td></tr>
+                        ) : visibleResourceRows.map(row => (
+                          <tr key={row.employee.id} className="border-t" style={{
+                            borderColor: row.newlySelected ? 'rgba(34,197,94,0.55)' : 'rgb(var(--border))',
+                            backgroundColor: row.newlySelected
+                              ? 'rgba(22,163,74,0.18)'
+                              : row.assignedToSelectedManager
+                                ? 'rgb(var(--accent-soft))'
+                                : 'transparent',
+                          }}>
+                            <td className="px-3 py-2">
+                              <input
+                                type="checkbox"
+                                checked={row.checked}
+                                disabled={row.disabled}
+                                onChange={() => toggleLineBulkEmployee(String(row.employee.id))}
+                                style={{ accentColor: 'rgb(var(--accent))' }}
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <p className="font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{row.employee.emp_code} - {row.employee.full_name}</p>
+                              <p className="text-xs" style={{ color: 'rgb(var(--text-3))' }}>{row.employee.email ?? 'No email'}</p>
+                            </td>
+                            <td className="px-3 py-2" style={{ color: 'rgb(var(--text-2))' }}>{row.department || '-'}</td>
+                            <td className="px-3 py-2" style={{ color: 'rgb(var(--text-2))' }}>{row.grade || '-'}{row.targetGrade ? ` -> ${row.targetGrade}` : ''}</td>
+                            <td className="px-3 py-2" style={{ color: 'rgb(var(--text-2))' }}>{row.managerLabel || '-'}</td>
+                            <td className="px-3 py-2">
+                              <span className={row.newlySelected ? 'badge badge-success' : row.assignedToSelectedManager ? 'badge' : row.assignedElsewhere ? 'badge badge-warning' : 'badge'}>
+                                {row.newlySelected ? 'New assignment' : row.assignedToSelectedManager ? 'Already assigned' : row.assignedElsewhere ? 'Assigned elsewhere' : 'Available'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="card p-1.5 inline-flex gap-1">
               {[
-                { id: 'active' as const, label: 'Active' },
-                { id: 'inactive' as const, label: 'Inactive' },
-                { id: 'all' as const, label: 'All' },
+                { id: 'active' as const, label: 'Active Rows' },
+                { id: 'inactive' as const, label: 'Removed History' },
+                { id: 'all' as const, label: 'All History' },
               ].map(item => (
                 <button key={item.id} type="button" onClick={() => setLineStatusFilter(item.id)}
                   className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
@@ -2518,8 +2697,8 @@ const AccessManagementSection: React.FC = () => {
                 </button>
               ))}
             </div>
-            <TableShell tabKey="line-manager-access" title="Line Manager Access" onAdd={openLineBulk} addLabel="Manage Employees"
-              headers={['Line Manager', 'Employee', 'Relationship', 'Permissions', 'Dates', 'Status']}
+            <TableShell tabKey="line-manager-access" title="Assignment Rows"
+              headers={['Line Manager', 'Reporting Employee', 'Relationship', 'Permissions', 'Dates', 'Status']}
               loading={lineLoading} error={lineError}
               q={lineState.q} onSearch={lineState.onSearch} page={lineState.page} total={lineState.filtered.length} onPage={lineState.setPage}>
               {lineState.paged.map((assignment, idx) => (
@@ -2530,7 +2709,28 @@ const AccessManagementSection: React.FC = () => {
                   <TD small>{assignment.can_view ? 'View' : 'No view'} / {assignment.can_assess ? 'Assess' : 'No assess'}</TD>
                   <TD small muted>{toDateInput(assignment.starts_at) || '-'} to {toDateInput(assignment.ends_at) || 'Open'}</TD>
                   <TD>{statusBadge(assignment.is_active)}</TD>
-                  <ActionBtns onEdit={() => openLineEdit(assignment)} onDelete={async () => { if (await confirm({ title: 'Deactivate Line Manager Access', message: 'This employee assignment will be marked inactive.', confirmLabel: 'Deactivate', variant: 'warning' })) deleteLineAssignment.mutate(assignment.id); }} />
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openLineEdit(assignment)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button>
+                      {assignment.is_active ? (
+                        <button className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium" style={{ color: 'rgb(var(--danger))' }}
+                          onClick={async () => {
+                            if (await confirm({ title: 'Deactivate Line Manager Access', message: 'This employee resource will be removed from the line manager.', confirmLabel: 'Deactivate', variant: 'warning' })) deleteLineAssignment.mutate(assignment.id);
+                          }}>
+                          Deactivate
+                        </button>
+                      ) : (
+                        <button className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium" style={{ color: 'rgb(var(--success))' }}
+                          onClick={async () => {
+                            if (await confirm({ title: 'Reactivate Line Manager Access', message: 'This employee resource will be assigned back to this line manager if no other active line manager owns it.', confirmLabel: 'Reactivate', variant: 'warning' })) {
+                              updateLineAssignment.mutate({ id: assignment.id, data: { is_active: true, ends_at: null } });
+                            }
+                          }}>
+                          Reactivate
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </TR>
               ))}
             </TableShell>
@@ -2595,7 +2795,7 @@ const AccessManagementSection: React.FC = () => {
                               checked={checked}
                               onChange={event => {
                                 setSelectedPermissionIds(current => event.target.checked
-                                  ? [...current, permission.id]
+                                  ? [...new Set([...current, permission.id])]
                                   : current.filter(id => id !== permission.id));
                               }}
                               className="mt-0.5"
@@ -2613,7 +2813,7 @@ const AccessManagementSection: React.FC = () => {
                 ))}
               </div>
             </div>
-            <FormFooter onSave={saveRole} onCancel={() => setRoleModal(null)} saving={updateRole.isPending || updateRolePermissions.isPending} />
+            <FormFooter onSave={saveRole} onCancel={() => setRoleModal(null)} saving={updateRole.isPending} />
           </div>
         </Modal>
       )}
@@ -2658,13 +2858,12 @@ const AccessManagementSection: React.FC = () => {
         <Modal onClose={() => setLineModal(null)} wide title="Edit Line Manager Access">
           <div className="space-y-4">
             {saveError && <div className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'rgba(248,113,113,0.35)', backgroundColor: 'rgba(127,29,29,0.20)', color: 'rgb(var(--danger))' }}>{saveError}</div>}
-            <div><label className={L}>Line Manager User</label><SearchableSelect value={lineForm.manager_user_id} onChange={v => setLineForm({ ...lineForm, manager_user_id: v })} placeholder="Select line manager..." options={userOptions} /></div>
-            <div>
-              <label className={L}>Employee</label>
-              <SearchableSelect value={lineForm.employee_id} onChange={v => setLineForm({ ...lineForm, employee_id: v })} placeholder="Select employee..." options={lineEditEmployeeOptions} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div><label className={L}>Line Manager Employee</label><input className={F} value={formatUserLabel(editingLine?.manager_user)} disabled /></div>
+              <div><label className={L}>Reporting Employee</label><input className={F} value={formatEmployeeLabel(editingLine?.employee)} disabled /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className={L}>Relationship Type</label><input className={F} value={lineForm.relationship_type} onChange={e => setLineForm({ ...lineForm, relationship_type: e.target.value })} /></div>
+              <div><label className={L}>Relationship Type</label><input className={F} value={lineForm.relationship_type} disabled /></div>
               <div><label className={L}>Start Date</label><input type="date" className={F} value={lineForm.starts_at} onChange={e => setLineForm({ ...lineForm, starts_at: e.target.value })} /></div>
               <div><label className={L}>End Date</label><input type="date" className={F} value={lineForm.ends_at} onChange={e => setLineForm({ ...lineForm, ends_at: e.target.value })} /></div>
               <div className="flex items-center gap-4 pt-7 flex-wrap">
@@ -2674,95 +2873,7 @@ const AccessManagementSection: React.FC = () => {
                 <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineForm.is_active} onChange={e => setLineForm({ ...lineForm, is_active: e.target.checked })} /> Active</label>
               </div>
             </div>
-            <FormFooter onSave={saveLineAssignment} onCancel={() => setLineModal(null)} saving={createLineAssignment.isPending || updateLineAssignment.isPending} />
-          </div>
-        </Modal>
-      )}
-
-      {lineBulkModal && (
-        <Modal onClose={() => setLineBulkModal(false)} wide title="Manage Line Manager Employees">
-          <div className="space-y-4">
-            {saveError && <div className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'rgba(248,113,113,0.35)', backgroundColor: 'rgba(127,29,29,0.20)', color: 'rgb(var(--danger))' }}>{saveError}</div>}
-            <div><label className={L}>Line Manager User</label><SearchableSelect value={lineBulkForm.manager_user_id} onChange={loadLineBulkManager} placeholder="Select line manager..." options={userOptions} /></div>
-            <div>
-              <label className={L}>Employees</label>
-              <SearchableMultiSelect
-                values={lineBulkForm.employee_ids}
-                onChange={values => setLineBulkForm({ ...lineBulkForm, employee_ids: values })}
-                placeholder="Search and select employees..."
-                options={lineBulkEmployeeOptions}
-                selectAllLabel="Select all shown"
-              />
-            </div>
-            <div className="rounded-lg border" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
-              <div className="flex items-center justify-between gap-3 px-3 py-2 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-1))' }}>Selected Employees</p>
-                  <p className="text-xs" style={{ color: 'rgb(var(--text-2))' }}>{selectedLineBulkEmployees.length} employee{selectedLineBulkEmployees.length === 1 ? '' : 's'} selected</p>
-                </div>
-                {selectedLineBulkEmployees.length > 0 && (
-                  <button type="button" className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium"
-                    onClick={() => setLineBulkForm({ ...lineBulkForm, employee_ids: [] })}>
-                    Clear All
-                  </button>
-                )}
-              </div>
-              <div className="px-3 py-2 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
-                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ backgroundColor: 'rgb(var(--surface))' }}>
-                  <Search size={13} style={{ color: 'rgb(var(--text-3))' }} />
-                  <input
-                    value={selectedEmployeeSearch}
-                    onChange={event => setSelectedEmployeeSearch(event.target.value)}
-                    placeholder="Search selected employees..."
-                    className="bg-transparent text-sm outline-none flex-1"
-                    style={{ color: 'rgb(var(--text-1))' }}
-                  />
-                  {selectedEmployeeSearch && (
-                    <button type="button" className="text-xs" style={{ color: 'rgb(var(--text-3))' }} onClick={() => setSelectedEmployeeSearch('')}>
-                      Clear
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="max-h-44 overflow-y-auto p-2">
-                {selectedLineBulkEmployees.length === 0 ? (
-                  <p className="text-sm px-2 py-4 text-center" style={{ color: 'rgb(var(--text-3))' }}>No employees selected.</p>
-                ) : visibleSelectedLineBulkEmployees.length === 0 ? (
-                  <p className="text-sm px-2 py-4 text-center" style={{ color: 'rgb(var(--text-3))' }}>No selected employees match your search.</p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {visibleSelectedLineBulkEmployees.map(employee => (
-                      <div key={employee.value} className="flex items-center justify-between gap-2 rounded-md border px-2.5 py-2"
-                        style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold truncate" style={{ color: 'rgb(var(--text-1))' }}>{employee.label}</p>
-                          {employee.sub && <p className="text-[11px] truncate" style={{ color: 'rgb(var(--text-3))' }}>{employee.sub}</p>}
-                        </div>
-                        <button type="button" className="btn-ghost px-2 py-1 text-xs rounded-md shrink-0"
-                          onClick={() => setLineBulkForm({ ...lineBulkForm, employee_ids: lineBulkForm.employee_ids.filter(id => id !== employee.value) })}>
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className={L}>Relationship Type</label><input className={F} value={lineBulkForm.relationship_type} onChange={e => setLineBulkForm({ ...lineBulkForm, relationship_type: e.target.value })} /></div>
-              <div><label className={L}>Start Date</label><input type="date" className={F} value={lineBulkForm.starts_at} onChange={e => setLineBulkForm({ ...lineBulkForm, starts_at: e.target.value })} /></div>
-              <div><label className={L}>End Date</label><input type="date" className={F} value={lineBulkForm.ends_at} onChange={e => setLineBulkForm({ ...lineBulkForm, ends_at: e.target.value })} /></div>
-              <div className="flex items-center gap-4 pt-7 flex-wrap">
-                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.can_view} onChange={e => setLineBulkForm({ ...lineBulkForm, can_view: e.target.checked })} /> View</label>
-                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.can_assess} onChange={e => setLineBulkForm({ ...lineBulkForm, can_assess: e.target.checked })} /> Assess</label>
-                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.is_primary} onChange={e => setLineBulkForm({ ...lineBulkForm, is_primary: e.target.checked })} /> Primary</label>
-                <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.is_active} onChange={e => setLineBulkForm({ ...lineBulkForm, is_active: e.target.checked })} /> Active</label>
-              </div>
-            </div>
-            <p className="text-xs" style={{ color: 'rgb(var(--text-2))' }}>
-              Saving will add newly selected employees and deactivate employees removed from this line manager.
-            </p>
-            <FormFooter onSave={saveLineBulkAssignments} onCancel={() => setLineBulkModal(false)} saving={createLineAssignment.isPending || deleteLineAssignment.isPending} />
+            <FormFooter onSave={saveLineAssignment} onCancel={() => setLineModal(null)} saving={updateLineAssignment.isPending} />
           </div>
         </Modal>
       )}

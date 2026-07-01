@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import apiClient from '@/lib/api';
+import apiClient, { refreshAccessToken } from '@/lib/api';
 import type { RoleCode } from '@/types/rbac';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -473,11 +473,20 @@ export const useConfigPermissions = () =>
 export const useUpdateRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<Pick<ConfigRole, 'name' | 'description' | 'is_active' | 'sort_order'>> }) => {
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<Pick<ConfigRole, 'name' | 'description' | 'is_active' | 'sort_order'>> & { permission_ids?: number[] };
+    }) => {
       const res = await apiClient.patch<{ success: boolean; data: ConfigRole }>(`/config/roles/${id}`, data);
       return res.data.data;
     },
-    onSuccess: () => {
+    onSuccess: (updatedRole) => {
+      queryClient.setQueryData<ConfigRole[]>(['config', 'roles'], (current) =>
+        current?.map((role) => role.id === updatedRole.id ? updatedRole : role) ?? current
+      );
       queryClient.invalidateQueries({ queryKey: ['config', 'roles'] });
       queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
     },
@@ -493,7 +502,10 @@ export const useUpdateRolePermissions = () => {
       });
       return res.data.data;
     },
-    onSuccess: () => {
+    onSuccess: (updatedRole) => {
+      queryClient.setQueryData<ConfigRole[]>(['config', 'roles'], (current) =>
+        current?.map((role) => role.id === updatedRole.id ? updatedRole : role) ?? current
+      );
       queryClient.invalidateQueries({ queryKey: ['config', 'roles'] });
       queryClient.invalidateQueries({ queryKey: ['config', 'permissions'] });
       queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
@@ -586,9 +598,15 @@ export const useCreateLineManagerAssignment = () => {
       const res = await apiClient.post<{ success: boolean; data: ConfigLineManagerAssignment }>('/config/access/line-manager-assignments', data);
       return res.data.data;
     },
-    onSuccess: () => {
+    onSuccess: (assignment) => {
+      queryClient.setQueryData<ConfigLineManagerAssignment[]>(['config', 'line-manager-assignments'], current => {
+        if (!current) return current;
+        const withoutAssignment = current.filter(item => item.id !== assignment.id);
+        return [assignment, ...withoutAssignment];
+      });
       queryClient.invalidateQueries({ queryKey: ['config', 'line-manager-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'users'] });
     },
   });
 };
@@ -600,9 +618,78 @@ export const useUpdateLineManagerAssignment = () => {
       const res = await apiClient.patch<{ success: boolean; data: ConfigLineManagerAssignment }>(`/config/access/line-manager-assignments/${id}`, data);
       return res.data.data;
     },
-    onSuccess: () => {
+    onSuccess: (assignment) => {
+      queryClient.setQueryData<ConfigLineManagerAssignment[]>(['config', 'line-manager-assignments'], current =>
+        current?.map(item => item.id === assignment.id ? assignment : item),
+      );
       queryClient.invalidateQueries({ queryKey: ['config', 'line-manager-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'users'] });
+    },
+  });
+};
+
+export const useSyncLineManagerAssignments = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      manager_user_id: number;
+      employee_ids: number[];
+      relationship_type: string;
+      can_view: boolean;
+      can_assess: boolean;
+      starts_at?: string;
+      ends_at?: string | null;
+      is_primary: boolean;
+      is_active: boolean;
+    }) => {
+      const sync = async () => {
+        const res = await apiClient.post<{ success: boolean; data: ConfigLineManagerAssignment[] }>('/config/access/line-manager-assignments/sync', data);
+        return res.data.data;
+      };
+      const fallbackSync = async () => {
+        const current = queryClient.getQueryData<ConfigLineManagerAssignment[]>(['config', 'line-manager-assignments']) ?? [];
+        const selectedEmployeeIds = new Set(data.employee_ids);
+        const activeAssignments = current.filter(assignment =>
+          assignment.manager_user_id === data.manager_user_id &&
+          assignment.is_active &&
+          assignment.relationship_type === data.relationship_type,
+        );
+        const activeEmployeeIds = new Set(activeAssignments.map(assignment => assignment.employee_id));
+        const toAdd = data.employee_ids.filter(employeeId => !activeEmployeeIds.has(employeeId));
+        const toRemove = activeAssignments.filter(assignment => !selectedEmployeeIds.has(assignment.employee_id));
+
+        await Promise.all([
+          ...toAdd.map(employee_id => apiClient.post('/config/access/line-manager-assignments', { ...data, employee_id })),
+          ...toRemove.map(assignment => apiClient.delete(`/config/access/line-manager-assignments/${assignment.id}`)),
+        ]);
+
+        const list = await apiClient.get<{ success: boolean; data: ConfigLineManagerAssignment[] }>('/config/access/line-manager-assignments');
+        return list.data.data;
+      };
+
+      try {
+        return await sync();
+      } catch (error) {
+        const status = (error as { response?: { status?: number } }).response?.status;
+        if (status === 404) return fallbackSync();
+        if (status === 401) {
+          await refreshAccessToken();
+          try {
+            return await sync();
+          } catch (retryError) {
+            if ((retryError as { response?: { status?: number } }).response?.status === 404) return fallbackSync();
+            throw retryError;
+          }
+        }
+        throw error;
+      }
+    },
+    onSuccess: (assignments) => {
+      queryClient.setQueryData(['config', 'line-manager-assignments'], assignments);
+      queryClient.invalidateQueries({ queryKey: ['config', 'line-manager-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'users'] });
     },
   });
 };
@@ -611,11 +698,16 @@ export const useDeleteLineManagerAssignment = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      await apiClient.delete(`/config/access/line-manager-assignments/${id}`);
+      const res = await apiClient.delete<{ success: boolean; data: ConfigLineManagerAssignment }>(`/config/access/line-manager-assignments/${id}`);
+      return res.data.data;
     },
-    onSuccess: () => {
+    onSuccess: (assignment) => {
+      queryClient.setQueryData<ConfigLineManagerAssignment[]>(['config', 'line-manager-assignments'], current =>
+        current?.map(item => item.id === assignment.id ? assignment : item),
+      );
       queryClient.invalidateQueries({ queryKey: ['config', 'line-manager-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['config', 'access-audit-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'users'] });
     },
   });
 };
@@ -1077,11 +1169,21 @@ export const useConfigCompetencyCategories = () =>
 export const useCreateCompetencyCategory = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { name: string; description?: string; color?: string }) => {
-      const res = await apiClient.post<{ success: boolean; data: ConfigCompetencyCategory }>('/config/competency-categories', data);
+    mutationFn: async (data: {
+      name: string;
+      description?: string;
+      color?: string;
+      weight?: number;
+      sort_order?: number;
+      is_active?: boolean;
+    }) => {
+      const res = await apiClient.post<{ success: boolean; data: ConfigCompetencyCategory[] }>('/config/competency-categories', data);
       return res.data.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'competency-categories'] }),
+    onSuccess: (categories) => {
+      queryClient.setQueryData(['config', 'competency-categories'], categories);
+      queryClient.invalidateQueries({ queryKey: ['config', 'competencies'] });
+    },
   });
 };
 
@@ -1093,12 +1195,15 @@ export const useUpdateCompetencyCategory = () => {
       data,
     }: {
       id: number;
-      data: Partial<{ name: string; description: string; color: string }>;
+      data: Partial<{ name: string; description: string; color: string; weight: number; sort_order: number; is_active: boolean }>;
     }) => {
-      const res = await apiClient.patch<{ success: boolean; data: ConfigCompetencyCategory }>(`/config/competency-categories/${id}`, data);
+      const res = await apiClient.patch<{ success: boolean; data: ConfigCompetencyCategory[] }>(`/config/competency-categories/${id}`, data);
       return res.data.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'competency-categories'] }),
+    onSuccess: (categories) => {
+      queryClient.setQueryData(['config', 'competency-categories'], categories);
+      queryClient.invalidateQueries({ queryKey: ['config', 'competencies'] });
+    },
   });
 };
 
@@ -1106,8 +1211,12 @@ export const useDeleteCompetencyCategory = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      await apiClient.delete(`/config/competency-categories/${id}`);
+      const res = await apiClient.delete<{ success: boolean; data: ConfigCompetencyCategory[] }>(`/config/competency-categories/${id}`);
+      return res.data.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'competency-categories'] }),
+    onSuccess: (categories) => {
+      queryClient.setQueryData(['config', 'competency-categories'], categories);
+      queryClient.invalidateQueries({ queryKey: ['config', 'competencies'] });
+    },
   });
 };

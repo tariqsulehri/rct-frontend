@@ -1,6 +1,6 @@
 import apiClient from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
-import { useProtectedQueryEnabled } from '@/hooks/useProtectedQueryEnabled';
+import { useProtectedPermissionQueryEnabled } from '@/hooks/useProtectedQueryEnabled';
 
 export interface PromotionRow {
   employee_id: number;
@@ -31,7 +31,7 @@ export interface CompetencyRow {
 }
 
 export const useGapAnalysis = (empCode: string | null) => {
-  const enabled = useProtectedQueryEnabled();
+  const enabled = useProtectedPermissionQueryEnabled('reports.view', ['ENGINEER']);
   return useQuery({
     queryKey: ['reports', 'gap-analysis', empCode],
     queryFn: async () => {
@@ -43,7 +43,7 @@ export const useGapAnalysis = (empCode: string | null) => {
 };
 
 export const usePromotionReadiness = () => {
-  const enabled = useProtectedQueryEnabled(['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER']);
+  const enabled = useProtectedPermissionQueryEnabled('reports.view');
   return useQuery<PromotionRow[]>({
     queryKey: ['reports', 'promotion-readiness'],
     queryFn: async () => {
@@ -55,7 +55,7 @@ export const usePromotionReadiness = () => {
 };
 
 export const useCompetencyScores = () => {
-  const enabled = useProtectedQueryEnabled();
+  const enabled = useProtectedPermissionQueryEnabled('reports.view', ['ENGINEER']);
   return useQuery<CompetencyRow[]>({
     queryKey: ['reports', 'competency-scores'],
     queryFn: async () => {
@@ -83,7 +83,7 @@ export interface CompetencyMatrixResult {
 }
 
 export const useCompetencyMatrix = () => {
-  const enabled = useProtectedQueryEnabled(['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER']);
+  const enabled = useProtectedPermissionQueryEnabled('reports.view');
   return useQuery<CompetencyMatrixResult>({
     queryKey: ['reports', 'competency-matrix'],
     queryFn: async () => {
@@ -111,7 +111,7 @@ export interface GapMatrixResult {
 }
 
 export const useGapMatrix = () => {
-  const enabled = useProtectedQueryEnabled();
+  const enabled = useProtectedPermissionQueryEnabled('reports.view', ['ENGINEER']);
   return useQuery<GapMatrixResult>({
     queryKey: ['reports', 'gap-matrix'],
     queryFn: async () => {
@@ -123,7 +123,7 @@ export const useGapMatrix = () => {
 };
 
 export const useAssessmentHistory = (page = 1, limit = 20) => {
-  const enabled = useProtectedQueryEnabled(['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER']);
+  const enabled = useProtectedPermissionQueryEnabled('reports.view');
   return useQuery({
     queryKey: ['reports', 'assessment-history', page, limit],
     queryFn: async () => {

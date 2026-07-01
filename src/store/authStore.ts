@@ -14,6 +14,7 @@ export interface User {
   currentGradeTitle: string;
   targetGrade: string;
   targetGradeTitle: string;
+  permissions: string[];
 }
 
 interface AuthStore {

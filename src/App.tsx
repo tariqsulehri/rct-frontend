@@ -29,15 +29,16 @@ function HydrationGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const validatePersistedSession = async () => {
       try {
-        const { accessToken, isAuthenticated, setTokens, logout } = useAuthStore.getState();
+        const { accessToken, isAuthenticated, setTokens, setUser, logout } = useAuthStore.getState();
+        let token = accessToken;
 
-        if (isAuthenticated && !accessToken) {
+        if (isAuthenticated && !token) {
           logout();
           queryClient.clear();
           return;
         }
 
-        if (accessToken && isTokenExpired(accessToken)) {
+        if (token && isTokenExpired(token)) {
           try {
             const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
               method: 'POST',
@@ -48,6 +49,23 @@ function HydrationGate({ children }: { children: React.ReactNode }) {
             const newToken = data.accessToken || data.data?.accessToken;
             if (!newToken) throw new Error('Missing access token');
             setTokens(newToken);
+            token = newToken;
+          } catch {
+            logout();
+            queryClient.clear();
+            return;
+          }
+        }
+
+        if (isAuthenticated && token) {
+          try {
+            const response = await fetch(`${API_BASE_URL}/auth/me`, {
+              headers: { Authorization: `Bearer ${token}` },
+              credentials: 'include',
+            });
+            if (!response.ok) throw new Error('Current user lookup failed');
+            const data = await response.json();
+            setUser({ ...data.user, permissions: data.user.permissions ?? [] });
           } catch {
             logout();
             queryClient.clear();
