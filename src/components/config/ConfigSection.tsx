@@ -2227,7 +2227,7 @@ const AccessManagementSection: React.FC = () => {
   const visibleResourceRows = resourceRows.filter(row => {
     const query = lineEmployeeSearch.trim().toLowerCase();
     if (row.employee.id === selectedBulkManagerEmployeeId) return false;
-    if (resourceStatusFilter === 'assignable' && row.assignedElsewhere) return false;
+    if (resourceStatusFilter === 'assignable' && (row.assignedElsewhere || row.assignedToSelectedManager)) return false;
     if (resourceStatusFilter === 'assigned' && !row.assignedToSelectedManager) return false;
     if (resourceDepartmentFilter && row.department !== resourceDepartmentFilter) return false;
     if (resourceGradeFilter && row.grade !== resourceGradeFilter) return false;
