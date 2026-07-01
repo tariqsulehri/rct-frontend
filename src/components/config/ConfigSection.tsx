@@ -2554,7 +2554,7 @@ const AccessManagementSection: React.FC = () => {
                   <label className={L}>Line Manager</label>
                   <SearchableSelect value={lineBulkForm.manager_user_id} onChange={loadLineBulkManager} placeholder="Select line manager..." options={lineManagerOptions} />
                 </div>
-                <div><label className={L}>Relationship</label><input className={F} value={lineBulkForm.relationship_type} onChange={e => {
+                <div><label className={L}>Role</label><input className={F} value={lineBulkForm.relationship_type} onChange={e => {
                   const relationshipType = e.target.value;
                   const activeAssignments = (lineAssignments ?? []).filter(a =>
                     String(a.manager_user_id) === lineBulkForm.manager_user_id &&
@@ -2698,7 +2698,7 @@ const AccessManagementSection: React.FC = () => {
               ))}
             </div>
             <TableShell tabKey="line-manager-access" title="Assignment Rows"
-              headers={['Line Manager', 'Reporting Employee', 'Relationship', 'Permissions', 'Dates', 'Status']}
+              headers={['Line Manager', 'Reporting Employee', 'Role', 'Permissions', 'Dates', 'Status']}
               loading={lineLoading} error={lineError}
               q={lineState.q} onSearch={lineState.onSearch} page={lineState.page} total={lineState.filtered.length} onPage={lineState.setPage}>
               {lineState.paged.map((assignment, idx) => (
@@ -2863,7 +2863,7 @@ const AccessManagementSection: React.FC = () => {
               <div><label className={L}>Reporting Employee</label><input className={F} value={formatEmployeeLabel(editingLine?.employee)} disabled /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className={L}>Relationship Type</label><input className={F} value={lineForm.relationship_type} disabled /></div>
+              <div><label className={L}>Role Type</label><input className={F} value={lineForm.relationship_type} disabled /></div>
               <div><label className={L}>Start Date</label><input type="date" className={F} value={lineForm.starts_at} onChange={e => setLineForm({ ...lineForm, starts_at: e.target.value })} /></div>
               <div><label className={L}>End Date</label><input type="date" className={F} value={lineForm.ends_at} onChange={e => setLineForm({ ...lineForm, ends_at: e.target.value })} /></div>
               <div className="flex items-center gap-4 pt-7 flex-wrap">
