@@ -3,6 +3,9 @@ import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
 import { getConfigTablePageSize, HEADER_GRADIENTS } from './ConfigTableState';
 import { PanelHeader } from '@/components/ui/PanelHeader';
 
+const CALC_HEADER_PREFIX = 'calc:';
+export const calcHeader = (label: string) => `${CALC_HEADER_PREFIX}${label}`;
+
 const Pagination: React.FC<{ page: number; total: number; pageSize: number; onChange: (p: number) => void }> = ({
   page, total, pageSize, onChange,
 }) => {
@@ -117,12 +120,24 @@ export const TableShell: React.FC<{
           <table className="data-table">
             <thead>
               <tr style={{ borderBottom: '2px solid rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
-                {headers.map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider whitespace-nowrap"
-                    style={{ color: 'rgb(var(--text-2))' }}>
-                    {h}
-                  </th>
-                ))}
+                {headers.map(h => {
+                  const isCalcHeader = h.startsWith(CALC_HEADER_PREFIX);
+                  const label = isCalcHeader ? h.slice(CALC_HEADER_PREFIX.length) : h;
+                  return (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider whitespace-nowrap"
+                      style={{ color: isCalcHeader ? 'rgb(var(--accent))' : 'rgb(var(--text-2))' }}>
+                      <span className="inline-flex items-center gap-1.5" title={isCalcHeader ? 'Used in score calculation' : undefined}>
+                        {isCalcHeader && (
+                          <span className="rounded px-1 py-0.5 text-[10px] font-black leading-none"
+                            style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}>
+                            fx
+                          </span>
+                        )}
+                        {label}
+                      </span>
+                    </th>
+                  );
+                })}
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
                   style={{ color: 'rgb(var(--text-2))' }}>
                   Actions

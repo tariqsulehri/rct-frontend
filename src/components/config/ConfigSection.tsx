@@ -9,7 +9,7 @@ import { PanelHeader } from '@/components/ui/PanelHeader';
 import { getApiErrorMessage } from '@/lib/apiError';
 import apiClient from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
-import { ActionBtns, TableShell, TD, TR } from './ConfigTable';
+import { ActionBtns, calcHeader, TableShell, TD, TR } from './ConfigTable';
 import { HEADER_GRADIENTS, useTableState } from './ConfigTableState';
 import {
   useConfigAssessmentTypes, useUpdateAssessmentType,
@@ -135,7 +135,7 @@ const AssessmentTypesSection: React.FC = () => {
   return (
     <>
       <TableShell tabKey="assessment-types" title="Assessment Types"
-        headers={['Type', 'Base Score', 'Description', 'Status']}
+        headers={['Type', calcHeader('Base Score'), 'Description', 'Status']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
         {ts.paged.map((type, idx) => (
@@ -230,7 +230,7 @@ const AssessmentLevelsSection: React.FC = () => {
   return (
     <>
       <TableShell tabKey="assessment-levels" title="Level Config"
-        headers={['Level', 'Score Factor', 'Minimum Target', 'Description', 'Status']}
+        headers={['Level', calcHeader('Score Factor'), calcHeader('Minimum Target'), 'Description', 'Status']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
         {ts.paged.map((levelConfig, idx) => (
@@ -311,7 +311,7 @@ const AssessmentStatusesSection: React.FC = () => {
   return (
     <>
       <TableShell tabKey="assessment-statuses" title="Status Config"
-        headers={['Status', 'Affects Score', 'Review Complete', 'Description', 'Active']}
+        headers={['Status', calcHeader('Affects Score'), 'Review Complete', 'Description', 'Active']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
         {ts.paged.map((status, idx) => (
@@ -400,7 +400,7 @@ const AssessmentProjectsSection: React.FC = () => {
   return (
     <>
       <TableShell tabKey="assessment-projects" title="Project Config"
-        headers={['Projects', 'Project Score', 'Duration', 'Minimum Target', 'Description', 'Status']}
+        headers={['Projects', calcHeader('Project Score'), 'Duration', calcHeader('Minimum Target'), 'Description', 'Status']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
         {ts.paged.map((project, idx) => (
