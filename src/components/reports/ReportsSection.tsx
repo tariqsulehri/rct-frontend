@@ -11,19 +11,21 @@ type SubTab = 'summary' | 'promotion' | 'competency' | 'gap' | 'result-sheet';
 
 type ReportTone = {
   text: string;
+  body: string;
+  note: string;
   border: string;
   bg: string;
   iconBg: string;
 };
 
 const REPORT_TONES: Record<'people' | 'ready' | 'near' | 'gap' | 'area' | 'score' | 'sheet', ReportTone> = {
-  people: { text: '#a78bfa', border: 'rgba(167,139,250,0.48)', bg: 'rgba(124,58,237,0.12)', iconBg: 'rgba(124,58,237,0.22)' },
-  ready: { text: '#34d399', border: 'rgba(52,211,153,0.48)', bg: 'rgba(5,150,105,0.12)', iconBg: 'rgba(5,150,105,0.22)' },
-  near: { text: '#fbbf24', border: 'rgba(251,191,36,0.48)', bg: 'rgba(217,119,6,0.12)', iconBg: 'rgba(217,119,6,0.22)' },
-  gap: { text: '#fb7185', border: 'rgba(251,113,133,0.52)', bg: 'rgba(220,38,38,0.12)', iconBg: 'rgba(220,38,38,0.22)' },
-  area: { text: '#38bdf8', border: 'rgba(56,189,248,0.48)', bg: 'rgba(2,132,199,0.12)', iconBg: 'rgba(2,132,199,0.22)' },
-  score: { text: '#818cf8', border: 'rgba(129,140,248,0.48)', bg: 'rgba(79,70,229,0.12)', iconBg: 'rgba(79,70,229,0.22)' },
-  sheet: { text: '#22d3ee', border: 'rgba(34,211,238,0.46)', bg: 'rgba(8,145,178,0.12)', iconBg: 'rgba(8,145,178,0.22)' },
+  people: { text: '#a78bfa', body: '#ddd6fe', note: '#c4b5fd', border: 'rgba(167,139,250,0.48)', bg: 'rgba(124,58,237,0.12)', iconBg: 'rgba(124,58,237,0.22)' },
+  ready: { text: '#34d399', body: '#bbf7d0', note: '#86efac', border: 'rgba(52,211,153,0.48)', bg: 'rgba(5,150,105,0.12)', iconBg: 'rgba(5,150,105,0.22)' },
+  near: { text: '#fbbf24', body: '#fde68a', note: '#fcd34d', border: 'rgba(251,191,36,0.48)', bg: 'rgba(217,119,6,0.12)', iconBg: 'rgba(217,119,6,0.22)' },
+  gap: { text: '#fb7185', body: '#fecdd3', note: '#fda4af', border: 'rgba(251,113,133,0.52)', bg: 'rgba(220,38,38,0.12)', iconBg: 'rgba(220,38,38,0.22)' },
+  area: { text: '#38bdf8', body: '#bae6fd', note: '#7dd3fc', border: 'rgba(56,189,248,0.48)', bg: 'rgba(2,132,199,0.12)', iconBg: 'rgba(2,132,199,0.22)' },
+  score: { text: '#818cf8', body: '#c7d2fe', note: '#a5b4fc', border: 'rgba(129,140,248,0.48)', bg: 'rgba(79,70,229,0.12)', iconBg: 'rgba(79,70,229,0.22)' },
+  sheet: { text: '#22d3ee', body: '#a5f3fc', note: '#67e8f9', border: 'rgba(34,211,238,0.46)', bg: 'rgba(8,145,178,0.12)', iconBg: 'rgba(8,145,178,0.22)' },
 };
 
 const SUB_TABS: Array<{ id: SubTab; label: string; icon: React.ElementType; helper: string }> = [
@@ -441,8 +443,8 @@ export const ReportsSection: React.FC = () => {
                 </span>
               </div>
               <p className="text-2xl font-bold mt-2 break-words leading-tight" style={{ color: item.tone.text }}>{item.value}</p>
-              <p className="text-xs mt-2 leading-snug" style={{ color: 'rgb(var(--text-2))' }}>{item.meaning}</p>
-              <p className="text-[11px] mt-auto pt-2 leading-snug" style={{ color: 'rgb(var(--text-3))' }}>{item.effect}</p>
+              <p className="text-xs mt-2 leading-snug" style={{ color: item.tone.body }}>{item.meaning}</p>
+              <p className="text-[11px] mt-auto pt-2 leading-snug" style={{ color: item.tone.note }}>{item.effect}</p>
             </div>
           ))}
         </div>
