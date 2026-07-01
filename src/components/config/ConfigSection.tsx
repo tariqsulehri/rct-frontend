@@ -2531,7 +2531,7 @@ const AccessManagementSection: React.FC = () => {
                   <p className="text-xs text-white/75">{selectedLineManager ? formatUserLabel(selectedLineManager) : 'Select a line manager to assign employee resources.'}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="rounded-md px-2.5 py-1 text-xs font-bold bg-white/15 text-white">{selectedLineBulkEmployees.length} selected</span>
+                  <span className="rounded-md px-2.5 py-1 text-xs font-bold bg-white/15 text-white">{selectedManagerActiveAssignments.length} assigned</span>
                   {newlySelectedResourceCount > 0 && (
                     <span className="rounded-md px-2.5 py-1 text-xs font-bold" style={{ backgroundColor: 'rgba(34,197,94,0.26)', color: 'white' }}>
                       {newlySelectedResourceCount} new
@@ -2576,8 +2576,8 @@ const AccessManagementSection: React.FC = () => {
                   <SearchableSelect value={resourceDepartmentFilter} onChange={setResourceDepartmentFilter} placeholder="All departments" options={resourceDepartmentOptions.map(name => ({ value: name, label: name }))} />
                 </div>
                 <div>
-                  <label className={L}>Current Grade</label>
-                  <SearchableSelect value={resourceGradeFilter} onChange={setResourceGradeFilter} placeholder="All grades" options={resourceGradeOptions.map(code => ({ value: code, label: code }))} />
+                  <label className={L}>Resource Grade</label>
+                  <SearchableSelect value={resourceGradeFilter} onChange={setResourceGradeFilter} placeholder="All resource grades" options={resourceGradeOptions.map(code => ({ value: code, label: code }))} />
                 </div>
               </div>
 
