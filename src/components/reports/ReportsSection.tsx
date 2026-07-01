@@ -9,6 +9,23 @@ import { DEFAULT_REPORT_FILTERS, type ReportFilters } from './reportFilters';
 
 type SubTab = 'summary' | 'promotion' | 'competency' | 'gap' | 'result-sheet';
 
+type ReportTone = {
+  text: string;
+  border: string;
+  bg: string;
+  iconBg: string;
+};
+
+const REPORT_TONES: Record<'people' | 'ready' | 'near' | 'gap' | 'area' | 'score' | 'sheet', ReportTone> = {
+  people: { text: '#a78bfa', border: 'rgba(167,139,250,0.48)', bg: 'rgba(124,58,237,0.12)', iconBg: 'rgba(124,58,237,0.22)' },
+  ready: { text: '#34d399', border: 'rgba(52,211,153,0.48)', bg: 'rgba(5,150,105,0.12)', iconBg: 'rgba(5,150,105,0.22)' },
+  near: { text: '#fbbf24', border: 'rgba(251,191,36,0.48)', bg: 'rgba(217,119,6,0.12)', iconBg: 'rgba(217,119,6,0.22)' },
+  gap: { text: '#fb7185', border: 'rgba(251,113,133,0.52)', bg: 'rgba(220,38,38,0.12)', iconBg: 'rgba(220,38,38,0.22)' },
+  area: { text: '#38bdf8', border: 'rgba(56,189,248,0.48)', bg: 'rgba(2,132,199,0.12)', iconBg: 'rgba(2,132,199,0.22)' },
+  score: { text: '#818cf8', border: 'rgba(129,140,248,0.48)', bg: 'rgba(79,70,229,0.12)', iconBg: 'rgba(79,70,229,0.22)' },
+  sheet: { text: '#22d3ee', border: 'rgba(34,211,238,0.46)', bg: 'rgba(8,145,178,0.12)', iconBg: 'rgba(8,145,178,0.22)' },
+};
+
 const SUB_TABS: Array<{ id: SubTab; label: string; icon: React.ElementType; helper: string }> = [
   { id: 'summary',      label: 'Report Guide',       icon: LayoutDashboard, helper: 'Pick the right report' },
   { id: 'promotion',    label: 'Readiness',          icon: TrendingUp,      helper: 'Who is ready' },
@@ -23,7 +40,7 @@ const REPORT_GROUPS: Array<{
   short: string;
   details: string;
   icon: React.ElementType;
-  tone: string;
+  tone: ReportTone;
 }> = [
   {
     id: 'promotion',
@@ -31,7 +48,7 @@ const REPORT_GROUPS: Array<{
     short: 'Who is ready for the next grade?',
     details: 'Use this to see ready people, almost ready people, people who need help, and grade groups.',
     icon: TrendingUp,
-    tone: 'rgb(var(--success))',
+    tone: REPORT_TONES.ready,
   },
   {
     id: 'competency',
@@ -39,7 +56,7 @@ const REPORT_GROUPS: Array<{
     short: 'How strong are the skills now?',
     details: 'Use this to see skill scores for each person, team averages, and skill area scores.',
     icon: BarChart2,
-    tone: 'rgb(var(--accent))',
+    tone: REPORT_TONES.score,
   },
   {
     id: 'gap',
@@ -47,7 +64,7 @@ const REPORT_GROUPS: Array<{
     short: 'What is below target?',
     details: 'Use this to compare current score with needed score and download gaps to Excel.',
     icon: PieIcon,
-    tone: 'rgb(var(--warning))',
+    tone: REPORT_TONES.near,
   },
   {
     id: 'result-sheet',
@@ -55,7 +72,7 @@ const REPORT_GROUPS: Array<{
     short: 'What can I share for one employee?',
     details: 'Use this for one person score, gaps, skill area bars, and print view.',
     icon: Download,
-    tone: 'rgb(var(--text-1))',
+    tone: REPORT_TONES.sheet,
   },
 ];
 
@@ -76,17 +93,23 @@ const ReportsGuide: React.FC<{ onOpen: (tab: SubTab) => void }> = ({ onOpen }) =
           key={id}
           onClick={() => onOpen(id)}
           className="text-left rounded-xl border p-4 transition-colors"
-          style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgb(var(--accent-soft) / 0.25)')}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgb(var(--surface-2))')}
+          style={{ borderColor: tone.border, backgroundColor: tone.bg, boxShadow: `inset 0 1px 0 ${tone.border}` }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = tone.text;
+            e.currentTarget.style.backgroundColor = tone.iconBg;
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = tone.border;
+            e.currentTarget.style.backgroundColor = tone.bg;
+          }}
         >
           <div className="flex items-center gap-2 mb-3">
-            <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgb(var(--surface))', color: tone }}>
+            <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: tone.iconBg, color: tone.text }}>
               <Icon size={16} />
             </span>
             <span className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>{title}</span>
           </div>
-          <p className="text-sm font-semibold" style={{ color: tone }}>{short}</p>
+          <p className="text-sm font-semibold" style={{ color: tone.text }}>{short}</p>
           <p className="text-xs mt-2 leading-relaxed" style={{ color: 'rgb(var(--text-3))' }}>{details}</p>
         </button>
       ))}
@@ -370,7 +393,7 @@ export const ReportsSection: React.FC = () => {
               detail: 'after filters',
               meaning: 'How many employees are included in the reports below.',
               effect: 'All totals and averages are calculated from only these people.',
-              color: 'rgb(var(--accent))',
+              tone: REPORT_TONES.people,
             },
             {
               label: 'Ready',
@@ -378,7 +401,7 @@ export const ReportsSection: React.FC = () => {
               detail: `${reportDecision.readinessRate}% ready`,
               meaning: 'People who already meet the target-grade skill requirements.',
               effect: 'A higher number means the team is closer to promotion readiness.',
-              color: 'rgb(var(--success))',
+              tone: REPORT_TONES.ready,
             },
             {
               label: 'Near Ready',
@@ -386,7 +409,7 @@ export const ReportsSection: React.FC = () => {
               detail: 'small gaps remain',
               meaning: 'People who are close but still missing a few requirements.',
               effect: 'These are usually the quickest wins for coaching or training.',
-              color: 'rgb(var(--warning))',
+              tone: REPORT_TONES.near,
             },
             {
               label: 'Big Skill Gaps',
@@ -394,7 +417,7 @@ export const ReportsSection: React.FC = () => {
               detail: 'fix first',
               meaning: 'Required skill checks that are at least 30 points below target.',
               effect: 'These can block readiness and should be handled before small gaps.',
-              color: 'rgb(var(--danger))',
+              tone: REPORT_TONES.gap,
             },
             {
               label: 'Weakest Area',
@@ -402,22 +425,22 @@ export const ReportsSection: React.FC = () => {
               detail: reportDecision.weakestSkillArea ? `${reportDecision.weakestSkillArea.avg}% avg` : 'no data',
               meaning: 'The skill area with the lowest average current score.',
               effect: 'Use it to pick the training topic with the biggest team impact.',
-              color: 'rgb(var(--text-1))',
+              tone: REPORT_TONES.area,
             },
           ].map((item) => (
             <div
               key={item.label}
               className="rounded-xl border p-3 min-h-[142px] flex flex-col"
-              style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}
+              style={{ borderColor: item.tone.border, backgroundColor: item.tone.bg, boxShadow: `inset 0 1px 0 ${item.tone.border}` }}
               title={`${item.label}: ${item.meaning} ${item.effect}`}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-[11px] font-semibold uppercase" style={{ color: 'rgb(var(--text-3))', letterSpacing: 0 }}>{item.label}</p>
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0" style={{ color: item.color, backgroundColor: 'rgb(var(--surface))' }}>
+                <p className="text-[11px] font-semibold uppercase" style={{ color: item.tone.text, letterSpacing: 0 }}>{item.label}</p>
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0" style={{ color: item.tone.text, backgroundColor: item.tone.iconBg }}>
                   {item.detail}
                 </span>
               </div>
-              <p className="text-2xl font-bold mt-2 break-words leading-tight" style={{ color: item.color }}>{item.value}</p>
+              <p className="text-2xl font-bold mt-2 break-words leading-tight" style={{ color: item.tone.text }}>{item.value}</p>
               <p className="text-xs mt-2 leading-snug" style={{ color: 'rgb(var(--text-2))' }}>{item.meaning}</p>
               <p className="text-[11px] mt-auto pt-2 leading-snug" style={{ color: 'rgb(var(--text-3))' }}>{item.effect}</p>
             </div>
