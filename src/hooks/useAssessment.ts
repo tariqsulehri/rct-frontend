@@ -273,7 +273,7 @@ export const useAllEmployees = (department?: string) => {
 // Builds the cascading picker model from the flat /config/technologies payload.
 // Shape: Domain -> Competency -> Technologies.
 export const useSkillsHierarchy = () => {
-  const { data: technologies, isLoading, error } = useTechnologiesForAssessment();
+  const { data: technologies, isLoading, isError, error, refetch } = useTechnologiesForAssessment();
 
   const hierarchy = React.useMemo(() => {
     if (!technologies) return [];
@@ -331,7 +331,7 @@ export const useSkillsHierarchy = () => {
     return grouped;
   }, [technologies]);
 
-  return { data: hierarchy, isLoading, error };
+  return { data: hierarchy, isLoading, isError, error, refetch };
 };
 
 // Product duplicate rule: one assessment per employee for the same

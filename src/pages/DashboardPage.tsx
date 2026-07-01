@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   LayoutDashboard, Users, ClipboardCheck, BarChart2,
   Settings2, ChevronLeft, ChevronRight,
@@ -1779,9 +1780,9 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
       )}
 
       {/* Skill editor modal for engineers */}
-      {showSkillEditor && user?.empCode && (
+      {showSkillEditor && user?.empCode && typeof document !== 'undefined' && createPortal((
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowSkillEditor(false); }}
         >
@@ -1800,7 +1801,7 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 };

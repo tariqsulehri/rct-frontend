@@ -296,10 +296,19 @@ function buildTechnologyLocationMap(hierarchy: SkillHierarchy[]) {
 }
 
 export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName, readOnlyLevel = false, canApprove = false, onSuccess, onClose }) => {
-  const { data: hierarchy = [], isLoading: hierarchyLoading } = useSkillsHierarchy();
+  const {
+    data: hierarchy = [],
+    isLoading: hierarchyLoading,
+    isError: hierarchyIsError,
+    error: hierarchyError,
+    refetch: refetchHierarchy,
+  } = useSkillsHierarchy();
   const {
     data: existingAssessments = [],
     isLoading: existingAssessmentsLoading,
+    isError: existingAssessmentsIsError,
+    error: existingAssessmentsError,
+    refetch: refetchExistingAssessments,
   } = useEmployeeAssessments(employeeId);
   const { checkDuplicate } = useDuplicateAssessmentCheck(employeeId);
   const createAssessment = useCreateAssessment();
@@ -727,6 +736,10 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
   );
 
   const isInitializing = hierarchyLoading || existingAssessmentsLoading;
+  const loadErrors = [
+    hierarchyIsError ? getApiErrorMessage(hierarchyError, 'Skill setup could not load.') : null,
+    existingAssessmentsIsError ? getApiErrorMessage(existingAssessmentsError, 'Saved skill rows could not load.') : null,
+  ].filter(Boolean);
   const savedCount = rows.filter((r) => !r.isNew && r.status === 'approved').length;
   const pendingCount = rows.filter((r) => !r.isNew && r.status === 'pending').length;
   const unsavedCount = rows.filter((r) => r.isNew).length;
@@ -801,6 +814,36 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       {isInitializing && (
         <div className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}>
           Loading saved skill rows...
+        </div>
+      )}
+
+      {loadErrors.length > 0 && (
+        <div
+          className="rounded-lg border px-3 py-3 text-sm"
+          style={{
+            borderColor: 'rgb(var(--danger))',
+            backgroundColor: 'rgb(var(--danger-soft))',
+            color: 'rgb(var(--danger))',
+          }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold">My Skills could not load</p>
+              <p className="mt-1 text-xs leading-relaxed">
+                {loadErrors.join(' ')}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-ghost shrink-0 px-3 py-1.5 text-xs"
+              onClick={() => {
+                refetchHierarchy();
+                refetchExistingAssessments();
+              }}
+            >
+              Retry
+            </button>
+          </div>
         </div>
       )}
 
