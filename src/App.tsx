@@ -24,7 +24,7 @@ function isTokenExpired(token: string): boolean {
 // Renders nothing until Zustand has finished reading localStorage.
 // This is the single source of truth for hydration — no per-route guards needed.
 function HydrationGate({ children }: { children: React.ReactNode }) {
-  const [hydrated, setHydrated] = useState(() => useAuthStore.persist.hasHydrated());
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const validatePersistedSession = async () => {

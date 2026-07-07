@@ -21,6 +21,7 @@ import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
 import { PendingApprovalsPanel } from '@/components/PendingApprovalsPanel';
 import { ConfigSection } from '@/components/config/ConfigSection';
 import { ReportsSection } from '@/components/reports/ReportsSection';
+import { SkillAreaNameFilterSelect } from '@/components/filters/TaxonomyFilterSelects';
 import { usePromotionReadiness, useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
 import { useAiChat, useAiDashboard, type AiChatResponse, type AiFocus, type AiPriority } from '@/hooks/useAiDashboard';
 import {
@@ -1571,15 +1572,11 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
                   style={{ color: 'rgb(var(--text-3))' }}>x</button>
               )}
             </div>
-            <select
+            <SkillAreaNameFilterSelect
               value={competencyDomainFilter}
-              onChange={e => setCompetencyDomainFilter(e.target.value)}
-              className="text-sm rounded-lg px-3 py-2 border outline-none"
-              style={{ background: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
-            >
-              <option value="all">All skill areas</option>
-              {competencyDomains.map(domain => <option key={domain} value={domain}>{domain}</option>)}
-            </select>
+              onChange={setCompetencyDomainFilter}
+              skillAreas={competencyDomains}
+            />
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={competencyStatusFilter}
@@ -2800,21 +2797,11 @@ const AIInsightsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => v
                 }}
               />
             </div>
-            <select
+            <SkillAreaNameFilterSelect
               value={blockerDomain}
-              onChange={(event) => setBlockerDomain(event.target.value)}
-              className="rounded-lg border px-3 py-2 text-sm outline-none"
-              style={{
-                borderColor: 'rgb(var(--border))',
-                backgroundColor: 'rgb(var(--surface-2))',
-                color: 'rgb(var(--text-1))',
-              }}
-            >
-              <option value="all">All skill areas</option>
-              {blockerDomains.map((domain) => (
-                <option key={domain} value={domain}>{domain}</option>
-              ))}
-            </select>
+              onChange={setBlockerDomain}
+              skillAreas={blockerDomains}
+            />
             <select
               value={blockerSeverity}
               onChange={(event) => setBlockerSeverity(event.target.value as typeof blockerSeverity)}

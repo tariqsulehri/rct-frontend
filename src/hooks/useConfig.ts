@@ -134,6 +134,8 @@ export interface ConfigSkillDomain {
   name: string;
   description: string | null;
   color: string | null;
+  category_id: number;
+  category?: { id: number; name: string; color: string | null } | null;
   grade_weights?: { grade_id: number; weight: number }[];
   competency_domains?: { department_id: number; competency: { id: number; name: string } }[];
 }
@@ -919,11 +921,14 @@ export const useConfigSkillDomains = () =>
 export const useCreateSkillDomain = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { name: string; description?: string; color?: string; weight?: number; sort_order?: number; is_active?: boolean }) => {
+    mutationFn: async (data: { name: string; description?: string; color?: string; category_id: number }) => {
       const res = await apiClient.post<{ success: boolean; data: ConfigSkillDomain }>('/config/skill-domains', data);
       return res.data.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'skill-domains'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'skill-domains'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'competency-categories'] });
+    },
   });
 };
 
@@ -935,12 +940,15 @@ export const useUpdateSkillDomain = () => {
       data,
     }: {
       id: number;
-      data: Partial<{ name: string; description: string; color: string; weight: number; sort_order: number; is_active: boolean }>;
+      data: Partial<{ name: string; description: string; color: string; category_id: number }>;
     }) => {
       const res = await apiClient.patch<{ success: boolean; data: ConfigSkillDomain }>(`/config/skill-domains/${id}`, data);
       return res.data.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'skill-domains'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'skill-domains'] });
+      queryClient.invalidateQueries({ queryKey: ['config', 'competency-categories'] });
+    },
   });
 };
 
@@ -1103,6 +1111,29 @@ export const useDeleteCompetency = () => {
       await apiClient.delete(`/config/competencies/${id}`);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['config', 'competencies'] }),
+  });
+};
+
+export const useSyncDepartmentSkillMap = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      department_id,
+      mappings,
+    }: {
+      department_id: number;
+      mappings: Array<{ competency_id: number; domain_ids: number[] }>;
+    }) => {
+      const res = await apiClient.put<{ success: boolean; data: ConfigCompetency[] }>('/config/department-skill-map', {
+        department_id,
+        mappings,
+      });
+      return res.data.data;
+    },
+    onSuccess: (competencies) => {
+      queryClient.setQueryData(['config', 'competencies'], competencies);
+      queryClient.invalidateQueries({ queryKey: ['config', 'competencies'] });
+    },
   });
 };
 

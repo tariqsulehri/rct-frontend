@@ -6,6 +6,7 @@ import { CompetencyScoresTab } from './tabs/CompetencyScoresTab';
 import { GapAnalysisTab } from './tabs/GapAnalysisTab';
 import { useCompetencyMatrix, useGapMatrix, usePromotionReadiness } from '@/hooks/useReports';
 import { DEFAULT_REPORT_FILTERS, type ReportFilters } from './reportFilters';
+import { SkillAreaNameFilterSelect } from '@/components/filters/TaxonomyFilterSelects';
 
 type SubTab = 'summary' | 'promotion' | 'competency' | 'gap' | 'result-sheet';
 
@@ -365,15 +366,11 @@ export const ReportsSection: React.FC = () => {
             <option value="all">All target grades</option>
             {filterOptions.targetGrades.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
           </select>
-          <select
+          <SkillAreaNameFilterSelect
             value={reportFilters.skillArea}
-            onChange={(event) => updateFilter('skillArea', event.target.value)}
-            className="rounded-lg border px-3 py-2 text-xs outline-none"
-            style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))', color: 'rgb(var(--text-1))' }}
-          >
-            <option value="all">All skill areas</option>
-            {filterOptions.skillAreas.map((skillArea) => <option key={skillArea} value={skillArea}>{skillArea}</option>)}
-          </select>
+            onChange={(value) => updateFilter('skillArea', value)}
+            skillAreas={filterOptions.skillAreas}
+          />
           <select
             value={reportFilters.readiness}
             onChange={(event) => updateFilter('readiness', event.target.value as ReportFilters['readiness'])}

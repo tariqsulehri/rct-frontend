@@ -6,6 +6,7 @@ import {
   useConfigCompetencies,
   useConfigTechnologies,
 } from '@/hooks/useConfig';
+import { CategorySkillAreaFilters } from '@/components/filters/TaxonomyFilterSelects';
 
 // ── Type colours for technology badges ───────────────────────────────────────
 
@@ -27,7 +28,11 @@ const SkillTaxonomyView: React.FC = () => {
 
   // ── Global search ──────────────────────────────────────────────────────────
   const [query, setQuery] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [domainId, setDomainId] = useState('');
   const q = query.trim().toLowerCase();
+
+  const hasFilters = query.trim().length > 0 || categoryId !== '' || domainId !== '';
 
   const toggle = <T,>(set: Set<T>, key: T): Set<T> => {
     const n = new Set(set);
@@ -54,26 +59,29 @@ const SkillTaxonomyView: React.FC = () => {
   const domainTree = useMemo(() => {
     const catLookup = new Map((categories ?? []).map(c => [c.id, c]));
 
-    return (domains ?? []).map(domain => {
-      const domainComps = (competencies ?? []).filter(c =>
-        (c.competency_domains ?? []).some(d => d.domain.id === domain.id),
-      );
+    return (domains ?? [])
+      .filter(domain => !categoryId || String(domain.category_id) === categoryId)
+      .filter(domain => !domainId || String(domain.id) === domainId)
+      .map(domain => {
+        const domainComps = (competencies ?? []).filter(c =>
+          (c.competency_domains ?? []).some(d => d.domain.id === domain.id),
+        );
 
-      // Group competencies by category
-      const catMap = new Map<number, { cat: NonNullable<typeof categories>[0]; comps: typeof domainComps }>();
-      domainComps.forEach(c => {
-        if (!c.competency_category) return;
-        const catId = c.competency_category.id;
-        if (!catMap.has(catId)) {
-          const fullCat = catLookup.get(catId) ?? c.competency_category as NonNullable<typeof categories>[0];
-          catMap.set(catId, { cat: fullCat, comps: [] });
-        }
-        catMap.get(catId)!.comps.push(c);
+        // Group competencies by category
+        const catMap = new Map<number, { cat: NonNullable<typeof categories>[0]; comps: typeof domainComps }>();
+        domainComps.forEach(c => {
+          if (!c.competency_category) return;
+          const catId = c.competency_category.id;
+          if (!catMap.has(catId)) {
+            const fullCat = catLookup.get(catId) ?? c.competency_category as NonNullable<typeof categories>[0];
+            catMap.set(catId, { cat: fullCat, comps: [] });
+          }
+          catMap.get(catId)!.comps.push(c);
+        });
+
+        return { domain, groups: Array.from(catMap.values()), totalComps: domainComps.length };
       });
-
-      return { domain, groups: Array.from(catMap.values()), totalComps: domainComps.length };
-    });
-  }, [domains, categories, competencies]);
+  }, [categoryId, domainId, domains, categories, competencies]);
 
   // ── Filtered domain tree (search) ─────────────────────────────────────────
   const filteredTree = useMemo(() => {
@@ -149,7 +157,7 @@ const SkillTaxonomyView: React.FC = () => {
       </div>
 
       {/* ── Toolbar ───────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col xl:flex-row xl:items-center gap-3">
         {/* Search */}
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl flex-1"
           style={{ backgroundColor: 'rgb(var(--surface-2))', border: '1px solid rgb(var(--border))' }}>
@@ -168,6 +176,17 @@ const SkillTaxonomyView: React.FC = () => {
           )}
         </div>
 
+        <CategorySkillAreaFilters
+          categoryId={categoryId}
+          onCategoryChange={setCategoryId}
+          skillAreaId={domainId}
+          onSkillAreaChange={setDomainId}
+          categories={categories}
+          skillAreas={domains}
+          categoryClassName="w-full xl:w-56"
+          skillAreaClassName="w-full xl:w-64"
+        />
+
         {/* Expand / Collapse All */}
         <button onClick={expandAll}
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors"
@@ -180,6 +199,15 @@ const SkillTaxonomyView: React.FC = () => {
           <ChevronsDownUp size={14} />
           Collapse All
         </button>
+        {hasFilters && (
+          <button
+            onClick={() => { setQuery(''); setCategoryId(''); setDomainId(''); }}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors btn-ghost"
+          >
+            <X size={14} />
+            Clear
+          </button>
+        )}
       </div>
 
       {/* ── Empty state ───────────────────────────────────────────────── */}

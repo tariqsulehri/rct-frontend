@@ -7,6 +7,7 @@ import { isLeaderRole } from '@/types/rbac';
 import { Empty, InfoTip, Loading } from '../shared';
 import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 import { starRatingDisplay } from '../reportDisplay';
+import { SkillAreaNameFilterSelect } from '@/components/filters/TaxonomyFilterSelects';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ── Gap Analysis ──────────────────────────────────────────────────────────────
@@ -462,20 +463,14 @@ export const GapAnalysisTab: React.FC<{ reportFilters?: ReportFilters }> = ({ re
               <option key={grade} value={grade}>{grade}</option>
             ))}
           </select>
-          <select
+          <SkillAreaNameFilterSelect
             value={tableSkillArea}
-            onChange={(event) => {
-              setTableSkillArea(event.target.value);
+            onChange={(value) => {
+              setTableSkillArea(value);
               setTableSkill('all');
             }}
-            className="rounded-lg px-3 py-2 text-xs border outline-none"
-            style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--text-1))' }}
-          >
-            <option value="all">All skill areas</option>
-            {filteredDomains.map((domain) => (
-              <option key={domain} value={domain}>{domain}</option>
-            ))}
-          </select>
+            skillAreas={filteredDomains}
+          />
           {isSkillMode ? (
             <select
               value={tableSkill}
