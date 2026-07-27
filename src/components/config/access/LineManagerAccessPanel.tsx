@@ -33,7 +33,6 @@ type LineManagerAccessPanelProps = {
   lineBulkForm: LineManagerBulkAccessForm;
   setLineBulkForm: React.Dispatch<React.SetStateAction<LineManagerBulkAccessForm>>;
   lineManagerOptions: SelectOption[];
-  lineAssignments?: ConfigLineManagerAssignment[];
   resourceDepartmentFilter: string;
   setResourceDepartmentFilter: React.Dispatch<React.SetStateAction<string>>;
   resourceDepartmentOptions: string[];
@@ -74,7 +73,6 @@ export const LineManagerAccessPanel: React.FC<LineManagerAccessPanelProps> = ({
   lineBulkForm,
   setLineBulkForm,
   lineManagerOptions,
-  lineAssignments,
   resourceDepartmentFilter,
   setResourceDepartmentFilter,
   resourceDepartmentOptions,
@@ -147,15 +145,7 @@ export const LineManagerAccessPanel: React.FC<LineManagerAccessPanelProps> = ({
           <label className={L}>Line Manager</label>
           <SearchableSelect value={lineBulkForm.manager_user_id} onChange={loadLineBulkManager} placeholder="Select line manager..." options={lineManagerOptions} />
         </div>
-        <div><label className={L}>Role</label><input className={F} value={lineBulkForm.relationship_type} onChange={e => {
-          const relationshipType = e.target.value;
-          const activeAssignments = (lineAssignments ?? []).filter(a =>
-            String(a.manager_user_id) === lineBulkForm.manager_user_id &&
-            a.is_active &&
-            a.relationship_type === relationshipType,
-          );
-          setLineBulkForm({ ...lineBulkForm, relationship_type: relationshipType, employee_ids: activeAssignments.map(a => String(a.employee_id)) });
-        }} /></div>
+        <div><label className={L}>Role</label><input className={F} value={lineBulkForm.relationship_type} readOnly disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} /></div>
         <div className="flex items-center gap-4 pt-7 flex-wrap">
           <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.can_view} onChange={e => setLineBulkForm({ ...lineBulkForm, can_view: e.target.checked })} /> View</label>
           <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.can_assess} onChange={e => setLineBulkForm({ ...lineBulkForm, can_assess: e.target.checked })} /> Assess</label>

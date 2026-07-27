@@ -413,7 +413,6 @@ export const AccessManagementSection: React.FC = () => {
             lineBulkForm={lineBulkForm}
             setLineBulkForm={setLineBulkForm}
             lineManagerOptions={lineManagerOptions}
-            lineAssignments={lineAssignments}
             resourceDepartmentFilter={resourceDepartmentFilter}
             setResourceDepartmentFilter={setResourceDepartmentFilter}
             resourceDepartmentOptions={resourceDepartmentOptions}
