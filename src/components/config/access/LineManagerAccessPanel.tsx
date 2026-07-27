@@ -172,12 +172,6 @@ export const LineManagerAccessPanel: React.FC<LineManagerAccessPanelProps> = ({
           <SearchableSelect value={lineBulkForm.manager_user_id} onChange={loadLineBulkManager} placeholder="Select line manager..." options={lineManagerOptions} />
         </div>
         <div><label className={L}>Role</label><input className={F} value={lineBulkForm.relationship_type} readOnly disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} /></div>
-        <div className="flex items-center gap-4 pt-7 flex-wrap">
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.can_view} onChange={e => setLineBulkForm({ ...lineBulkForm, can_view: e.target.checked })} /> View</label>
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.can_assess} onChange={e => setLineBulkForm({ ...lineBulkForm, can_assess: e.target.checked })} /> Assess</label>
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.is_primary} onChange={e => setLineBulkForm({ ...lineBulkForm, is_primary: e.target.checked })} /> Primary</label>
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={lineBulkForm.is_active} onChange={e => setLineBulkForm({ ...lineBulkForm, is_active: e.target.checked })} /> Active</label>
-        </div>
         <div><label className={L}>Start Date</label><input type="date" className={F} value={lineBulkForm.starts_at} onChange={e => setLineBulkForm({ ...lineBulkForm, starts_at: e.target.value })} /></div>
         <div><label className={L}>End Date</label><input type="date" className={F} value={lineBulkForm.ends_at} onChange={e => setLineBulkForm({ ...lineBulkForm, ends_at: e.target.value })} /></div>
       </div>

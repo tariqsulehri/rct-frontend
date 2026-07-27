@@ -40,12 +40,6 @@ export const LineManagerAccessModal: React.FC<LineManagerAccessModalProps> = ({
         <div><label className={L}>Role Type</label><input className={F} value={form.relationship_type} disabled /></div>
         <div><label className={L}>Start Date</label><input type="date" className={F} value={form.starts_at} onChange={e => setForm({ ...form, starts_at: e.target.value })} /></div>
         <div><label className={L}>End Date</label><input type="date" className={F} value={form.ends_at} onChange={e => setForm({ ...form, ends_at: e.target.value })} /></div>
-        <div className="flex items-center gap-4 pt-7 flex-wrap">
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={form.can_view} onChange={e => setForm({ ...form, can_view: e.target.checked })} /> View</label>
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={form.can_assess} onChange={e => setForm({ ...form, can_assess: e.target.checked })} /> Assess</label>
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={form.is_primary} onChange={e => setForm({ ...form, is_primary: e.target.checked })} /> Primary</label>
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'rgb(var(--text-1))' }}><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /> Active</label>
-        </div>
       </div>
       <FormFooter onSave={onSave} onCancel={onClose} saving={saving} />
     </div>
