@@ -166,7 +166,7 @@ export const LineManagerAccessPanel: React.FC<LineManagerAccessPanelProps> = ({
 
       {saveError && <div className="mx-4 mt-3 rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'rgba(248,113,113,0.35)', backgroundColor: 'rgba(127,29,29,0.20)', color: 'rgb(var(--danger))' }}>{saveError}</div>}
 
-      <div className="p-4 grid grid-cols-1 lg:grid-cols-4 gap-3 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
+      <div className="p-4 grid grid-cols-1 lg:grid-cols-5 gap-3 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
         <div className="lg:col-span-2">
           <label className={L}>Line Manager</label>
           <SearchableSelect value={lineBulkForm.manager_user_id} onChange={loadLineBulkManager} placeholder="Select line manager..." options={lineManagerOptions} />
