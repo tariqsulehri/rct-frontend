@@ -98,23 +98,49 @@ export const LineManagerAccessPanel: React.FC<LineManagerAccessPanelProps> = ({
   onEditLine,
   onDeactivateLine,
   onReactivateLine,
-}) => (
-  <div className="space-y-3">
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-      {[
-        { label: 'Assigned', value: assignedEmployeeCount, tone: 'rgb(var(--success))' },
-        { label: 'Unassigned', value: unassignedEmployeeCount, tone: 'rgb(var(--warning))' },
-        { label: 'Active Rows', value: activeLineAssignments.length, tone: 'rgb(var(--accent-txt))' },
-      ].map(item => (
-        <div key={item.label} className="rounded-lg border px-4 py-3"
-          style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
-          <p className="text-xs font-bold uppercase" style={{ color: 'rgb(var(--text-2))' }}>{item.label}</p>
-          <p className="text-2xl font-extrabold mt-1" style={{ color: item.tone }}>{item.value}</p>
-        </div>
-      ))}
-    </div>
+}) => {
+  const [activeTab, setActiveTab] = React.useState<'assign' | 'history'>('assign');
 
-    <div className="rounded-lg border overflow-hidden" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {[
+          { label: 'Assigned', value: assignedEmployeeCount, tone: 'rgb(var(--success))' },
+          { label: 'Unassigned', value: unassignedEmployeeCount, tone: 'rgb(var(--warning))' },
+          { label: 'Active Rows', value: activeLineAssignments.length, tone: 'rgb(var(--accent-txt))' },
+        ].map(item => (
+          <div key={item.label} className="rounded-lg border px-4 py-3"
+            style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}>
+            <p className="text-xs font-bold uppercase" style={{ color: 'rgb(var(--text-2))' }}>{item.label}</p>
+            <p className="text-2xl font-extrabold mt-1" style={{ color: item.tone }}>{item.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex border-b" style={{ borderColor: 'rgb(var(--border))' }}>
+        {[
+          { id: 'assign' as const, label: 'Assign Resources' },
+          { id: 'history' as const, label: 'Assignment History' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className="px-6 py-3 text-sm font-medium transition-colors relative"
+            style={{ color: activeTab === tab.id ? 'rgb(var(--text-1))' : 'rgb(var(--text-3))' }}
+          >
+            {tab.label}
+            {activeTab === tab.id && (
+              <div
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"
+                style={{ backgroundColor: 'rgb(var(--accent))' }}
+              />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'assign' && (
+        <div className="rounded-lg border overflow-hidden" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
       <div className="px-4 py-3 border-b flex items-center justify-between gap-3 flex-wrap"
         style={{ borderColor: 'rgb(var(--border))', background: 'linear-gradient(135deg, #0f766e 0%, #7c3aed 100%)' }}>
         <div>
@@ -265,24 +291,27 @@ export const LineManagerAccessPanel: React.FC<LineManagerAccessPanelProps> = ({
         </div>
       </div>
     </div>
+  )}
 
-    <div className="card p-1.5 inline-flex gap-1">
-      {[
-        { id: 'active' as const, label: 'Active Rows' },
-        { id: 'inactive' as const, label: 'Removed History' },
-        { id: 'all' as const, label: 'All History' },
-      ].map(item => (
-        <button key={item.id} type="button" onClick={() => setLineStatusFilter(item.id)}
-          className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
-          style={{
-            backgroundColor: lineStatusFilter === item.id ? 'rgb(var(--accent))' : 'transparent',
-            color: lineStatusFilter === item.id ? 'white' : 'rgb(var(--text-2))',
-          }}>
-          {item.label}
-        </button>
-      ))}
-    </div>
-    <TableShell tabKey="line-manager-access" title="Assignment Rows"
+      {activeTab === 'history' && (
+        <div className="space-y-3">
+          <div className="card p-1.5 inline-flex gap-1">
+            {[
+              { id: 'active' as const, label: 'Active Rows' },
+              { id: 'inactive' as const, label: 'Removed History' },
+              { id: 'all' as const, label: 'All History' },
+            ].map(item => (
+              <button key={item.id} type="button" onClick={() => setLineStatusFilter(item.id)}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                style={{
+                  backgroundColor: lineStatusFilter === item.id ? 'rgb(var(--accent))' : 'transparent',
+                  color: lineStatusFilter === item.id ? 'white' : 'rgb(var(--text-2))',
+                }}>
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <TableShell tabKey="line-manager-access" title="Assignment Rows"
       headers={['Line Manager', 'Reporting Employee', 'Role', 'Permissions', 'Dates', 'Status']}
       loading={lineLoading} error={lineError}
       q={lineState.q} onSearch={lineState.onSearch} page={lineState.page} total={lineState.filtered.length} onPage={lineState.setPage}>
@@ -314,4 +343,7 @@ export const LineManagerAccessPanel: React.FC<LineManagerAccessPanelProps> = ({
       ))}
     </TableShell>
   </div>
-);
+)}
+  </div>
+  );
+};
