@@ -308,7 +308,7 @@ export const LineManagerAccessPanel: React.FC<LineManagerAccessPanelProps> = ({
               {assignment.is_active ? (
                 <button className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium" style={{ color: 'rgb(var(--danger))' }}
                   onClick={() => onDeactivateLine(assignment)}>
-                  Deactivate
+                  Unassign
                 </button>
               ) : (
                 <button className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium" style={{ color: 'rgb(var(--success))' }}

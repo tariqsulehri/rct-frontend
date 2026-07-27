@@ -438,7 +438,7 @@ export const AccessManagementSection: React.FC = () => {
             toggleLineBulkEmployee={toggleLineBulkEmployee}
             onEditLine={openLineEdit}
             onDeactivateLine={async (assignment) => {
-              if (await confirm({ title: 'Deactivate Line Manager Access', message: 'This employee resource will be removed from the line manager.', confirmLabel: 'Deactivate', variant: 'warning' })) deleteLineAssignment.mutate(assignment.id);
+              if (await confirm({ title: 'Unassign Line Manager Access', message: 'This employee resource will be removed from the line manager.', confirmLabel: 'Unassign', variant: 'warning' })) deleteLineAssignment.mutate(assignment.id);
             }}
             onReactivateLine={async (assignment) => {
               if (await confirm({ title: 'Reactivate Line Manager Access', message: 'This employee resource will be assigned back to this line manager if no other active line manager owns it.', confirmLabel: 'Reactivate', variant: 'warning' })) {
