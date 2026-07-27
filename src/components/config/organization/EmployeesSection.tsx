@@ -242,9 +242,12 @@ export const EmployeesSection: React.FC = () => {
     const dept = user.employee?.dept?.name || user.employee?.department || 'System';
     return `${user.employee_id} - ${name} - ${dept}`;
   };
-  const managerOptions = (users ?? [])
-    .filter(user => user.role === 'LINE_MANAGER' || user.role === 'MANAGER' || user.role === 'TOP_MANAGEMENT' || user.role === 'ADMIN')
-    .map(u => ({ value: String(u.id), label: formatUserLabel(u) }));
+  const managerOptions = [
+    { value: '', label: '— Unassigned / Remove Manager —' },
+    ...(users ?? [])
+      .filter(user => user.role === 'LINE_MANAGER' || user.role === 'MANAGER' || user.role === 'TOP_MANAGEMENT' || user.role === 'ADMIN')
+      .map(u => ({ value: String(u.id), label: formatUserLabel(u) }))
+  ];
 
   return (
     <>
@@ -308,12 +311,12 @@ export const EmployeesSection: React.FC = () => {
 
       {modal && (
         <Modal onClose={() => setModal(null)} wide title={modal === 'create' ? 'Create Employee' : 'Edit Employee'}>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-6 p-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div><label className={L}>Employee Code</label><input className={F} value={form.emp_code} onChange={e => setForm({ ...form, emp_code: e.target.value })} /></div>
               <div><label className={L}>Full Name</label><input className={F} value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div><label className={L}>Department</label>
                 <SearchableSelect value={form.department_id} onChange={v => {
                   const dept = departments?.find(d => String(d.id) === v);
@@ -331,7 +334,7 @@ export const EmployeesSection: React.FC = () => {
               </div>
               <div><label className={L}>Email</label><input type="email" className={F} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div><label className={L}>Current Grade</label>
                 <SearchableSelect value={form.current_grade_id} onChange={v => setForm({ ...form, current_grade_id: v })}
                   placeholder={form.department_id ? 'Select grade…' : 'Select department first'} options={gradeOptions} />
@@ -341,11 +344,11 @@ export const EmployeesSection: React.FC = () => {
                   placeholder={form.department_id ? 'Select grade…' : 'Select department first'} options={gradeOptions} />
               </div>
             </div>
-            <div className="mt-4 border-t pt-4" style={{ borderColor: 'rgb(var(--border))' }}>
+            <div className="mt-2 border-t pt-6" style={{ borderColor: 'rgb(var(--border))' }}>
               <label className={L}>Line Manager</label>
               <SearchableSelect value={form.manager_user_id} onChange={v => setForm({ ...form, manager_user_id: v })}
                 placeholder="Select Line Manager…" options={managerOptions} />
-              <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Changing the Line Manager will safely end-date the current assignment and start a new one.</p>
+              <p className="text-xs mt-2" style={{ color: 'rgb(var(--text-3))' }}>Changing the Line Manager will safely end-date the current assignment and start a new one.</p>
             </div>
 
             <FormFooter onSave={handleSave} onCancel={() => setModal(null)} saving={createEmployee.isPending || updateEmployee.isPending} />
