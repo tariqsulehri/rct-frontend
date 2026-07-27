@@ -33,7 +33,6 @@ type EmployeePayload = {
   email: string | null;
   current_grade_id: number;
   target_grade_id: number;
-  manager_id: number | null;
   department_id: number | null;
 };
 
@@ -183,13 +182,13 @@ export const EmployeesSection: React.FC = () => {
   const [editing, setEditing] = useState<ConfigEmployee | null>(null);
   const [form, setForm] = useState({
     emp_code: '', full_name: '', department: '', email: '',
-    current_grade_id: '', target_grade_id: '', manager_id: '', department_id: '',
+    current_grade_id: '', target_grade_id: '', department_id: '',
   });
   const [viewMode, setViewMode] = useState<'team' | 'single'>('team');
   const [selectedEmp, setSelectedEmp] = useState<ConfigEmployee | null>(null);
 
   const openCreate = () => {
-    setForm({ emp_code: '', full_name: '', department: '', email: '', current_grade_id: '', target_grade_id: '', manager_id: '', department_id: '' });
+    setForm({ emp_code: '', full_name: '', department: '', email: '', current_grade_id: '', target_grade_id: '', department_id: '' });
     setEditing(null); setModal('create');
   };
   const openEdit = (e: ConfigEmployee) => {
@@ -197,7 +196,6 @@ export const EmployeesSection: React.FC = () => {
       emp_code: e.emp_code, full_name: e.full_name, department: e.department,
       email: e.email ?? '', current_grade_id: String(e.current_grade_id),
       target_grade_id: String(e.target_grade_id),
-      manager_id: e.manager_id ? String(e.manager_id) : '',
       department_id: e.department_id ? String(e.department_id) : '',
     });
     setEditing(e); setModal('edit');
@@ -213,7 +211,6 @@ export const EmployeesSection: React.FC = () => {
       email: form.email || null,
       current_grade_id: Number(form.current_grade_id),
       target_grade_id: Number(form.target_grade_id),
-      manager_id: form.manager_id ? Number(form.manager_id) : null,
       department_id: form.department_id ? Number(form.department_id) : null,
     };
     if (modal === 'create') await createEmployee.mutateAsync(payload);
@@ -325,10 +322,7 @@ export const EmployeesSection: React.FC = () => {
                   placeholder={form.department_id ? 'Select grade…' : 'Select department first'} options={gradeOptions} />
               </div>
             </div>
-            <div><label className={L}>Manager (optional)</label>
-              <SearchableSelect value={form.manager_id} onChange={v => setForm({ ...form, manager_id: v })}
-                placeholder="None" options={empOptions} />
-            </div>
+
             <FormFooter onSave={handleSave} onCancel={() => setModal(null)} saving={createEmployee.isPending || updateEmployee.isPending} />
           </div>
         </Modal>

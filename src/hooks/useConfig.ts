@@ -110,7 +110,6 @@ export interface ConfigEmployee {
   email: string | null;
   current_grade_id: number;
   target_grade_id: number;
-  manager_id: number | null;
   department_id: number | null;
   current_grade?: { code: string; title: string };
   target_grade?: { code: string; title: string };
@@ -805,7 +804,6 @@ export const useCreateEmployee = () => {
       email?: string | null;
       current_grade_id: number;
       target_grade_id: number;
-      manager_id?: number | null;
       department_id?: number | null;
     }) => {
       const res = await apiClient.post<{ success: boolean; data: ConfigEmployee }>('/config/employees', data);
@@ -830,7 +828,6 @@ export const useUpdateEmployee = () => {
         email: string | null;
         current_grade_id: number;
         target_grade_id: number;
-        manager_id: number | null;
         department_id: number | null;
       }>;
     }) => {
