@@ -83,7 +83,7 @@ export function useLineManagerResourceState({
       .filter((code): code is string => Boolean(code)))).sort();
     const resourceRows = safeEmployees.map(employee => {
       const activeAssignment = activeLineAssignmentByEmployeeId.get(employee.id);
-      const assignedToSelectedManager = activeAssignment?.manager_user_id === Number(lineBulkForm.manager_user_id);
+      const assignedToSelectedManager = String(activeAssignment?.manager_user_id) === String(lineBulkForm.manager_user_id);
       const assignedElsewhere = Boolean(activeAssignment && !assignedToSelectedManager);
       const managerLabel = activeAssignment?.manager_user ? formatUserLabel(activeAssignment.manager_user) : '';
       const department = employee.dept?.name ?? employee.department;
