@@ -102,6 +102,18 @@ export interface ConfigDepartment {
   employees?: { id: number }[];
 }
 
+export type CreateEmployeePayload = {
+  emp_code: string;
+  full_name: string;
+  department: string;
+  email: string | null;
+  current_grade_id: number;
+  target_grade_id: number;
+  department_id: number | null;
+  manager_user_id?: number | null;
+};
+export type UpdateEmployeePayload = Partial<CreateEmployeePayload>;
+
 export interface ConfigEmployee {
   id: number;
   emp_code: string;
@@ -115,6 +127,15 @@ export interface ConfigEmployee {
   target_grade?: { code: string; title: string };
   manager?: { full_name: string };
   dept?: { id: number; name: string } | null;
+  line_manager_assignments?: {
+    manager_user_id: number;
+    manager_user?: {
+      username: string;
+      employee?: {
+        full_name: string;
+      };
+    };
+  }[];
 }
 
 export interface ConfigGrade {

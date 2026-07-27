@@ -12,6 +12,7 @@ import {
   useConfigDepartments,
   useConfigEmployees,
   useConfigGrades,
+  useConfigUsers,
   useCreateEmployee,
   useDeleteEmployee,
   useUpdateEmployee,
@@ -34,6 +35,7 @@ type EmployeePayload = {
   current_grade_id: number;
   target_grade_id: number;
   department_id: number | null;
+  manager_user_id?: number | null;
 };
 
 const EmployeeProfile: React.FC<{ employee: ConfigEmployee; onClose: () => void }> = ({ employee, onClose }) => {
@@ -173,6 +175,7 @@ export const EmployeesSection: React.FC = () => {
   const { data: employees, isLoading, isError } = useConfigEmployees();
   const { data: grades } = useConfigGrades();
   const { data: departments } = useConfigDepartments();
+  const { data: users } = useConfigUsers();
   const createEmployee = useCreateEmployee();
   const updateEmployee = useUpdateEmployee();
   const deleteEmployee = useDeleteEmployee();
@@ -182,21 +185,23 @@ export const EmployeesSection: React.FC = () => {
   const [editing, setEditing] = useState<ConfigEmployee | null>(null);
   const [form, setForm] = useState({
     emp_code: '', full_name: '', department: '', email: '',
-    current_grade_id: '', target_grade_id: '', department_id: '',
+    current_grade_id: '', target_grade_id: '', department_id: '', manager_user_id: '',
   });
   const [viewMode, setViewMode] = useState<'team' | 'single'>('team');
   const [selectedEmp, setSelectedEmp] = useState<ConfigEmployee | null>(null);
 
   const openCreate = () => {
-    setForm({ emp_code: '', full_name: '', department: '', email: '', current_grade_id: '', target_grade_id: '', department_id: '' });
+    setForm({ emp_code: '', full_name: '', department: '', email: '', current_grade_id: '', target_grade_id: '', department_id: '', manager_user_id: '' });
     setEditing(null); setModal('create');
   };
   const openEdit = (e: ConfigEmployee) => {
+    const managerId = e.line_manager_assignments?.[0]?.manager_user_id;
     setForm({
       emp_code: e.emp_code, full_name: e.full_name, department: e.department,
       email: e.email ?? '', current_grade_id: String(e.current_grade_id),
       target_grade_id: String(e.target_grade_id),
       department_id: e.department_id ? String(e.department_id) : '',
+      manager_user_id: managerId ? String(managerId) : '',
     });
     setEditing(e); setModal('edit');
   };
@@ -212,6 +217,7 @@ export const EmployeesSection: React.FC = () => {
       current_grade_id: Number(form.current_grade_id),
       target_grade_id: Number(form.target_grade_id),
       department_id: form.department_id ? Number(form.department_id) : null,
+      manager_user_id: form.manager_user_id ? Number(form.manager_user_id) : null,
     };
     if (modal === 'create') await createEmployee.mutateAsync(payload);
     else if (editing) await updateEmployee.mutateAsync({ id: editing.id, data: payload });
@@ -230,6 +236,15 @@ export const EmployeesSection: React.FC = () => {
   const gradeOptions = departmentGrades.map(g => ({ value: String(g.id), label: `${g.code} – ${g.title}` }));
   const empOptions = (employees ?? []).map(e => ({ value: String(e.id), label: e.full_name, sub: e.emp_code }));
   const deptOptions = (departments ?? []).map(d => ({ value: String(d.id), label: d.name }));
+  
+  const formatUserLabel = (user: any) => {
+    const name = user.employee?.full_name || user.username;
+    const dept = user.employee?.dept?.name || user.employee?.department || 'System';
+    return `${user.employee_id} - ${name} - ${dept}`;
+  };
+  const managerOptions = (users ?? [])
+    .filter(user => user.role === 'LINE_MANAGER' || user.role === 'MANAGER' || user.role === 'TOP_MANAGEMENT' || user.role === 'ADMIN')
+    .map(u => ({ value: String(u.id), label: formatUserLabel(u) }));
 
   return (
     <>
@@ -278,9 +293,13 @@ export const EmployeesSection: React.FC = () => {
                 </button>
               </TD>
               <TD muted>{e.dept?.name ?? e.department}</TD>
-              <TD><span className="badge badge-accent">{e.current_grade?.code ?? e.current_grade_id}</span></TD>
-              <TD><span className="badge">{e.target_grade?.code ?? e.target_grade_id}</span></TD>
-              <TD muted small>{e.manager?.full_name ?? '—'}</TD>
+              <TD>
+                <span className="font-semibold text-xs rounded px-2 py-1" style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: 'rgb(var(--success))' }}>{e.current_grade?.code ?? '-'}</span>
+              </TD>
+              <TD>
+                <span className="font-semibold text-xs rounded px-2 py-1" style={{ backgroundColor: 'rgba(168,85,247,0.15)', color: '#a855f7' }}>{e.target_grade?.code ?? '-'}</span>
+              </TD>
+              <TD muted>{e.line_manager_assignments?.[0]?.manager_user?.employee?.full_name ?? e.line_manager_assignments?.[0]?.manager_user?.username ?? '-'}</TD>
               <ActionBtns onEdit={() => openEdit(e)} onDelete={async () => { if (await confirm({ title: 'Archive Employee', message: `"${e.full_name}" will be archived and hidden from active rosters.`, confirmLabel: 'Archive', variant: 'warning' })) deleteEmployee.mutate(e.id); }} />
             </TR>
           ))}
@@ -321,6 +340,12 @@ export const EmployeesSection: React.FC = () => {
                 <SearchableSelect value={form.target_grade_id} onChange={v => setForm({ ...form, target_grade_id: v })}
                   placeholder={form.department_id ? 'Select grade…' : 'Select department first'} options={gradeOptions} />
               </div>
+            </div>
+            <div className="mt-4 border-t pt-4" style={{ borderColor: 'rgb(var(--border))' }}>
+              <label className={L}>Line Manager</label>
+              <SearchableSelect value={form.manager_user_id} onChange={v => setForm({ ...form, manager_user_id: v })}
+                placeholder="Select Line Manager…" options={managerOptions} />
+              <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>Changing the Line Manager will safely end-date the current assignment and start a new one.</p>
             </div>
 
             <FormFooter onSave={handleSave} onCancel={() => setModal(null)} saving={createEmployee.isPending || updateEmployee.isPending} />
