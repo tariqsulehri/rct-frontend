@@ -2,7 +2,9 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { Stars } from '@/components/ui/Stars';
-import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, ShieldCheck, Info } from 'lucide-react';
+import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, ShieldCheck, Info, Copy, Layers, SaveAll } from 'lucide-react';
+import { CloneColleagueDialog } from './CloneColleagueDialog';
+import { BulkAddDialog } from './BulkAddDialog';
 import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
 import { getApiErrorMessage } from '@/lib/apiError';
 import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes } from '@/hooks/useConfig';
@@ -15,6 +17,7 @@ import {
   useDeleteAssessment,
   useApproveAssessment,
   SkillHierarchy,
+  SkillAssessment,
 } from '@/hooks/useAssessment';
 
 interface Props {
@@ -330,6 +333,9 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const [editingRowIds, setEditingRowIds] = useState<Set<string>>(new Set());
   const [approvingRowIds, setApprovingRowIds] = useState<Set<string>>(new Set());
   const [savingRowIds, setSavingRowIds] = useState<Set<string>>(new Set());
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
+  const [isBulkAddModalOpen, setIsBulkAddModalOpen] = useState(false);
+  const [isSavingAll, setIsSavingAll] = useState(false);
 
   const techLocationMap = useMemo(() => buildTechnologyLocationMap(hierarchy), [hierarchy]);
   const scoringValues = useMemo(() => ({
@@ -604,6 +610,58 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     }
   }, [rows, approvingRowIds, validateAndEnrichRow, approveAssessment, updateAssessment, createAssessment, employeeId, onSuccess, setRowError]);
 
+  const handleCloneColleague = useCallback((clonedAssessments: SkillAssessment[]) => {
+    const existingTechIds = new Set(rows.map(r => r.technologyId).filter(Boolean));
+    const newRows: BulkRow[] = [];
+    clonedAssessments.forEach(a => {
+      if (!existingTechIds.has(a.technology_id)) {
+        const loc = techLocationMap.get(a.technology_id);
+        if (loc) {
+          newRows.push({
+            id: createRowId(),
+            isNew: true,
+            status: 'pending',
+            domainId: loc.domainId,
+            competencyId: loc.competencyId,
+            technologyId: a.technology_id,
+            type: a.type,
+            projects: a.projects,
+            level: a.level,
+          });
+        }
+      }
+    });
+    if (newRows.length > 0) {
+      setRows(prev => [...newRows, ...prev]);
+    }
+  }, [rows, techLocationMap]);
+
+  const handleBulkAdd = useCallback((technologies: { domainId: number; competencyId: number; technologyId: number }[]) => {
+    const newRows: BulkRow[] = technologies.map(t => ({
+      id: createRowId(),
+      isNew: true,
+      status: 'pending',
+      domainId: t.domainId,
+      competencyId: t.competencyId,
+      technologyId: t.technologyId,
+      type: 'Primary',
+      projects: 0,
+      level: 'Unset',
+    }));
+    if (newRows.length > 0) {
+      setRows(prev => [...newRows, ...prev]);
+    }
+  }, []);
+
+  const handleSaveAllUnsaved = useCallback(async () => {
+    setIsSavingAll(true);
+    const unsavedRows = rows.filter(r => r.isNew);
+    for (const row of unsavedRows) {
+      await handleSaveRow(row.id);
+    }
+    setIsSavingAll(false);
+  }, [rows, handleSaveRow]);
+
   const deleteRow = useCallback(async (rowId: string) => {
     const row = rows.find((r) => r.id === rowId);
     if (!row) return;
@@ -784,13 +842,23 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         />
         <div className="flex items-center gap-2">
           {unsavedCount > 0 && (
-            <span
-              className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
-              title="Rows added on screen but not saved yet."
-              style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
-            >
-              {unsavedCount} unsaved
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSaveAllUnsaved}
+                disabled={isSavingAll}
+                className="btn-primary flex items-center gap-1.5 px-3 py-1.5 h-auto text-xs"
+              >
+                <SaveAll size={14} />
+                {isSavingAll ? 'Saving...' : 'Save All'}
+              </button>
+              <span
+                className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
+                title="Rows added on screen but not saved yet."
+                style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
+              >
+                {unsavedCount} unsaved
+              </span>
+            </div>
           )}
           {pendingCount > 0 && (
             <span
@@ -1059,13 +1127,31 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       </div>
 
       <div className="flex items-center justify-between gap-3 pt-1">
-        <button
-          onClick={addRow}
-          disabled={isInitializing}
-          className="btn-secondary flex items-center gap-2 px-4 text-xs"
-        >
-          <Plus size={15} /> Add Row
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={addRow}
+            disabled={isInitializing}
+            className="btn-secondary flex items-center gap-2 px-4 text-xs"
+          >
+            <Plus size={15} /> Add Row
+          </button>
+          
+          <button 
+            onClick={() => setIsCloneModalOpen(true)}
+            disabled={isInitializing}
+            className="btn-secondary flex items-center gap-2 px-4 text-xs"
+          >
+            <Copy size={15} /> Clone Colleague
+          </button>
+
+          <button 
+            onClick={() => setIsBulkAddModalOpen(true)}
+            disabled={isInitializing}
+            className="btn-secondary flex items-center gap-2 px-4 text-xs"
+          >
+            <Layers size={15} /> Bulk Add
+          </button>
+        </div>
 
         {onClose && (
           <button onClick={onClose} className="btn-ghost px-5 text-xs">
@@ -1073,6 +1159,20 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           </button>
         )}
       </div>
+
+      <CloneColleagueDialog
+        isOpen={isCloneModalOpen}
+        onClose={() => setIsCloneModalOpen(false)}
+        onClone={handleCloneColleague}
+        currentEmployeeCode={employeeId}
+      />
+
+      <BulkAddDialog
+        isOpen={isBulkAddModalOpen}
+        onClose={() => setIsBulkAddModalOpen(false)}
+        onBulkAdd={handleBulkAdd}
+        existingTechnologyIds={new Set(rows.map(r => r.technologyId as number).filter(Boolean))}
+      />
     </div>
     </>
   );
