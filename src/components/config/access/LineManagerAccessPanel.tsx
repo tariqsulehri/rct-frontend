@@ -164,17 +164,9 @@ export const LineManagerAccessPanel: React.FC<LineManagerAccessPanelProps> = ({
         </div>
         <div><label className={L}>Start Date</label><input type="date" className={F} value={lineBulkForm.starts_at} onChange={e => setLineBulkForm({ ...lineBulkForm, starts_at: e.target.value })} /></div>
         <div><label className={L}>End Date</label><input type="date" className={F} value={lineBulkForm.ends_at} onChange={e => setLineBulkForm({ ...lineBulkForm, ends_at: e.target.value })} /></div>
-        <div>
-          <label className={L}>Department</label>
-          <SearchableSelect value={resourceDepartmentFilter} onChange={setResourceDepartmentFilter} placeholder="All departments" options={resourceDepartmentOptions.map(name => ({ value: name, label: name }))} />
-        </div>
-        <div>
-          <label className={L}>Resource Grade</label>
-          <SearchableSelect value={resourceGradeFilter} onChange={setResourceGradeFilter} placeholder="All resource grades" options={resourceGradeOptions.map(code => ({ value: code, label: code }))} />
-        </div>
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="p-4 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg min-w-[280px] flex-1" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
             <Search size={15} style={{ color: 'rgb(var(--text-3))' }} />
@@ -214,6 +206,16 @@ export const LineManagerAccessPanel: React.FC<LineManagerAccessPanelProps> = ({
               onClick={() => setLineBulkForm(current => ({ ...current, employee_ids: [] }))}>
               Clear Selection
             </button>
+          </div>
+        </div>
+
+        {/* Filters Area */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-2">
+          <div>
+            <SearchableSelect value={resourceDepartmentFilter} onChange={setResourceDepartmentFilter} placeholder="Filter by Department..." options={resourceDepartmentOptions.map(name => ({ value: name, label: name }))} />
+          </div>
+          <div>
+            <SearchableSelect value={resourceGradeFilter} onChange={setResourceGradeFilter} placeholder="Filter by Resource Grade..." options={resourceGradeOptions.map(code => ({ value: code, label: code }))} />
           </div>
         </div>
 
