@@ -29,9 +29,9 @@ interface Props {
   onClose?: () => void;
 }
 
-type AssessmentLevel = 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
+export type AssessmentLevel = 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
 
-interface BulkRow {
+export interface BulkRow {
   id: string;
   existingAssessmentId?: number;
   isNew?: boolean;
@@ -55,7 +55,7 @@ interface SearchableOption {
 type SortKey = 'domain' | 'competency' | 'technology' | 'type' | 'projects';
 type SortOrder = 'asc' | 'desc';
 
-const LEVEL_COLORS: Record<AssessmentLevel, string> = {
+export const LEVEL_COLORS: Record<AssessmentLevel, string> = {
   Unset:       'rgb(var(--text-3))',
   Expert:      'rgb(var(--success))',
   Advanced:    '#22d3ee',
@@ -65,7 +65,7 @@ const LEVEL_COLORS: Record<AssessmentLevel, string> = {
   Awareness:   '#a855f7',
 };
 
-const LEVEL_LABELS: Record<AssessmentLevel, string> = {
+export const LEVEL_LABELS: Record<AssessmentLevel, string> = {
   Unset:       '— Unset',
   Expert:      'Expert',
   Advanced:    'Advanced',
@@ -75,7 +75,7 @@ const LEVEL_LABELS: Record<AssessmentLevel, string> = {
   Awareness:   'Awareness',
 };
 
-const TYPE_OPTIONS = [
+export const TYPE_OPTIONS = [
   { value: 'Primary', label: 'Primary - main skill' },
   { value: 'Secondary', label: 'Secondary - supporting skill' },
   { value: 'Tertiary', label: 'Tertiary - related skill' },

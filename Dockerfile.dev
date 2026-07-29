@@ -1,7 +1,13 @@
 # Development frontend image.
 # Uses the dev server instead of nginx so Vite hot reload works inside Docker.
-FROM cgr.dev/chainguard/node:20-dev
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y curl ca-certificates tzdata && \
+    curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
+    apt-get install -y nodejs && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies once in the image. Source code is mounted by compose.
 COPY package.json package-lock.json* ./
