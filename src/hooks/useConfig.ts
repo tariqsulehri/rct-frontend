@@ -124,6 +124,7 @@ export interface ConfigEmployee {
   current_grade_id: number;
   target_grade_id: number;
   department_id: number | null;
+  is_active: boolean;
   current_grade?: { code: string; title: string };
   target_grade?: { code: string; title: string };
   manager?: { full_name: string };

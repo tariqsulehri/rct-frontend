@@ -27,6 +27,7 @@ type CompetencyPayload = {
   is_critical: boolean;
   category_id: number;
   domain_ids: number[];
+  is_active?: boolean;
 };
 
 export const CompetenciesSection: React.FC = () => {

@@ -36,6 +36,7 @@ type EmployeePayload = {
   target_grade_id: number;
   department_id: number | null;
   manager_user_id?: number | null;
+  is_active?: boolean;
 };
 
 const EmployeeProfile: React.FC<{ employee: ConfigEmployee; onClose: () => void }> = ({ employee, onClose }) => {

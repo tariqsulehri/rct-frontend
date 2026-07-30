@@ -22,6 +22,7 @@ type SkillDomainPayload = {
   description?: string;
   color?: string;
   category_id: number;
+  is_active?: boolean;
 };
 
 const SKILL_AREA_COLOR_PRESETS = [
