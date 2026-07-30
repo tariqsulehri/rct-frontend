@@ -99,6 +99,7 @@ export interface ConfigDepartment {
   name: string;
   description: string | null;
   created_at: string;
+  is_active: boolean;
   employees?: { id: number }[];
 }
 
@@ -146,6 +147,7 @@ export interface ConfigGrade {
   level: number;
   experience_years: number;
   performance_note: string | null;
+  is_active: boolean;
   department?: ConfigDepartment;
 }
 
@@ -155,6 +157,7 @@ export interface ConfigSkillDomain {
   description: string | null;
   color: string | null;
   category_id: number;
+  is_active: boolean;
   category?: { id: number; name: string; color: string | null } | null;
   grade_weights?: { grade_id: number; weight: number }[];
   competency_domains?: { department_id: number; competency: { id: number; name: string } }[];
@@ -176,6 +179,7 @@ export interface ConfigCompetency {
   name: string;
   description: string;
   is_critical: boolean;
+  is_active: boolean;
   category_id: number;
   competency_category?: { id: number; name: string; color: string | null } | null;
   competency_domains?: { department_id: number; is_primary: boolean; domain: { id: number; name: string; color: string | null } }[];
@@ -186,6 +190,7 @@ export interface ConfigTechnology {
   id: number;
   name: string;
   competency_id: number;
+  is_active: boolean;
   competency?: {
     id: number;
     name: string;
@@ -987,6 +992,7 @@ export interface ConfigDomainGradeWeight {
   domain_id: number;
   grade_id: number;
   weight: number;
+  is_active: boolean;
   domain: { id: number; name: string; color: string | null };
   grade: { id: number; code: string; title: string; level: number };
 }

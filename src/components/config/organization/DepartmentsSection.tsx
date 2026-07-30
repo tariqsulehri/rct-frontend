@@ -28,15 +28,15 @@ export const DepartmentsSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigDepartment | null>(null);
-  const [form, setForm] = useState({ name: '', description: '' });
+  const [form, setForm] = useState({ name: '', description: '', is_active: true });
   const [selectedDept, setSelectedDept] = useState<ConfigDepartment | null>(null);
   const [memberSearch, setMemberSearch] = useState('');
 
-  const openCreate = () => { setForm({ name: '', description: '' }); setEditing(null); setModal('create'); };
-  const openEdit = (d: ConfigDepartment) => { setForm({ name: d.name, description: d.description ?? '' }); setEditing(d); setModal('edit'); };
+  const openCreate = () => { setForm({ name: '', description: '', is_active: true }); setEditing(null); setModal('create'); };
+  const openEdit = (d: ConfigDepartment) => { setForm({ name: d.name, description: d.description ?? '', is_active: d.is_active ?? true }); setEditing(d); setModal('edit'); };
 
   const handleSave = async () => {
-    const payload = { name: form.name, description: form.description || undefined };
+    const payload = { name: form.name, description: form.description || undefined, is_active: form.is_active };
     if (modal === 'create') await createDept.mutateAsync(payload);
     else if (editing) await updateDept.mutateAsync({ id: editing.id, data: payload });
     setModal(null);
@@ -172,6 +172,11 @@ export const DepartmentsSection: React.FC = () => {
           <div className="space-y-4">
             <div><label className={L}>Name</label><input className={F} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
             <div><label className={L}>Description</label><input className={F} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })}
+                className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Active</span>
+            </label>
             <FormFooter onSave={handleSave} onCancel={() => setModal(null)} saving={createDept.isPending || updateDept.isPending} />
           </div>
         </Modal>

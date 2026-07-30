@@ -62,7 +62,7 @@ export const SkillDomainsSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigSkillDomain | null>(null);
-  const [form, setForm] = useState({ name: '', description: '', color: '', category_id: '' });
+  const [form, setForm] = useState({ name: '', description: '', color: '', category_id: '', is_active: true });
   const [formError, setFormError] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const usedSkillAreaColors = useMemo(
@@ -77,13 +77,13 @@ export const SkillDomainsSection: React.FC = () => {
   }, [categoryFilter, domains]);
 
   const openCreate = () => {
-    setForm({ name: '', description: '', color: suggestedSkillAreaColor, category_id: categories?.[0] ? String(categories[0].id) : '' });
+    setForm({ name: '', description: '', color: suggestedSkillAreaColor, category_id: categories?.[0] ? String(categories[0].id) : '', is_active: true });
     setFormError('');
     setEditing(null);
     setModal('create');
   };
   const openEdit = (d: ConfigSkillDomain) => {
-    setForm({ name: d.name, description: d.description ?? '', color: d.color ?? '', category_id: String(d.category_id) });
+    setForm({ name: d.name, description: d.description ?? '', color: d.color ?? '', category_id: String(d.category_id), is_active: d.is_active ?? true });
     setFormError('');
     setEditing(d); setModal('edit');
   };
@@ -105,6 +105,7 @@ export const SkillDomainsSection: React.FC = () => {
       description: form.description || undefined,
       color: form.color || undefined,
       category_id: Number(form.category_id),
+      is_active: form.is_active,
     };
     if (modal === 'create') await createDomain.mutateAsync(payload);
     else if (editing) await updateDomain.mutateAsync({ id: editing.id, data: payload });
@@ -226,6 +227,11 @@ export const SkillDomainsSection: React.FC = () => {
                 })}
               </div>
             </div>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })}
+                className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Active</span>
+            </label>
             <FormFooter onSave={handleSave} onCancel={() => setModal(null)} saving={createDomain.isPending || updateDomain.isPending} />
           </div>
         </Modal>

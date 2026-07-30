@@ -27,13 +27,13 @@ export const TechnologiesSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigTechnology | null>(null);
-  const [form, setForm] = useState({ name: '', competency_id: '' });
+  const [form, setForm] = useState({ name: '', competency_id: '', is_active: true });
 
-  const openCreate = () => { setForm({ name: '', competency_id: '' }); setEditing(null); setModal('create'); };
-  const openEdit = (t: ConfigTechnology) => { setForm({ name: t.name, competency_id: String(t.competency_id) }); setEditing(t); setModal('edit'); };
+  const openCreate = () => { setForm({ name: '', competency_id: '', is_active: true }); setEditing(null); setModal('create'); };
+  const openEdit = (t: ConfigTechnology) => { setForm({ name: t.name, competency_id: String(t.competency_id), is_active: t.is_active ?? true }); setEditing(t); setModal('edit'); };
 
   const handleSave = async () => {
-    const payload = { name: form.name, competency_id: Number(form.competency_id) };
+    const payload = { name: form.name, competency_id: Number(form.competency_id), is_active: form.is_active };
     if (modal === 'create') await createTechnology.mutateAsync(payload);
     else if (editing) await updateTechnology.mutateAsync({ id: editing.id, data: payload });
     setModal(null);
@@ -75,6 +75,11 @@ export const TechnologiesSection: React.FC = () => {
               <SearchableSelect value={form.competency_id} onChange={v => setForm({ ...form, competency_id: v })}
                 placeholder="Select skill…" options={competencyOptions} />
             </div>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })}
+                className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Active</span>
+            </label>
             <FormFooter onSave={handleSave} onCancel={() => setModal(null)} saving={createTechnology.isPending || updateTechnology.isPending} />
           </div>
         </Modal>

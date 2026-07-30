@@ -24,6 +24,7 @@ type GradePayload = {
   level: number;
   experience_years: number;
   performance_note?: string;
+  is_active: boolean;
 };
 
 export const GradesSection: React.FC = () => {
@@ -37,7 +38,7 @@ export const GradesSection: React.FC = () => {
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigGrade | null>(null);
   const [departmentFilter, setDepartmentFilter] = useState('');
-  const [form, setForm] = useState({ department_id: '', code: '', title: '', level: '', experience_years: '', performance_note: '' });
+  const [form, setForm] = useState({ department_id: '', code: '', title: '', level: '', experience_years: '', performance_note: '', is_active: true });
 
   const defaultDepartmentId = departments?.[0]?.id ? String(departments[0].id) : '';
   const departmentOptions = (departments ?? []).map((department) => ({ value: String(department.id), label: department.name }));
@@ -49,8 +50,8 @@ export const GradesSection: React.FC = () => {
     ?? (grade.department_id ? `#${grade.department_id}` : fallbackDepartmentName)
   );
 
-  const openCreate = () => { setForm({ department_id: defaultDepartmentId, code: '', title: '', level: '', experience_years: '', performance_note: '' }); setEditing(null); setModal('create'); };
-  const openEdit = (g: ConfigGrade) => { setForm({ department_id: g.department_id ? String(g.department_id) : defaultDepartmentId, code: g.code, title: g.title, level: String(g.level), experience_years: String(g.experience_years), performance_note: g.performance_note ?? '' }); setEditing(g); setModal('edit'); };
+  const openCreate = () => { setForm({ department_id: defaultDepartmentId, code: '', title: '', level: '', experience_years: '', performance_note: '', is_active: true }); setEditing(null); setModal('create'); };
+  const openEdit = (g: ConfigGrade) => { setForm({ department_id: g.department_id ? String(g.department_id) : defaultDepartmentId, code: g.code, title: g.title, level: String(g.level), experience_years: String(g.experience_years), performance_note: g.performance_note ?? '', is_active: g.is_active ?? true }); setEditing(g); setModal('edit'); };
 
   const handleSave = async () => {
     const payload: GradePayload = {
@@ -60,6 +61,7 @@ export const GradesSection: React.FC = () => {
       level: Number(form.level),
       experience_years: Number(form.experience_years),
       performance_note: form.performance_note || undefined,
+      is_active: form.is_active,
     };
     if (modal === 'create') await createGrade.mutateAsync(payload);
     else if (editing) await updateGrade.mutateAsync({ id: editing.id, data: payload });
@@ -128,10 +130,15 @@ export const GradesSection: React.FC = () => {
               <div><label className={L}>Title</label><input className={F} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className={L}>Level</label><input type="number" className={F} value={form.level} onChange={e => setForm({ ...form, level: e.target.value })} /></div>
-              <div><label className={L}>Experience Years</label><input type="number" className={F} value={form.experience_years} onChange={e => setForm({ ...form, experience_years: e.target.value })} /></div>
+              <div><label className={L}>Level (1-10)</label><input className={F} type="number" value={form.level} onChange={e => setForm({ ...form, level: e.target.value })} /></div>
+              <div><label className={L}>Years Exp.</label><input className={F} type="number" value={form.experience_years} onChange={e => setForm({ ...form, experience_years: e.target.value })} /></div>
             </div>
-            <div><label className={L}>Performance Note</label><input className={F} value={form.performance_note} onChange={e => setForm({ ...form, performance_note: e.target.value })} /></div>
+            <div><label className={L}>Note (Optional)</label><textarea className={F} rows={2} value={form.performance_note} onChange={e => setForm({ ...form, performance_note: e.target.value })} /></div>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })}
+                className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Active</span>
+            </label>
             <FormFooter onSave={handleSave} onCancel={() => setModal(null)} saving={createGrade.isPending || updateGrade.isPending} />
           </div>
         </Modal>

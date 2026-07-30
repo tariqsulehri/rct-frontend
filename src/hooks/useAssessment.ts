@@ -46,9 +46,11 @@ export interface TechOption {
   id: number;
   name: string;
   competency_id: number;
+  is_active: boolean;
   competency: {
     id: number;
     name: string;
+    is_active: boolean;
     competency_domains: { department_id: number; is_primary: boolean; domain: { id: number; name: string } }[];
   };
 }
@@ -278,8 +280,11 @@ export const useSkillsHierarchy = () => {
   const hierarchy = React.useMemo(() => {
     if (!technologies) return [];
 
+    // Filter out inactive technologies and their parent competencies
+    const activeTechnologies = technologies.filter(tech => tech.is_active !== false && tech.competency?.is_active !== false);
+
     // Group by the domain and competency selected by getPrimaryDomain above.
-    const grouped = technologies.reduce((acc, tech) => {
+    const grouped = activeTechnologies.reduce((acc, tech) => {
       const primaryDomain = getPrimaryDomain(tech.competency.competency_domains);
       const domainId = primaryDomain.id;
       const domainName = primaryDomain.name;

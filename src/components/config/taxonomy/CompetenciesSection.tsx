@@ -40,7 +40,7 @@ export const CompetenciesSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigCompetency | null>(null);
-  const [form, setForm] = useState({ name: '', description: '', is_critical: false, domain_id: '' });
+  const [form, setForm] = useState({ name: '', description: '', is_critical: false, is_active: true, domain_id: '' });
   const [selectedCompetency, setSelectedCompetency] = useState<ConfigCompetency | null>(null);
   const [techSearch, setTechSearch] = useState('');
   const [activeSkillModule, setActiveSkillModule] = useState<'management' | 'mapping'>('management');
@@ -48,7 +48,7 @@ export const CompetenciesSection: React.FC = () => {
   const [formError, setFormError] = useState('');
 
   const openCreate = () => {
-    setForm({ name: '', description: '', is_critical: false, domain_id: '' });
+    setForm({ name: '', description: '', is_critical: false, is_active: true, domain_id: '' });
     setFormError('');
     setEditing(null); setModal('create');
   };
@@ -59,6 +59,7 @@ export const CompetenciesSection: React.FC = () => {
       name: c.name,
       description: c.description,
       is_critical: c.is_critical,
+      is_active: c.is_active ?? true,
       domain_id: primaryDomain ? String(primaryDomain.id) : '',
     });
     setFormError('');
@@ -81,6 +82,7 @@ export const CompetenciesSection: React.FC = () => {
       name: form.name,
       description: form.description,
       is_critical: form.is_critical,
+      is_active: form.is_active,
       category_id: categoryId,
       domain_ids: [selectedDomain.id],
     };
@@ -321,6 +323,11 @@ export const CompetenciesSection: React.FC = () => {
               <input type="checkbox" checked={form.is_critical} onChange={e => setForm({ ...form, is_critical: e.target.checked })}
                 className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
               <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Mark as an important skill</span>
+            </label>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })}
+                className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Active</span>
             </label>
             <FormFooter onSave={handleSave} onCancel={() => setModal(null)} saving={createCompetency.isPending || updateCompetency.isPending} />
           </div>

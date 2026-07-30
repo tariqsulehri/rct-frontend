@@ -185,13 +185,13 @@ export const EmployeesSection: React.FC = () => {
   const [editing, setEditing] = useState<ConfigEmployee | null>(null);
   const [form, setForm] = useState({
     emp_code: '', full_name: '', department: '', email: '',
-    current_grade_id: '', target_grade_id: '', department_id: '', manager_user_id: '',
+    current_grade_id: '', target_grade_id: '', department_id: '', manager_user_id: '', is_active: true
   });
   const [viewMode, setViewMode] = useState<'team' | 'single'>('team');
   const [selectedEmp, setSelectedEmp] = useState<ConfigEmployee | null>(null);
 
   const openCreate = () => {
-    setForm({ emp_code: '', full_name: '', department: '', email: '', current_grade_id: '', target_grade_id: '', department_id: '', manager_user_id: '' });
+    setForm({ emp_code: '', full_name: '', department: '', email: '', current_grade_id: '', target_grade_id: '', department_id: '', manager_user_id: '', is_active: true });
     setEditing(null); setModal('create');
   };
   const openEdit = (e: ConfigEmployee) => {
@@ -202,6 +202,7 @@ export const EmployeesSection: React.FC = () => {
       target_grade_id: String(e.target_grade_id),
       department_id: e.department_id ? String(e.department_id) : '',
       manager_user_id: managerId ? String(managerId) : '',
+      is_active: e.is_active ?? true,
     });
     setEditing(e); setModal('edit');
   };
@@ -218,6 +219,7 @@ export const EmployeesSection: React.FC = () => {
       target_grade_id: Number(form.target_grade_id),
       department_id: form.department_id ? Number(form.department_id) : null,
       manager_user_id: form.manager_user_id ? Number(form.manager_user_id) : null,
+      is_active: form.is_active,
     };
     if (modal === 'create') await createEmployee.mutateAsync(payload);
     else if (editing) await updateEmployee.mutateAsync({ id: editing.id, data: payload });
@@ -350,6 +352,12 @@ export const EmployeesSection: React.FC = () => {
                 placeholder="Select Line Manager…" options={managerOptions} />
               <p className="text-xs mt-2" style={{ color: 'rgb(var(--text-3))' }}>Changing the Line Manager will safely end-date the current assignment and start a new one.</p>
             </div>
+            
+            <label className="flex items-center gap-2.5 cursor-pointer mt-4">
+              <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })}
+                className="w-4 h-4 rounded" style={{ accentColor: 'rgb(var(--accent))' }} />
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-1))' }}>Active</span>
+            </label>
 
             <FormFooter onSave={handleSave} onCancel={() => setModal(null)} saving={createEmployee.isPending || updateEmployee.isPending} />
           </div>
