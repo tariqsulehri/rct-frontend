@@ -3,7 +3,7 @@ import { Stars } from '@/components/ui/Stars';
 import { Check, ShieldCheck, Edit3, Trash2 } from 'lucide-react';
 import { TableSearchableSelect } from '@/components/ui/TableSearchableSelect';
 import { SkillHierarchy } from '@/hooks/useAssessment';
-import { BulkRow, AssessmentLevel, TYPE_OPTIONS, LEVEL_COLORS, LEVEL_LABELS } from './BulkAssessmentTable';
+import { BulkRow, TYPE_OPTIONS, LEVEL_COLORS, LEVEL_LABELS } from './BulkAssessmentTable';
 
 interface BulkAssessmentTableRowProps {
   row: BulkRow;

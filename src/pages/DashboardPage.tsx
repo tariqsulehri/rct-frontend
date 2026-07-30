@@ -6,7 +6,7 @@ import {
   Sun, Moon, Zap, LogOut, Bell, Search,
   TrendingUp, Activity, Info,
   Bot, Sparkles, Clock3, Target, AlertTriangle, CheckCircle2,
-  MessageSquare, Send, UserRound,
+  MessageSquare, Send, UserRound, CheckSquare,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -44,13 +44,14 @@ import { hasPermission, isLeaderRole, type PermissionCode, type RoleCode } from 
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
-type TabType = 'admin' | 'overview' | 'team' | 'assessments' | 'ai' | 'reports' | 'config';
+type TabType = 'admin' | 'overview' | 'approvals' | 'team' | 'assessments' | 'ai' | 'reports' | 'config';
 
 const LEADERS: RoleCode[] = ['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER'];
 
 const NAV: Array<{ id: TabType; label: string; icon: React.ElementType; roles: RoleCode[]; permission?: PermissionCode }> = [
   { id: 'admin',       label: 'Admin Dashboard', icon: LayoutDashboard, roles: ['ADMIN'] },
   { id: 'overview',    label: 'Overview',     icon: LayoutDashboard, roles: ['TOP_MANAGEMENT','MANAGER','LINE_MANAGER','ENGINEER'] },
+  { id: 'approvals',   label: 'Pending Approvals', icon: CheckSquare, roles: LEADERS },
   { id: 'team',        label: 'Team Roster',  icon: Users,           roles: LEADERS },
   { id: 'assessments', label: 'Assessments',  icon: ClipboardCheck,  roles: ['ADMIN','TOP_MANAGEMENT','MANAGER','LINE_MANAGER','ENGINEER'] },
   { id: 'ai',          label: 'AI Dashboard',  icon: Bot,             roles: LEADERS },
@@ -888,6 +889,7 @@ const OverviewTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => voi
       ];
 
   const featureItems: Array<{ id: TabType; icon: string; title: string; desc: string; roles: RoleCode[]; permission?: PermissionCode }> = [
+    { id: 'approvals' as TabType,   icon: '✅', title: 'Pending Approvals', desc: 'Approve or reject competency submissions.', roles: LEADERS },
     { id: 'team' as TabType,        icon: '👥', title: 'Team Roster',   desc: 'View people, grades, scores, and gaps.', roles: LEADERS },
     { id: 'ai' as TabType,          icon: '🤖', title: 'AI Dashboard',   desc: 'Find people and skills that need attention.', roles: LEADERS },
     { id: 'reports' as TabType,     icon: '📊', title: 'Reports',       desc: 'Answer who is ready, what is missing, and what to improve.', roles: LEADERS, permission: 'reports.view' },
@@ -1206,7 +1208,6 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
       : 'You';
     return (
       <div className="space-y-4 animate-slide-up">
-        {isPrivileged && <PendingApprovalsPanel />}
         {isPrivileged && rows.length > 0 && (
           <div className="card p-4 flex items-center gap-3">
             <span className="text-sm font-medium shrink-0" style={{ color: 'rgb(var(--text-2))' }}>Viewing:</span>
@@ -1253,7 +1254,6 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
 
   return (
     <div className="space-y-4 animate-slide-up">
-      {isPrivileged && <PendingApprovalsPanel />}
 
       {/* Header */}
       <div className="card p-5 flex items-center justify-between flex-wrap gap-3">
@@ -1327,6 +1327,22 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
           )}
         </div>
       </div>
+
+      {/* Engineers: manage their own skill list */}
+      {!isPrivileged && user?.empCode && (
+        <div className="card p-5 flex items-center justify-between gap-4">
+          <div>
+            <p className="font-semibold text-sm" style={{ color: 'rgb(var(--text-1))' }}>My Skills</p>
+            <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-3))' }}>
+              Add or update your skills and tools. Your manager will set skill levels.
+              Your saved rows appear as pending until approved.
+            </p>
+          </div>
+          <button onClick={() => setShowSkillEditor(true)} className="btn-primary text-xs shrink-0">
+            Manage My Skills
+          </button>
+        </div>
+      )}
 
       {/* KPI strip — status, meets, stars, required */}
       {promoRow && (
@@ -1760,21 +1776,7 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
         </div>
       )}
 
-      {/* Engineers: manage their own skill list */}
-      {!isPrivileged && user?.empCode && (
-        <div className="card p-5 flex items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold text-sm" style={{ color: 'rgb(var(--text-1))' }}>My Skills</p>
-            <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-3))' }}>
-              Add or update your skills and tools. Your manager will set skill levels.
-              Your saved rows appear as pending until approved.
-            </p>
-          </div>
-          <button onClick={() => setShowSkillEditor(true)} className="btn-primary text-xs shrink-0">
-            Manage My Skills
-          </button>
-        </div>
-      )}
+
 
       {/* Skill editor modal for engineers */}
       {showSkillEditor && user?.empCode && typeof document !== 'undefined' && createPortal((
@@ -3148,6 +3150,12 @@ export const DashboardPage: React.FC = () => {
 
             {activeTab === 'overview' && (
               <OverviewTab user={user} onNavigate={setActiveTab} />
+            )}
+
+            {activeTab === 'approvals' && isLeaderRole(user?.role) && (
+              <div className="animate-slide-up">
+                <PendingApprovalsPanel />
+              </div>
             )}
 
             {activeTab === 'team' && isLeaderRole(user?.role) && (

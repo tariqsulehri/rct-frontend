@@ -35,6 +35,9 @@ ENV TZ=Etc/UTC
 
 RUN apt-get update && apt-get install -y nginx tzdata && rm -rf /var/lib/apt/lists/*
 
+# Remove default Ubuntu nginx site to prevent it from serving the "Welcome to nginx!" page
+RUN rm -f /etc/nginx/sites-enabled/default
+
 COPY --from=builder /build/dist /usr/share/nginx/html
 COPY nginx.conf                 /etc/nginx/conf.d/default.conf
 

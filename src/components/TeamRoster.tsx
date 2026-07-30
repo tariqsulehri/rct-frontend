@@ -130,40 +130,6 @@ export const TeamRoster: React.FC = () => {
           <h2 className="section-title">Team List</h2>
           <p className="section-desc">{filteredRoster.length} of {rosterRows.length} people shown</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-2 rounded-lg px-3 py-2 border" style={{ backgroundColor: "rgb(var(--surface-2))", borderColor: "rgb(var(--border))" }}>
-            <Search size={13} style={{ color: "rgb(var(--text-3))" }} />
-            <input
-              type="text"
-              placeholder="Search name, code, or department..."
-              value={teamSearch}
-              onChange={(e) => setTeamSearch(e.target.value)}
-              className="bg-transparent text-sm outline-none w-64"
-              style={{ color: "rgb(var(--text-1))" }}
-            />
-            {teamSearch && (
-              <button
-                type="button"
-                onClick={() => setTeamSearch("")}
-                className="text-xs font-semibold"
-                style={{ color: "rgb(var(--accent))" }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          <select
-            value={selectedGrade}
-            onChange={(e) => setSelectedGrade(e.target.value)}
-            className="rounded-lg px-3 py-2 text-sm border min-w-[150px]"
-            style={{ backgroundColor: "rgb(var(--surface-2))", borderColor: "rgb(var(--border))", color: "rgb(var(--text-1))" }}
-          >
-            <option value="all">All Grades</option>
-            {gradeOptions.map((gradeCode) => (
-              <option key={gradeCode} value={gradeCode}>{gradeCode}</option>
-            ))}
-          </select>
-        </div>
       </div>
 
       {!isLoading && rosterRows.length > 0 && (
@@ -238,6 +204,44 @@ export const TeamRoster: React.FC = () => {
       {error && (
         <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: "rgb(var(--danger-soft))", color: "rgb(var(--danger))" }}>
           Could not load the team list.
+        </div>
+      )}
+
+      {/* Search and Filters */}
+      {!isLoading && rosterRows.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap justify-end mb-2 mt-2">
+          <div className="flex items-center gap-2 rounded-lg px-3 py-2 border w-full sm:w-auto" style={{ backgroundColor: "rgb(var(--surface-2))", borderColor: "rgb(var(--border))" }}>
+            <Search size={13} style={{ color: "rgb(var(--text-3))" }} />
+            <input
+              type="text"
+              placeholder="Search name, code, or department..."
+              value={teamSearch}
+              onChange={(e) => setTeamSearch(e.target.value)}
+              className="bg-transparent text-sm outline-none w-full sm:w-64"
+              style={{ color: "rgb(var(--text-1))" }}
+            />
+            {teamSearch && (
+              <button
+                type="button"
+                onClick={() => setTeamSearch("")}
+                className="text-xs font-semibold"
+                style={{ color: "rgb(var(--accent))" }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <select
+            value={selectedGrade}
+            onChange={(e) => setSelectedGrade(e.target.value)}
+            className="rounded-lg px-3 py-2 text-sm border w-full sm:w-auto min-w-[150px]"
+            style={{ backgroundColor: "rgb(var(--surface-2))", borderColor: "rgb(var(--border))", color: "rgb(var(--text-1))" }}
+          >
+            <option value="all">All Grades</option>
+            {gradeOptions.map((gradeCode) => (
+              <option key={gradeCode} value={gradeCode}>{gradeCode}</option>
+            ))}
+          </select>
         </div>
       )}
 
