@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   LayoutDashboard, Users, ClipboardCheck, BarChart2,
-  Settings2, ChevronLeft, ChevronRight,
+  Settings2, ChevronLeft, ChevronRight, ChevronDown,
   Sun, Moon, Zap, LogOut, Bell, Search,
   TrendingUp, Activity, Info,
   Bot, Sparkles, Clock3, Target, AlertTriangle, CheckCircle2,
@@ -183,6 +183,153 @@ const ThemeSwitcher: React.FC = () => {
               )}
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ── User Profile Menu ─────────────────────────────────────────────────── */
+
+const UserProfileMenu: React.FC<{
+  user: User | null;
+  onOpenChangePassword: () => void;
+  onLogout: () => void;
+}> = ({ user, onOpenChangePassword, onLogout }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const displayName = user?.employeeName || user?.username || 'User';
+  const roleLabel = user?.role ? user.role.replace(/_/g, ' ') : 'ENGINEER';
+  const gradeLine = user?.currentGrade && user?.targetGrade
+    ? `${user.currentGrade} → ${user.targetGrade}`
+    : user?.currentGrade || 'Grade not assigned';
+  const identityLine = [user?.empCode ? `ID: ${user.empCode}` : null, roleLabel].filter(Boolean).join(' • ');
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || 'U';
+  const gradient = ROLE_GRADIENT[user?.role ?? ''] ?? 'from-gray-500 to-gray-600';
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-xl hover:bg-[rgb(var(--surface-2))] border border-transparent hover:border-[rgb(var(--border))] transition-all text-left group"
+        title="User Account Menu"
+        aria-label="User Account Menu"
+      >
+        <div
+          className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm`}
+        >
+          {initials}
+        </div>
+        <div className="hidden sm:block max-w-[120px] md:max-w-[160px] truncate leading-tight">
+          <p className="text-xs font-semibold truncate" style={{ color: 'rgb(var(--text-1))' }}>
+            {displayName}
+          </p>
+          <p className="text-[11px] truncate" style={{ color: 'rgb(var(--text-3))' }}>
+            {roleLabel}
+          </p>
+        </div>
+        <ChevronDown
+          size={14}
+          className={`transition-transform duration-200 shrink-0 text-[rgb(var(--text-3))] group-hover:text-[rgb(var(--text-1))] ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div
+          className="absolute right-0 top-12 w-64 rounded-xl border shadow-elevated z-50 overflow-hidden animate-scale-in"
+          style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}
+        >
+          {/* User Profile Card */}
+          <div
+            className="p-3.5 border-b"
+            style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface-2))' }}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-sm`}
+              >
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold truncate leading-tight" style={{ color: 'rgb(var(--text-1))' }}>
+                  {displayName}
+                </p>
+                <p className="text-xs mt-0.5 truncate" style={{ color: 'rgb(var(--text-3))' }}>
+                  {identityLine}
+                </p>
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-[rgb(var(--accent-soft))] text-[rgb(var(--accent-txt))]">
+                    {roleLabel}
+                  </span>
+                  {user?.currentGrade && (
+                    <span className="px-1.5 py-0.5 rounded-md text-[10px] font-medium border text-[rgb(var(--text-2))]" style={{ borderColor: 'rgb(var(--border))' }}>
+                      {gradeLine}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Items */}
+          <div className="p-1.5 space-y-1">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onOpenChangePassword();
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-xs rounded-lg font-medium transition-colors text-left hover:bg-[rgb(var(--surface-2))]"
+              style={{ color: 'rgb(var(--text-1))' }}
+            >
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                style={{ backgroundColor: 'rgba(124, 58, 237, 0.12)', color: 'rgb(var(--accent))' }}
+              >
+                <KeyRound size={15} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold leading-tight">Change Password</p>
+                <p className="text-[11px]" style={{ color: 'rgb(var(--text-3))' }}>
+                  Update your login credentials
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onLogout();
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-xs rounded-lg font-medium transition-colors text-left hover:bg-red-500/10 text-red-600 dark:text-red-400"
+            >
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-red-500/10 text-red-600 dark:text-red-400">
+                <LogOut size={15} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold leading-tight">Sign Out</p>
+                <p className="text-[11px] opacity-80">Log out of your session</p>
+              </div>
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -3030,8 +3177,12 @@ export const DashboardPage: React.FC = () => {
           <div className="flex-1" />
 
           {/* Actions */}
-          <div className="flex items-center gap-1">
-            <button className="btn-ghost w-9 h-9 p-0 rounded-lg flex items-center justify-center relative">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              className="btn-ghost w-9 h-9 p-0 rounded-lg flex items-center justify-center relative shrink-0"
+              title="Notifications"
+            >
               <Bell size={16} />
               <span
                 className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full animate-pulse-dot"
@@ -3041,38 +3192,13 @@ export const DashboardPage: React.FC = () => {
 
             <ThemeSwitcher />
 
-            {/* Avatar */}
-            <div
-              className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-xs font-bold ml-1`}
-            >
-              {initials}
-            </div>
+            <div className="h-5 w-px mx-1" style={{ backgroundColor: 'rgb(var(--border))' }} />
 
-            <div className="hidden sm:block ml-1">
-              <p className="text-xs font-semibold leading-none" style={{ color: 'rgb(var(--text-1))' }}>
-                {displayName}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-3))' }}>
-                {identityLine}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setChangePasswordOpen(true)}
-              className="btn-ghost w-9 h-9 p-0 rounded-lg flex items-center justify-center ml-1"
-              title="Change Password"
-            >
-              <KeyRound size={15} />
-            </button>
-
-            <button
-              onClick={handleLogout}
-              className="btn-ghost w-9 h-9 p-0 rounded-lg flex items-center justify-center ml-1"
-              title="Sign out"
-            >
-              <LogOut size={15} />
-            </button>
+            <UserProfileMenu
+              user={user}
+              onOpenChangePassword={() => setChangePasswordOpen(true)}
+              onLogout={handleLogout}
+            />
           </div>
         </div>
 
