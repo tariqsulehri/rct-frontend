@@ -1,6 +1,6 @@
 # Production frontend image.
 # Stage 1 compiles the Vite/React application into static files.
-FROM ubuntu:24.04 AS builder
+FROM --platform=linux/amd64 ubuntu:24.04 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
 WORKDIR /build
@@ -29,11 +29,11 @@ RUN npm run build
 
 # Stage 2 is the small runtime image. It contains nginx plus the compiled files;
 # Node and source code are not shipped to production.
-FROM ubuntu:24.04 AS runner
+FROM --platform=linux/amd64 ubuntu:24.04 AS runner
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
 
-RUN apt-get update && apt-get install -y nginx tzdata && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y nginx curl tzdata && rm -rf /var/lib/apt/lists/*
 
 # Remove default Ubuntu nginx site to prevent it from serving the "Welcome to nginx!" page
 RUN rm -f /etc/nginx/sites-enabled/default
@@ -43,5 +43,9 @@ COPY nginx.conf                 /etc/nginx/conf.d/default.conf
 
 # Browser traffic enters here.
 EXPOSE 80
+
+# Health check for Ubuntu runtime container
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+  CMD curl -f http://localhost/health || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
