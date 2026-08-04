@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { PanelHeader } from '@/components/ui/PanelHeader';
-import { ActionBtns, TableShell, TD, TR } from '../ConfigTable';
+import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { HEADER_GRADIENTS, useTableState } from '../ConfigTableState';
 import {
   ConfigEmployee,
@@ -227,7 +227,18 @@ export const EmployeesSection: React.FC = () => {
     setModal(null);
   };
 
-  const ts = useTableState(employees, (e, q) =>
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const filteredEmployees = useMemo(() => {
+    return (employees ?? []).filter(e => {
+      const isActive = e.is_active ?? true;
+      if (statusFilter === 'active' && !isActive) return false;
+      if (statusFilter === 'inactive' && isActive) return false;
+      return true;
+    });
+  }, [employees, statusFilter]);
+
+  const ts = useTableState(filteredEmployees, (e, q) =>
     e.full_name.toLowerCase().includes(q) ||
     e.emp_code.toLowerCase().includes(q) ||
     e.department.toLowerCase().includes(q) ||
@@ -285,15 +296,24 @@ export const EmployeesSection: React.FC = () => {
         <EmployeeProfile employee={selectedEmp} onClose={() => setSelectedEmp(null)} />
       ) : (
         <TableShell tabKey="employees" title="Employees" onAdd={openCreate} addLabel="Add Employee"
-          headers={['Code', 'Name', 'Department', 'Current', 'Target', 'Manager']}
+          headers={['Code', 'Name', 'Department', 'Current', 'Target', 'Manager', 'Status']}
           loading={isLoading} error={isError}
-          q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+          q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
+          toolbarExtra={(
+            <StatusFilterSelect
+              value={statusFilter}
+              onChange={(value) => {
+                setStatusFilter(value);
+                ts.setPage(1);
+              }}
+            />
+          )}>
           {ts.paged.map((e, idx) => (
-            <TR key={e.id} idx={idx}>
+            <TR key={e.id} idx={idx} inactive={e.is_active === false}>
               <TD mono><span style={{ color: 'rgb(var(--accent))' }} className="font-bold">{e.emp_code}</span></TD>
               <TD>
                 <button onClick={() => { setSelectedEmp(e); setViewMode('single'); }}
-                  className="hover:underline font-medium text-left"
+                  className={`hover:underline font-medium text-left ${e.is_active === false ? 'line-through opacity-70' : ''}`}
                   style={{ color: 'rgb(var(--text-1))' }}>
                   {e.full_name}
                 </button>
@@ -306,6 +326,7 @@ export const EmployeesSection: React.FC = () => {
                 <span className="font-semibold text-xs rounded px-2 py-1" style={{ backgroundColor: 'rgba(168,85,247,0.15)', color: '#a855f7' }}>{e.target_grade?.code ?? '-'}</span>
               </TD>
               <TD muted>{e.line_manager_assignments?.[0]?.manager_user?.employee?.full_name ?? e.line_manager_assignments?.[0]?.manager_user?.username ?? '-'}</TD>
+              <TD><StatusBadge active={e.is_active ?? true} /></TD>
               <ActionBtns onEdit={() => openEdit(e)} onDelete={async () => { if (await confirm({ title: 'Archive Employee', message: `"${e.full_name}" will be archived and hidden from active rosters.`, confirmLabel: 'Archive', variant: 'warning' })) deleteEmployee.mutate(e.id); }} />
             </TR>
           ))}

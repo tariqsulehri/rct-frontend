@@ -3,7 +3,7 @@ import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { ActionBtns, TableShell, TD, TR } from '../ConfigTable';
+import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
 import {
   ConfigGrade,
@@ -38,6 +38,7 @@ export const GradesSection: React.FC = () => {
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigGrade | null>(null);
   const [departmentFilter, setDepartmentFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [form, setForm] = useState({ department_id: '', code: '', title: '', level: '', experience_years: '', performance_note: '', is_active: true });
 
   const defaultDepartmentId = departments?.[0]?.id ? String(departments[0].id) : '';
@@ -69,8 +70,14 @@ export const GradesSection: React.FC = () => {
   };
 
   const filteredGrades = useMemo(
-    () => (grades ?? []).filter((grade) => !departmentFilter || String(grade.department_id) === departmentFilter),
-    [grades, departmentFilter],
+    () =>
+      (grades ?? []).filter((grade) => {
+        if (departmentFilter && String(grade.department_id) !== departmentFilter) return false;
+        if (statusFilter === 'active' && !grade.is_active) return false;
+        if (statusFilter === 'inactive' && grade.is_active) return false;
+        return true;
+      }),
+    [grades, departmentFilter, statusFilter],
   );
 
   const ts = useTableState(filteredGrades, (g, q) =>
@@ -81,33 +88,56 @@ export const GradesSection: React.FC = () => {
     <>
       {confirmDialog}
       <TableShell tabKey="grades" title="Grades" onAdd={openCreate} addLabel="Add Grade"
-        headers={['Department', 'Code', 'Title', 'Level', 'Exp. Years', 'Note']}
+        headers={['Department', 'Code', 'Title', 'Level', 'Exp. Years', 'Note', 'Status']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
         toolbarExtra={(
-          <SearchableSelect
-            value={departmentFilter}
-            onChange={(value) => {
-              setDepartmentFilter(value);
-              ts.setPage(1);
-            }}
-            placeholder="All departments"
-            options={departmentOptions}
-          />
+          <>
+            <div className="w-full md:w-56 shrink-0">
+              <SearchableSelect
+                value={departmentFilter}
+                onChange={(value) => {
+                  setDepartmentFilter(value);
+                  ts.setPage(1);
+                }}
+                placeholder="All departments"
+                options={departmentOptions}
+              />
+            </div>
+            <StatusFilterSelect
+              value={statusFilter}
+              onChange={(value) => {
+                setStatusFilter(value);
+                ts.setPage(1);
+              }}
+            />
+          </>
         )}>
         {ts.paged.map((g, idx) => (
-          <TR key={g.id} idx={idx}>
+          <TR key={g.id} idx={idx} inactive={!g.is_active}>
             <TD>{gradeDepartmentLabel(g)}</TD>
-            <TD><span className="badge badge-accent font-bold">{g.code}</span></TD>
+            <TD>
+              <span className={g.is_active ? "badge badge-accent font-bold" : "badge font-bold opacity-60"}>
+                {g.code}
+              </span>
+            </TD>
             <TD>{g.title}</TD>
             <TD>
-              <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold inline-flex"
-                style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}>
+              <span
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold inline-flex"
+                style={{
+                  backgroundColor: g.is_active ? 'rgb(var(--accent-soft))' : 'rgb(var(--surface-2))',
+                  color: g.is_active ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-3))',
+                }}
+              >
                 {g.level}
               </span>
             </TD>
             <TD muted>{g.experience_years} yrs</TD>
             <TD muted small>{g.performance_note ?? '—'}</TD>
+            <TD>
+              <StatusBadge active={g.is_active} />
+            </TD>
             <ActionBtns onEdit={() => openEdit(g)} onDelete={async () => { if (await confirm({ title: 'Delete Grade', message: `Grade "${g.code} – ${g.title}" will be permanently deleted.`, confirmLabel: 'Delete' })) deleteGrade.mutate(g.id); }} />
           </TR>
         ))}

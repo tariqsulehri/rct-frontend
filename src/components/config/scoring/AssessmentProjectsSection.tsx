@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import {
@@ -6,7 +6,7 @@ import {
   useConfigAssessmentProjects,
   useUpdateAssessmentProject,
 } from '@/hooks/useConfig';
-import { calcHeader, TableShell, TD, TR } from '../ConfigTable';
+import { calcHeader, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
 
 const F = 'field';
@@ -16,6 +16,7 @@ export const AssessmentProjectsSection: React.FC = () => {
   const { data: projects, isLoading, isError } = useConfigAssessmentProjects();
   const updateProject = useUpdateAssessmentProject();
   const [editing, setEditing] = useState<ConfigAssessmentProject | null>(null);
+  const [statusFilter, setStatusFilter] = useState('');
   const [form, setForm] = useState({ label: '', description: '', duration_months_min: '', duration_months_max: '', credit: '', threshold: '', sort_order: '', is_active: true });
 
   const openEdit = (project: ConfigAssessmentProject) => {
@@ -50,7 +51,15 @@ export const AssessmentProjectsSection: React.FC = () => {
     setEditing(null);
   };
 
-  const ts = useTableState(projects, (project, q) =>
+  const filteredProjects = useMemo(() => {
+    return (projects ?? []).filter(p => {
+      if (statusFilter === 'active' && !p.is_active) return false;
+      if (statusFilter === 'inactive' && p.is_active) return false;
+      return true;
+    });
+  }, [projects, statusFilter]);
+
+  const ts = useTableState(filteredProjects, (project, q) =>
     project.label.toLowerCase().includes(q) ||
     String(project.project_count).includes(q) ||
     (project.description ?? '').toLowerCase().includes(q),
@@ -61,10 +70,19 @@ export const AssessmentProjectsSection: React.FC = () => {
       <TableShell tabKey="assessment-projects" title="Project Config"
         headers={['Projects', calcHeader('Project Score'), 'Duration', calcHeader('Minimum Target'), 'Description', 'Status']}
         loading={isLoading} error={isError}
-        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
+        toolbarExtra={(
+          <StatusFilterSelect
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              ts.setPage(1);
+            }}
+          />
+        )}>
         {ts.paged.map((project, idx) => (
-          <TR key={project.id} idx={idx}>
-            <TD><span className="font-semibold">{project.label}</span></TD>
+          <TR key={project.id} idx={idx} inactive={!project.is_active}>
+            <TD><span className={`font-semibold ${project.is_active ? '' : 'line-through opacity-70'}`}>{project.label}</span></TD>
             <TD mono>{project.credit.toFixed(2)}</TD>
             <TD muted small>
               {project.duration_months_min == null && project.duration_months_max == null
@@ -73,7 +91,7 @@ export const AssessmentProjectsSection: React.FC = () => {
             </TD>
             <TD mono>{project.threshold == null ? '—' : project.threshold.toFixed(2)}</TD>
             <TD muted small>{project.description ?? '—'}</TD>
-            <TD><span className={project.is_active ? 'badge badge-success' : 'badge'}>{project.is_active ? 'Active' : 'Inactive'}</span></TD>
+            <TD><StatusBadge active={project.is_active} /></TD>
             <td className="px-4 py-3"><button onClick={() => openEdit(project)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button></td>
           </TR>
         ))}

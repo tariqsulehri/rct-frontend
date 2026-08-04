@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
@@ -9,7 +9,7 @@ import {
   useDeleteCompetencyCategory,
   useUpdateCompetencyCategory,
 } from '@/hooks/useConfig';
-import { ActionBtns, TableShell, TD, TR } from '../ConfigTable';
+import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
 
 const F = 'field';
@@ -33,6 +33,7 @@ export const CategoriesSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigCompetencyCategory | null>(null);
+  const [statusFilter, setStatusFilter] = useState('');
   const [form, setForm] = useState({ name: '', description: '', color: '#6366f1', weight: '1', sort_order: '0', is_active: true });
 
   const openCreate = () => { setForm({ name: '', description: '', color: '#6366f1', weight: '1', sort_order: String((categories?.length ?? 0) + 1), is_active: true }); setEditing(null); setModal('create'); };
@@ -62,7 +63,15 @@ export const CategoriesSection: React.FC = () => {
     setModal(null);
   };
 
-  const ts = useTableState(categories, (c, q) =>
+  const filteredCategories = useMemo(() => {
+    return (categories ?? []).filter(c => {
+      if (statusFilter === 'active' && !c.is_active) return false;
+      if (statusFilter === 'inactive' && c.is_active) return false;
+      return true;
+    });
+  }, [categories, statusFilter]);
+
+  const ts = useTableState(filteredCategories, (c, q) =>
     c.name.toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q),
     (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
 
@@ -75,15 +84,24 @@ export const CategoriesSection: React.FC = () => {
       <TableShell tabKey="categories" title="Skill Categories" onAdd={openCreate} addLabel="Add Category"
         headers={['Name', 'Weight', 'Order', 'Status', 'Color', 'Description', 'Skills']}
         loading={isLoading} error={isError}
-        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
+        toolbarExtra={(
+          <StatusFilterSelect
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              ts.setPage(1);
+            }}
+          />
+        )}>
         {ts.paged.map((c, idx) => (
-          <TR key={c.id} idx={idx}>
+          <TR key={c.id} idx={idx} inactive={!c.is_active}>
             <TD>
               <div className="flex items-center gap-2">
                 {c.color && (
                   <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
                 )}
-                <span className="font-semibold"
+                <span className={`font-semibold ${c.is_active ? '' : 'line-through opacity-70'}`}
                   style={{
                     color: c.color ?? 'rgb(var(--text-1))',
                   }}>{c.name}</span>
@@ -91,7 +109,7 @@ export const CategoriesSection: React.FC = () => {
             </TD>
             <TD>{Math.round((c.weight ?? 0) * 100)}%</TD>
             <TD mono>{c.sort_order}</TD>
-            <TD><span className={c.is_active ? 'badge badge-success' : 'badge'}>{c.is_active ? 'Active' : 'Inactive'}</span></TD>
+            <TD><StatusBadge active={c.is_active} /></TD>
             <TD>
               {c.color ? (
                 <span className="badge font-mono text-xs"

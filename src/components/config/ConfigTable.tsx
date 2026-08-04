@@ -106,7 +106,7 @@ export const TableShell: React.FC<{
         )}
       </div>
       {toolbarExtra && (
-        <div className="w-full md:w-64 shrink-0">
+        <div className="w-full md:w-auto shrink-0 flex items-center gap-2 flex-wrap md:flex-nowrap">
           {toolbarExtra}
         </div>
       )}
@@ -153,14 +153,19 @@ export const TableShell: React.FC<{
   </div>
 );
 
-export const TR: React.FC<{ children: React.ReactNode; idx: number }> = ({ children, idx }) => (
+export const TR: React.FC<{ children: React.ReactNode; idx: number; inactive?: boolean; className?: string }> = ({
+  children, idx, inactive, className,
+}) => (
   <tr
+    className={`${inactive ? 'opacity-60' : ''} ${className ?? ''}`}
     style={{
       borderBottom: '1px solid rgb(var(--border))',
-      backgroundColor: idx % 2 === 0 ? 'transparent' : 'rgb(var(--surface-2) / 0.4)',
+      backgroundColor: inactive
+        ? 'rgba(239, 68, 68, 0.04)'
+        : idx % 2 === 0 ? 'transparent' : 'rgb(var(--surface-2) / 0.4)',
     }}
-    onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgb(var(--accent-soft) / 0.35)')}
-    onMouseLeave={e => (e.currentTarget.style.backgroundColor = idx % 2 === 0 ? 'transparent' : 'rgb(var(--surface-2) / 0.4)')}
+    onMouseEnter={e => (e.currentTarget.style.backgroundColor = inactive ? 'rgba(239, 68, 68, 0.09)' : 'rgb(var(--accent-soft) / 0.35)')}
+    onMouseLeave={e => (e.currentTarget.style.backgroundColor = inactive ? 'rgba(239, 68, 68, 0.04)' : idx % 2 === 0 ? 'transparent' : 'rgb(var(--surface-2) / 0.4)')}
   >
     {children}
   </tr>
@@ -173,6 +178,36 @@ export const TD: React.FC<{ children: React.ReactNode; mono?: boolean; muted?: b
     style={{ color: muted ? 'rgb(var(--text-2))' : 'rgb(var(--text-1))' }}>
     {children}
   </td>
+);
+
+export const StatusBadge: React.FC<{ active?: boolean }> = ({ active }) => (
+  <span
+    className="badge text-xs font-semibold shrink-0"
+    style={{
+      backgroundColor: active ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+      color: active ? '#4ade80' : '#f87171',
+      border: `1px solid ${active ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+    }}
+  >
+    {active ? 'Active' : 'Inactive'}
+  </span>
+);
+
+export const StatusFilterSelect: React.FC<{
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}> = ({ value, onChange, placeholder = 'All statuses' }) => (
+  <select
+    value={value}
+    onChange={e => onChange(e.target.value)}
+    className="field text-xs py-1.5 px-3 rounded-lg cursor-pointer shrink-0"
+    style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-1))', border: '1px solid rgb(var(--border))' }}
+  >
+    <option value="">{placeholder}</option>
+    <option value="active">Active only</option>
+    <option value="inactive">Inactive only</option>
+  </select>
 );
 
 export const ActionBtns: React.FC<{ onEdit: () => void; onDelete: () => void }> = ({ onEdit, onDelete }) => (

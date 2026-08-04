@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -11,7 +11,7 @@ import {
   useDeleteTechnology,
   useUpdateTechnology,
 } from '@/hooks/useConfig';
-import { ActionBtns, TableShell, TD, TR } from '../ConfigTable';
+import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
 
 const F = 'field';
@@ -27,6 +27,7 @@ export const TechnologiesSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigTechnology | null>(null);
+  const [statusFilter, setStatusFilter] = useState('');
   const [form, setForm] = useState({ name: '', competency_id: '', is_active: true });
 
   const openCreate = () => { setForm({ name: '', competency_id: '', is_active: true }); setEditing(null); setModal('create'); };
@@ -39,7 +40,15 @@ export const TechnologiesSection: React.FC = () => {
     setModal(null);
   };
 
-  const ts = useTableState(technologies, (t, q) =>
+  const filteredTechnologies = useMemo(() => {
+    return (technologies ?? []).filter(t => {
+      if (statusFilter === 'active' && !t.is_active) return false;
+      if (statusFilter === 'inactive' && t.is_active) return false;
+      return true;
+    });
+  }, [technologies, statusFilter]);
+
+  const ts = useTableState(filteredTechnologies, (t, q) =>
     t.name.toLowerCase().includes(q) ||
     (t.competency?.name ?? '').toLowerCase().includes(q) ||
     (t.competency?.competency_domains ?? []).some(d => d.domain.name.toLowerCase().includes(q)),
@@ -54,14 +63,24 @@ export const TechnologiesSection: React.FC = () => {
     <>
       {confirmDialog}
       <TableShell tabKey="technologies" title="Tools" onAdd={openCreate} addLabel="Add Tool"
-        headers={['Name', 'Skill', 'Skill Area']}
+        headers={['Name', 'Skill', 'Skill Area', 'Status']}
         loading={isLoading} error={isError}
-        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
+        toolbarExtra={(
+          <StatusFilterSelect
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              ts.setPage(1);
+            }}
+          />
+        )}>
         {ts.paged.map((t, idx) => (
-          <TR key={t.id} idx={idx}>
-            <TD>{t.name}</TD>
+          <TR key={t.id} idx={idx} inactive={!t.is_active}>
+            <TD><span className={t.is_active ? '' : 'line-through opacity-70'}>{t.name}</span></TD>
             <TD muted>{t.competency?.name ?? `#${t.competency_id}`}</TD>
             <TD muted small>{t.competency?.competency_domains?.find(d => d.is_primary)?.domain.name ?? '—'}</TD>
+            <TD><StatusBadge active={t.is_active} /></TD>
             <ActionBtns onEdit={() => openEdit(t)} onDelete={async () => { if (await confirm({ title: 'Delete Tool', message: `"${t.name}" will be deleted.`, confirmLabel: 'Delete' })) deleteTechnology.mutate(t.id); }} />
           </TR>
         ))}

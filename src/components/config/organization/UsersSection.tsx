@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { getApiErrorMessage } from '@/lib/apiError';
 import { useAuthStore } from '@/store/authStore';
-import { ActionBtns, TableShell, TD, TR } from '../ConfigTable';
+import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
 import {
   ConfigEmployee,
@@ -45,7 +45,7 @@ export const UsersSection: React.FC = () => {
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigUser | null>(null);
   const [form, setForm] = useState({ username: '', password: '', role: 'ENGINEER', employee_id: '', is_active: true });
-  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
+  const [statusFilter, setStatusFilter] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const openCreate = () => { setForm({ username: '', password: '', role: 'ENGINEER', employee_id: '', is_active: true }); setEditing(null); setSaveError(null); setModal('create'); };
@@ -139,30 +139,22 @@ export const UsersSection: React.FC = () => {
   return (
     <>
       {confirmDialog}
-      <div className="flex items-center justify-end gap-2 mb-3">
-        {(['active', 'inactive', 'all'] as const).map(status => (
-          <button
-            key={status}
-            type="button"
-            onClick={() => setStatusFilter(status)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors"
-            style={{
-              backgroundColor: statusFilter === status ? 'rgb(var(--accent))' : 'rgb(var(--surface-2))',
-              border: '1px solid rgb(var(--border))',
-              color: statusFilter === status ? 'white' : 'rgb(var(--text-1))',
-            }}
-          >
-            {status}
-          </button>
-        ))}
-      </div>
       <TableShell tabKey="users" title="Users" onAdd={openCreate} addLabel="Add User"
         headers={['Username', 'Role', 'Employee', 'Status']}
         loading={isLoading} error={isError}
-        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
+        toolbarExtra={(
+          <StatusFilterSelect
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              ts.setPage(1);
+            }}
+          />
+        )}>
         {ts.paged.map((u, idx) => (
-          <TR key={u.id} idx={idx}>
-            <TD><span className="font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{u.username}</span></TD>
+          <TR key={u.id} idx={idx} inactive={!u.is_active}>
+            <TD><span className={`font-semibold ${u.is_active ? '' : 'line-through opacity-70'}`} style={{ color: 'rgb(var(--text-1))' }}>{u.username}</span></TD>
             <TD><span className={ROLE_BADGE[u.role] ?? 'badge'}>{u.role}</span></TD>
             <TD muted>
               {u.employee
@@ -170,7 +162,7 @@ export const UsersSection: React.FC = () => {
                 : `#${u.employee_id}`}
             </TD>
             <TD>
-              <span className={u.is_active ? 'badge badge-success' : 'badge'}>{u.is_active ? 'Active' : 'Inactive'}</span>
+              <StatusBadge active={u.is_active} />
             </TD>
             <ActionBtns onEdit={() => openEdit(u)} onDelete={async () => { if (await confirm({ title: 'Deactivate User', message: `"${u.username}" will be deactivated and lose access.`, confirmLabel: 'Deactivate', variant: 'warning' })) deleteUser.mutate(u.id); }} />
           </TR>

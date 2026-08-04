@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Cpu, Network, Search, Zap } from 'lucide-react';
+import { Cpu, Network, Search, Target, Zap } from 'lucide-react';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { PanelHeader } from '@/components/ui/PanelHeader';
@@ -14,7 +14,7 @@ import {
   useDeleteCompetency,
   useUpdateCompetency,
 } from '@/hooks/useConfig';
-import { ActionBtns, TableShell, TD, TR } from '../ConfigTable';
+import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { HEADER_GRADIENTS, useTableState } from '../ConfigTableState';
 import { CompetencyThresholdMatrix, DepartmentSkillMapSection } from './DepartmentSkillMapSection';
 
@@ -44,9 +44,10 @@ export const CompetenciesSection: React.FC = () => {
   const [form, setForm] = useState({ name: '', description: '', is_critical: false, is_active: true, domain_id: '' });
   const [selectedCompetency, setSelectedCompetency] = useState<ConfigCompetency | null>(null);
   const [techSearch, setTechSearch] = useState('');
-  const [activeSkillModule, setActiveSkillModule] = useState<'management' | 'mapping'>('management');
   const [managementCategoryId, setManagementCategoryId] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [formError, setFormError] = useState('');
+  const [activeSkillModule, setActiveSkillModule] = useState<'management' | 'map' | 'targets'>('management');
 
   const openCreate = () => {
     setForm({ name: '', description: '', is_critical: false, is_active: true, domain_id: '' });
@@ -94,9 +95,13 @@ export const CompetenciesSection: React.FC = () => {
 
   const managementCompetencies = useMemo(() => {
     const all = competencies ?? [];
-    if (!managementCategoryId) return all;
-    return all.filter((competency) => String(competency.category_id) === managementCategoryId);
-  }, [competencies, managementCategoryId]);
+    return all.filter((competency) => {
+      if (managementCategoryId && String(competency.category_id) !== managementCategoryId) return false;
+      if (statusFilter === 'active' && !competency.is_active) return false;
+      if (statusFilter === 'inactive' && competency.is_active) return false;
+      return true;
+    });
+  }, [competencies, managementCategoryId, statusFilter]);
 
   const ts = useTableState(managementCompetencies, (c, q) =>
     c.name.toLowerCase().includes(q) ||
@@ -136,50 +141,70 @@ export const CompetenciesSection: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => setActiveSkillModule('mapping')}
+          onClick={() => setActiveSkillModule('map')}
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-150"
           style={{
-            backgroundColor: activeSkillModule === 'mapping' ? 'rgb(var(--accent))' : 'transparent',
-            color: activeSkillModule === 'mapping' ? 'white' : 'rgb(var(--text-2))',
+            backgroundColor: activeSkillModule === 'map' ? 'rgb(var(--accent))' : 'transparent',
+            color: activeSkillModule === 'map' ? 'white' : 'rgb(var(--text-2))',
           }}
         >
           <Network size={14} />
-          Skills Mapping
+          Department Skill Map
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSkillModule('targets')}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-150"
+          style={{
+            backgroundColor: activeSkillModule === 'targets' ? 'rgb(var(--accent))' : 'transparent',
+            color: activeSkillModule === 'targets' ? 'white' : 'rgb(var(--text-2))',
+          }}
+        >
+          <Target size={14} />
+          Department Skill Targets
         </button>
       </div>
 
-      {activeSkillModule === 'mapping' ? (
-        <div className="space-y-5">
-          <DepartmentSkillMapSection />
-          <CompetencyThresholdMatrix />
-        </div>
-      ) : (
+      {activeSkillModule === 'map' && <DepartmentSkillMapSection />}
+      {activeSkillModule === 'targets' && <CompetencyThresholdMatrix />}
+      {activeSkillModule === 'management' && (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2">
           <TableShell tabKey="competencies" title="Skills" onAdd={openCreate} addLabel="Add Skill"
-            headers={['Name', 'Category', 'Skill Area', 'Important', 'Tools']}
+            headers={['Name', 'Category', 'Skill Area', 'Important', 'Tools', 'Status']}
             loading={isLoading} error={isError}
             q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
             toolbarExtra={(
-              <CategoryFilterSelect
-                value={managementCategoryId}
-                onChange={(value) => {
-                  setManagementCategoryId(value);
-                  ts.setPage(1);
-                }}
-                categories={categories}
-              />
+              <>
+                <div className="w-full md:w-56 shrink-0">
+                  <CategoryFilterSelect
+                    value={managementCategoryId}
+                    onChange={(value) => {
+                      setManagementCategoryId(value);
+                      ts.setPage(1);
+                    }}
+                    categories={categories}
+                  />
+                </div>
+                <StatusFilterSelect
+                  value={statusFilter}
+                  onChange={(value) => {
+                    setStatusFilter(value);
+                    ts.setPage(1);
+                  }}
+                />
+              </>
             )}>
             {ts.paged.map((c, idx) => (
-              <TR key={c.id} idx={idx}>
+              <TR key={c.id} idx={idx} inactive={!c.is_active}>
                 <TD>
                   <button
                     onClick={() => { setSelectedCompetency(s => s?.id === c.id ? null : c); setTechSearch(''); }}
                     className="flex items-center gap-2 hover:underline font-semibold"
                     style={{ color: 'rgb(var(--accent))' }}>
                     <Cpu size={14} />
-                    {c.name}
+                    <span className={c.is_active ? '' : 'line-through opacity-70'}>{c.name}</span>
                   </button>
                 </TD>
                 <TD>
@@ -206,6 +231,9 @@ export const CompetenciesSection: React.FC = () => {
                   <span className="badge" style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}>
                     {c.technologies?.length ?? 0}
                   </span>
+                </TD>
+                <TD>
+                  <StatusBadge active={c.is_active} />
                 </TD>
                 <ActionBtns onEdit={() => openEdit(c)} onDelete={async () => { if (await confirm({ title: 'Delete Skill', message: `"${c.name}" and all its tool links will be deleted.`, confirmLabel: 'Delete' })) deleteCompetency.mutate(c.id); }} />
               </TR>

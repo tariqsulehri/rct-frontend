@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
-import { CategoryFilterSelect } from '@/components/filters/TaxonomyFilterSelects';
+import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
+import { useTableState } from '../ConfigTableState';
 import {
   ConfigSkillDomain,
   useConfigCompetencyCategories,
@@ -11,8 +12,7 @@ import {
   useDeleteSkillDomain,
   useUpdateSkillDomain,
 } from '@/hooks/useConfig';
-import { ActionBtns, TableShell, TD, TR } from '../ConfigTable';
-import { useTableState } from '../ConfigTableState';
+import { CategoryFilterSelect } from '@/components/filters/TaxonomyFilterSelects';
 
 const F = 'field';
 const L = 'field-label';
@@ -22,31 +22,29 @@ type SkillDomainPayload = {
   description?: string;
   color?: string;
   category_id: number;
-  is_active?: boolean;
+  is_active: boolean;
 };
 
 const SKILL_AREA_COLOR_PRESETS = [
-  '#3B82F6',
-  '#06B6D4',
-  '#10B981',
-  '#F59E0B',
-  '#EF4444',
-  '#84CC16',
-  '#EC4899',
-  '#A855F7',
-  '#F97316',
-  '#14B8A6',
-  '#6366F1',
-  '#0EA5E9',
-  '#22C55E',
-  '#EAB308',
-  '#F43F5E',
-  '#8B5CF6',
-  '#0F766E',
-  '#2563EB',
+  '#2563eb', // Blue
+  '#059669', // Emerald
+  '#d97706', // Amber
+  '#dc2626', // Red
+  '#7c3aed', // Violet
+  '#0891b2', // Cyan
+  '#ea580c', // Orange
+  '#db2777', // Pink
+  '#4f46e5', // Indigo
+  '#0d9488', // Teal
+  '#ca8a04', // Yellow
+  '#65a30d', // Lime
+  '#9333ea', // Purple
+  '#be123c', // Rose
+  '#0284c7', // Sky
+  '#16a34a', // Green
 ];
 
-const normalizeHexColor = (color?: string | null) => color?.trim().toUpperCase() ?? '';
+const normalizeHexColor = (color?: string | null) => (color ?? '').trim().toLowerCase();
 
 const getSuggestedSkillAreaColor = (domains?: ConfigSkillDomain[]) => {
   const usedColors = new Set((domains ?? []).map(domain => normalizeHexColor(domain.color)).filter(Boolean));
@@ -66,6 +64,7 @@ export const SkillDomainsSection: React.FC = () => {
   const [form, setForm] = useState({ name: '', description: '', color: '', category_id: '', is_active: true });
   const [formError, setFormError] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const usedSkillAreaColors = useMemo(
     () => new Set((domains ?? []).map(domain => normalizeHexColor(domain.color)).filter(Boolean)),
     [domains],
@@ -73,9 +72,13 @@ export const SkillDomainsSection: React.FC = () => {
   const suggestedSkillAreaColor = useMemo(() => getSuggestedSkillAreaColor(domains), [domains]);
   const categoryById = useMemo(() => new Map((categories ?? []).map(category => [category.id, category])), [categories]);
   const filteredDomainsByCategory = useMemo(() => {
-    if (!categoryFilter) return domains;
-    return (domains ?? []).filter(domain => String(domain.category_id) === categoryFilter);
-  }, [categoryFilter, domains]);
+    return (domains ?? []).filter(domain => {
+      if (categoryFilter && String(domain.category_id) !== categoryFilter) return false;
+      if (statusFilter === 'active' && !domain.is_active) return false;
+      if (statusFilter === 'inactive' && domain.is_active) return false;
+      return true;
+    });
+  }, [categoryFilter, statusFilter, domains]);
 
   const openCreate = () => {
     setForm({ name: '', description: '', color: suggestedSkillAreaColor, category_id: categories?.[0] ? String(categories[0].id) : '', is_active: true });
@@ -123,27 +126,38 @@ export const SkillDomainsSection: React.FC = () => {
     <>
       {confirmDialog}
       <TableShell tabKey="skill-domains" title="Skill Areas" onAdd={openCreate} addLabel="Add Skill Area"
-        headers={['Name', 'Category', 'Description', 'Color', 'Skills']}
+        headers={['Name', 'Category', 'Description', 'Color', 'Skills', 'Status']}
         loading={isLoading} error={isError}
         q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
-        toolbarExtra={
-          <CategoryFilterSelect
-            value={categoryFilter}
-            onChange={(value) => {
-              setCategoryFilter(value);
-              ts.setPage(1);
-            }}
-            categories={categories}
-          />
-        }>
+        toolbarExtra={(
+          <>
+            <div className="w-full md:w-56 shrink-0">
+              <CategoryFilterSelect
+                value={categoryFilter}
+                onChange={(value) => {
+                  setCategoryFilter(value);
+                  ts.setPage(1);
+                }}
+                categories={categories}
+              />
+            </div>
+            <StatusFilterSelect
+              value={statusFilter}
+              onChange={(value) => {
+                setStatusFilter(value);
+                ts.setPage(1);
+              }}
+            />
+          </>
+        )}>
         {ts.paged.map((d, idx) => {
           const category = d.category ?? categoryById.get(d.category_id) ?? null;
           return (
-          <TR key={d.id} idx={idx}>
+          <TR key={d.id} idx={idx} inactive={!d.is_active}>
             <TD>
               <div className="flex items-center gap-2">
                 {d.color && <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />}
-                {d.name}
+                <span className={d.is_active ? '' : 'line-through opacity-70'}>{d.name}</span>
               </div>
             </TD>
             <TD>
@@ -177,6 +191,9 @@ export const SkillDomainsSection: React.FC = () => {
               <span className="badge" style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}>
                 {d.competency_domains?.length ?? 0}
               </span>
+            </TD>
+            <TD>
+              <StatusBadge active={d.is_active} />
             </TD>
             <ActionBtns onEdit={() => openEdit(d)} onDelete={async () => { if (await confirm({ title: 'Delete Skill Area', message: `"${d.name}" and all its skill mappings will be permanently deleted.`, confirmLabel: 'Delete' })) deleteDomain.mutate(d.id); }} />
           </TR>

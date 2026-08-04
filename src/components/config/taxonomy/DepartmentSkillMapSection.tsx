@@ -343,7 +343,7 @@ export const CompetencyThresholdMatrix: React.FC = () => {
 
   const orderedGrades = useMemo(
     () => [...(grades ?? [])]
-      .filter((grade) => selectedDepartmentId ? grade.department_id === selectedDepartmentId : false)
+      .filter((grade) => selectedDepartmentId ? (grade.department_id === selectedDepartmentId && grade.is_active !== false) : false)
       .sort((a, b) => a.level - b.level || a.code.localeCompare(b.code)),
     [grades, selectedDepartmentId]
   );
@@ -513,6 +513,15 @@ export const CompetencyThresholdMatrix: React.FC = () => {
         <div className="p-6 text-sm" style={{ color: 'rgb(var(--text-3))' }}>Select a department to configure skill targets.</div>
       ) : isError ? (
         <div className="p-6 text-sm" style={{ color: 'rgb(var(--danger))' }}>Failed to load department skill targets.</div>
+      ) : orderedGrades.length === 0 ? (
+        <div className="p-8 text-center flex flex-col items-center justify-center gap-2">
+          <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-1))' }}>
+            No grades found for {departments?.find(d => d.id === selectedDepartmentId)?.name || 'this department'}.
+          </p>
+          <p className="text-xs max-w-md" style={{ color: 'rgb(var(--text-2))' }}>
+            Grades (e.g. G13, G14, G15) define the career levels against which skill targets are set. Please add grades for this department in the <strong>Grades</strong> tab first.
+          </p>
+        </div>
       ) : (
         <div className="overflow-auto">
           <table className="w-full min-w-[920px]">

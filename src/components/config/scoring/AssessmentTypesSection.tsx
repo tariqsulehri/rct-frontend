@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import {
@@ -6,7 +6,7 @@ import {
   useConfigAssessmentTypes,
   useUpdateAssessmentType,
 } from '@/hooks/useConfig';
-import { calcHeader, TableShell, TD, TR } from '../ConfigTable';
+import { calcHeader, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
 
 const F = 'field';
@@ -17,6 +17,7 @@ export const AssessmentTypesSection: React.FC = () => {
   const updateType = useUpdateAssessmentType();
 
   const [editing, setEditing] = useState<ConfigAssessmentType | null>(null);
+  const [statusFilter, setStatusFilter] = useState('');
   const [form, setForm] = useState({ label: '', weight: '', description: '', sort_order: '', is_active: true });
 
   const openEdit = (type: ConfigAssessmentType) => {
@@ -45,7 +46,15 @@ export const AssessmentTypesSection: React.FC = () => {
     setEditing(null);
   };
 
-  const ts = useTableState(types, (type, q) =>
+  const filteredTypes = useMemo(() => {
+    return (types ?? []).filter(t => {
+      if (statusFilter === 'active' && !t.is_active) return false;
+      if (statusFilter === 'inactive' && t.is_active) return false;
+      return true;
+    });
+  }, [types, statusFilter]);
+
+  const ts = useTableState(filteredTypes, (type, q) =>
     type.code.toLowerCase().includes(q) ||
     type.label.toLowerCase().includes(q) ||
     (type.description ?? '').toLowerCase().includes(q),
@@ -56,14 +65,23 @@ export const AssessmentTypesSection: React.FC = () => {
       <TableShell tabKey="assessment-types" title="Assessment Types"
         headers={['Type', calcHeader('Base Score'), 'Description', 'Status']}
         loading={isLoading} error={isError}
-        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
+        toolbarExtra={(
+          <StatusFilterSelect
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              ts.setPage(1);
+            }}
+          />
+        )}>
         {ts.paged.map((type, idx) => (
-          <TR key={type.id} idx={idx}>
+          <TR key={type.id} idx={idx} inactive={!type.is_active}>
             <TD>
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full"
                   style={{ backgroundColor: type.code === 'Primary' ? '#2563eb' : type.code === 'Secondary' ? '#059669' : '#d97706' }} />
-                <span className="font-semibold">{type.label}</span>
+                <span className={`font-semibold ${type.is_active ? '' : 'line-through opacity-70'}`}>{type.label}</span>
               </div>
             </TD>
             <TD>
@@ -75,7 +93,7 @@ export const AssessmentTypesSection: React.FC = () => {
               </span>
             </TD>
             <TD muted small>{type.description ?? '—'}</TD>
-            <TD><span className={type.is_active ? 'badge badge-success' : 'badge'}>{type.is_active ? 'Active' : 'Inactive'}</span></TD>
+            <TD><StatusBadge active={type.is_active} /></TD>
             <td className="px-4 py-3">
               <button onClick={() => openEdit(type)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button>
             </td>

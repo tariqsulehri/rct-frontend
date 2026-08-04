@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Building2, Search, Users } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { PanelHeader } from '@/components/ui/PanelHeader';
-import { ActionBtns, TableShell, TD, TR } from '../ConfigTable';
+import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { HEADER_GRADIENTS, useTableState } from '../ConfigTableState';
 import {
   ConfigDepartment,
@@ -28,6 +28,7 @@ export const DepartmentsSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigDepartment | null>(null);
+  const [statusFilter, setStatusFilter] = useState('');
   const [form, setForm] = useState({ name: '', description: '', is_active: true });
   const [selectedDept, setSelectedDept] = useState<ConfigDepartment | null>(null);
   const [memberSearch, setMemberSearch] = useState('');
@@ -42,7 +43,17 @@ export const DepartmentsSection: React.FC = () => {
     setModal(null);
   };
 
-  const ts = useTableState(departments, (d, q) =>
+  const filteredDepts = useMemo(
+    () =>
+      (departments ?? []).filter((d) => {
+        if (statusFilter === 'active' && !d.is_active) return false;
+        if (statusFilter === 'inactive' && d.is_active) return false;
+        return true;
+      }),
+    [departments, statusFilter],
+  );
+
+  const ts = useTableState(filteredDepts, (d, q) =>
     d.name.toLowerCase().includes(q) || (d.description ?? '').toLowerCase().includes(q),
     (a, b) => a.name.localeCompare(b.name));
 
@@ -56,11 +67,20 @@ export const DepartmentsSection: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
           <TableShell tabKey="departments" title="Departments" onAdd={openCreate} addLabel="Add Department"
-            headers={['Name', 'Description', 'Employees']}
+            headers={['Name', 'Description', 'Employees', 'Status']}
             loading={isLoading} error={isError}
-            q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+            q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
+            toolbarExtra={(
+              <StatusFilterSelect
+                value={statusFilter}
+                onChange={(value) => {
+                  setStatusFilter(value);
+                  ts.setPage(1);
+                }}
+              />
+            )}>
             {ts.paged.map((d, idx) => (
-              <TR key={d.id} idx={idx}>
+              <TR key={d.id} idx={idx} inactive={!d.is_active}>
                 <TD>
                   <button onClick={() => { setSelectedDept(s => s?.id === d.id ? null : d); setMemberSearch(''); }}
                     className="flex items-center gap-2 hover:underline font-semibold"
@@ -74,6 +94,9 @@ export const DepartmentsSection: React.FC = () => {
                   <span className="badge" style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}>
                     {(employees ?? []).filter(e => e.department_id === d.id).length} members
                   </span>
+                </TD>
+                <TD>
+                  <StatusBadge active={d.is_active} />
                 </TD>
                 <ActionBtns onEdit={() => openEdit(d)} onDelete={async () => { if (await confirm({ title: 'Delete Department', message: `"${d.name}" will be permanently deleted.`, confirmLabel: 'Delete' })) deleteDept.mutate(d.id); }} />
               </TR>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import {
@@ -6,7 +6,7 @@ import {
   useConfigAssessmentLevels,
   useUpdateAssessmentLevel,
 } from '@/hooks/useConfig';
-import { calcHeader, TableShell, TD, TR } from '../ConfigTable';
+import { calcHeader, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
 
 const F = 'field';
@@ -16,6 +16,7 @@ export const AssessmentLevelsSection: React.FC = () => {
   const { data: levels, isLoading, isError } = useConfigAssessmentLevels();
   const updateLevel = useUpdateAssessmentLevel();
   const [editing, setEditing] = useState<ConfigAssessmentLevel | null>(null);
+  const [statusFilter, setStatusFilter] = useState('');
   const [form, setForm] = useState({ label: '', weight: '', threshold: '', description: '', sort_order: '', is_active: true });
 
   const openEdit = (levelConfig: ConfigAssessmentLevel) => {
@@ -46,7 +47,15 @@ export const AssessmentLevelsSection: React.FC = () => {
     setEditing(null);
   };
 
-  const ts = useTableState(levels, (levelConfig, q) =>
+  const filteredLevels = useMemo(() => {
+    return (levels ?? []).filter(l => {
+      if (statusFilter === 'active' && !l.is_active) return false;
+      if (statusFilter === 'inactive' && l.is_active) return false;
+      return true;
+    });
+  }, [levels, statusFilter]);
+
+  const ts = useTableState(filteredLevels, (levelConfig, q) =>
     levelConfig.code.toLowerCase().includes(q) ||
     levelConfig.label.toLowerCase().includes(q) ||
     (levelConfig.description ?? '').toLowerCase().includes(q),
@@ -57,14 +66,23 @@ export const AssessmentLevelsSection: React.FC = () => {
       <TableShell tabKey="assessment-levels" title="Level Config"
         headers={['Level', calcHeader('Score Factor'), calcHeader('Minimum Target'), 'Description', 'Status']}
         loading={isLoading} error={isError}
-        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
+        toolbarExtra={(
+          <StatusFilterSelect
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              ts.setPage(1);
+            }}
+          />
+        )}>
         {ts.paged.map((levelConfig, idx) => (
-          <TR key={levelConfig.id} idx={idx}>
-            <TD><span className="font-semibold">{levelConfig.label}</span></TD>
+          <TR key={levelConfig.id} idx={idx} inactive={!levelConfig.is_active}>
+            <TD><span className={`font-semibold ${levelConfig.is_active ? '' : 'line-through opacity-70'}`}>{levelConfig.label}</span></TD>
             <TD mono>{levelConfig.weight.toFixed(2)}</TD>
             <TD mono>{levelConfig.threshold == null ? '—' : levelConfig.threshold.toFixed(2)}</TD>
             <TD muted small>{levelConfig.description ?? '—'}</TD>
-            <TD><span className={levelConfig.is_active ? 'badge badge-success' : 'badge'}>{levelConfig.is_active ? 'Active' : 'Inactive'}</span></TD>
+            <TD><StatusBadge active={levelConfig.is_active} /></TD>
             <td className="px-4 py-3"><button onClick={() => openEdit(levelConfig)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button></td>
           </TR>
         ))}

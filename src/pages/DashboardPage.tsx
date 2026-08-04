@@ -6,7 +6,7 @@ import {
   Sun, Moon, Zap, LogOut, Bell, Search,
   TrendingUp, Activity, Info,
   Bot, Sparkles, Clock3, Target, AlertTriangle, CheckCircle2,
-  MessageSquare, Send, UserRound, CheckSquare,
+  MessageSquare, Send, UserRound, CheckSquare, KeyRound,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -21,6 +21,7 @@ import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
 import { PendingApprovalsPanel } from '@/components/PendingApprovalsPanel';
 import { ConfigSection } from '@/components/config/ConfigSection';
 import { ReportsSection } from '@/components/reports/ReportsSection';
+import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { SkillAreaNameFilterSelect } from '@/components/filters/TaxonomyFilterSelects';
 import { usePromotionReadiness, useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
 import { useAiChat, useAiDashboard, type AiChatResponse, type AiFocus, type AiPriority } from '@/hooks/useAiDashboard';
@@ -2917,6 +2918,7 @@ export const DashboardPage: React.FC = () => {
   const { user, logout, setUser } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>(() => defaultDashboardTabForRole(user?.role));
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const canViewReports = hasPermission(user?.permissions, 'reports.view');
   const visibleNav = NAV.filter(n =>
@@ -3056,6 +3058,15 @@ export const DashboardPage: React.FC = () => {
             </div>
 
             <button
+              type="button"
+              onClick={() => setChangePasswordOpen(true)}
+              className="btn-ghost w-9 h-9 p-0 rounded-lg flex items-center justify-center ml-1"
+              title="Change Password"
+            >
+              <KeyRound size={15} />
+            </button>
+
+            <button
               onClick={handleLogout}
               className="btn-ghost w-9 h-9 p-0 rounded-lg flex items-center justify-center ml-1"
               title="Sign out"
@@ -3064,6 +3075,12 @@ export const DashboardPage: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Change Password Modal */}
+        <ChangePasswordModal
+          isOpen={changePasswordOpen}
+          onClose={() => setChangePasswordOpen(false)}
+        />
       </header>
 
       {/* ── Body ──────────────────────────────────────────────────────── */}

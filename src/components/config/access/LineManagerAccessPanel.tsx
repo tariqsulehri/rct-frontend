@@ -117,26 +117,28 @@ export const LineManagerAccessPanel: React.FC<LineManagerAccessPanelProps> = ({
         ))}
       </div>
 
-      <div className="flex border-b" style={{ borderColor: 'rgb(var(--border))' }}>
+      <div className="card p-1.5 inline-flex gap-1.5 rounded-xl border flex-wrap" style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
         {[
-          { id: 'assign' as const, label: 'Assign Resources' },
-          { id: 'history' as const, label: 'Assignment History' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className="px-6 py-3 text-sm font-medium transition-colors relative"
-            style={{ color: activeTab === tab.id ? 'rgb(var(--text-1))' : 'rgb(var(--text-3))' }}
-          >
-            {tab.label}
-            {activeTab === tab.id && (
-              <div
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"
-                style={{ backgroundColor: 'rgb(var(--accent))' }}
-              />
-            )}
-          </button>
-        ))}
+          { id: 'assign' as const, label: '👥 Assign Resources' },
+          { id: 'history' as const, label: '⚙️ Configure Assignments' },
+        ].map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className="px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer"
+              style={{
+                backgroundColor: isActive ? 'rgb(var(--accent))' : 'transparent',
+                color: isActive ? '#ffffff' : 'rgb(var(--text-1))',
+                boxShadow: isActive ? '0 2px 8px rgba(124, 58, 237, 0.35)' : 'none',
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === 'assign' && (

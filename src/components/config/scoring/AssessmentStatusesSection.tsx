@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import {
@@ -6,7 +6,7 @@ import {
   useConfigAssessmentStatuses,
   useUpdateAssessmentStatus,
 } from '@/hooks/useConfig';
-import { calcHeader, TableShell, TD, TR } from '../ConfigTable';
+import { calcHeader, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
 
 const F = 'field';
@@ -16,6 +16,7 @@ export const AssessmentStatusesSection: React.FC = () => {
   const { data: statuses, isLoading, isError } = useConfigAssessmentStatuses();
   const updateStatus = useUpdateAssessmentStatus();
   const [editing, setEditing] = useState<ConfigAssessmentStatus | null>(null);
+  const [statusFilter, setStatusFilter] = useState('');
   const [form, setForm] = useState({ label: '', description: '', counts_toward_score: false, is_terminal: false, sort_order: '', is_active: true });
 
   const openEdit = (status: ConfigAssessmentStatus) => {
@@ -46,7 +47,15 @@ export const AssessmentStatusesSection: React.FC = () => {
     setEditing(null);
   };
 
-  const ts = useTableState(statuses, (status, q) =>
+  const filteredStatuses = useMemo(() => {
+    return (statuses ?? []).filter(s => {
+      if (statusFilter === 'active' && !s.is_active) return false;
+      if (statusFilter === 'inactive' && s.is_active) return false;
+      return true;
+    });
+  }, [statuses, statusFilter]);
+
+  const ts = useTableState(filteredStatuses, (status, q) =>
     status.code.toLowerCase().includes(q) ||
     status.label.toLowerCase().includes(q) ||
     (status.description ?? '').toLowerCase().includes(q),
@@ -57,14 +66,23 @@ export const AssessmentStatusesSection: React.FC = () => {
       <TableShell tabKey="assessment-statuses" title="Status Config"
         headers={['Status', calcHeader('Affects Score'), 'Review Complete', 'Description', 'Active']}
         loading={isLoading} error={isError}
-        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}>
+        q={ts.q} onSearch={ts.onSearch} page={ts.page} total={ts.filtered.length} onPage={ts.setPage}
+        toolbarExtra={(
+          <StatusFilterSelect
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              ts.setPage(1);
+            }}
+          />
+        )}>
         {ts.paged.map((status, idx) => (
-          <TR key={status.id} idx={idx}>
-            <TD><span className="font-semibold">{status.label}</span></TD>
+          <TR key={status.id} idx={idx} inactive={!status.is_active}>
+            <TD><span className={`font-semibold ${status.is_active ? '' : 'line-through opacity-70'}`}>{status.label}</span></TD>
             <TD><span className={status.counts_toward_score ? 'badge badge-success' : 'badge'}>{status.counts_toward_score ? 'Yes' : 'No'}</span></TD>
             <TD><span className={status.is_terminal ? 'badge badge-accent' : 'badge'}>{status.is_terminal ? 'Yes' : 'No'}</span></TD>
             <TD muted small>{status.description ?? '—'}</TD>
-            <TD><span className={status.is_active ? 'badge badge-success' : 'badge'}>{status.is_active ? 'Active' : 'Inactive'}</span></TD>
+            <TD><StatusBadge active={status.is_active} /></TD>
             <td className="px-4 py-3"><button onClick={() => openEdit(status)} className="btn-ghost px-2.5 py-1 text-xs rounded-lg font-medium">Edit</button></td>
           </TR>
         ))}
