@@ -7,6 +7,9 @@ import { getApiErrorMessage } from '@/lib/apiError';
 
 const TEST_PASSWORD = 'password123';
 
+const isProduction = import.meta.env.PROD || import.meta.env.MODE === 'production';
+const showDemoAccounts = !isProduction || import.meta.env.VITE_SHOW_DEMO_ACCOUNTS === 'true';
+
 const DEMO = [
   { role: 'Admin',    user: '1363', password: TEST_PASSWORD, icon: '⚡', desc: 'Can use all app areas' },
   { role: 'Top Management', user: '1139', password: TEST_PASSWORD, icon: '🏢', desc: 'Can see leadership reports' },
@@ -196,48 +199,53 @@ export const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px" style={{ backgroundColor: 'rgb(var(--border))' }} />
-            <span className="text-xs font-medium" style={{ color: 'rgb(var(--text-3))' }}>DEMO ACCOUNTS</span>
-            <div className="flex-1 h-px" style={{ backgroundColor: 'rgb(var(--border))' }} />
-          </div>
+          {/* Demo Accounts (hidden in production unless explicitly enabled) */}
+          {showDemoAccounts && (
+            <>
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-6">
+                <div className="flex-1 h-px" style={{ backgroundColor: 'rgb(var(--border))' }} />
+                <span className="text-xs font-medium" style={{ color: 'rgb(var(--text-3))' }}>DEMO ACCOUNTS</span>
+                <div className="flex-1 h-px" style={{ backgroundColor: 'rgb(var(--border))' }} />
+              </div>
 
-          {/* Demo account cards */}
-          <div className="space-y-2.5">
-            {DEMO.map(({ role, user, password, icon, desc }) => (
-              <button
-                key={user}
-                type="button"
-                onClick={() => fill(user, password)}
-                className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border text-left transition-all duration-150 hover:scale-[1.01] group"
-                style={{
-                  backgroundColor: 'rgb(var(--surface))',
-                  borderColor: 'rgb(var(--border))',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgb(var(--accent))')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgb(var(--border))')}
-              >
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-base shrink-0"
-                  style={{ backgroundColor: 'rgb(var(--accent-soft))' }}
-                >
-                  {icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{role}</p>
-                  <p className="text-xs truncate" style={{ color: 'rgb(var(--text-3))' }}>{desc}</p>
-                </div>
-                <div className="text-xs font-mono shrink-0" style={{ color: 'rgb(var(--text-3))' }}>
-                  {user} / {password}
-                </div>
-              </button>
-            ))}
-          </div>
+              {/* Demo account cards */}
+              <div className="space-y-2.5">
+                {DEMO.map(({ role, user, password, icon, desc }) => (
+                  <button
+                    key={user}
+                    type="button"
+                    onClick={() => fill(user, password)}
+                    className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border text-left transition-all duration-150 hover:scale-[1.01] group"
+                    style={{
+                      backgroundColor: 'rgb(var(--surface))',
+                      borderColor: 'rgb(var(--border))',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgb(var(--accent))')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgb(var(--border))')}
+                  >
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center text-base shrink-0"
+                      style={{ backgroundColor: 'rgb(var(--accent-soft))' }}
+                    >
+                      {icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{role}</p>
+                      <p className="text-xs truncate" style={{ color: 'rgb(var(--text-3))' }}>{desc}</p>
+                    </div>
+                    <div className="text-xs font-mono shrink-0" style={{ color: 'rgb(var(--text-3))' }}>
+                      {user} / {password}
+                    </div>
+                  </button>
+                ))}
+              </div>
 
-          <p className="text-center text-xs mt-4" style={{ color: 'rgb(var(--text-3))' }}>
-            Test accounts use employee-code usernames.
-          </p>
+              <p className="text-center text-xs mt-4" style={{ color: 'rgb(var(--text-3))' }}>
+                Test accounts use employee-code usernames.
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
