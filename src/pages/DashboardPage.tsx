@@ -3201,12 +3201,6 @@ export const DashboardPage: React.FC = () => {
             />
           </div>
         </div>
-
-        {/* Change Password Modal */}
-        <ChangePasswordModal
-          isOpen={changePasswordOpen}
-          onClose={() => setChangePasswordOpen(false)}
-        />
       </header>
 
       {/* ── Body ──────────────────────────────────────────────────────── */}
@@ -3328,6 +3322,12 @@ export const DashboardPage: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+      />
     </div>
   );
 };

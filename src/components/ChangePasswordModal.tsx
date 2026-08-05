@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { KeyRound, Eye, EyeOff, Lock, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 
@@ -20,8 +21,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  if (!isOpen) return null;
-
   const resetForm = () => {
     setCurrentPassword('');
     setNewPassword('');
@@ -38,18 +37,50 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
     onClose();
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !loading) {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, loading]);
+
+  if (!isOpen) return null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
-    if (!currentPassword) {
+    if (!currentPassword.trim()) {
       setError('Please enter your current password.');
+      return;
+    }
+
+    if (!newPassword.trim()) {
+      setError('Please enter a new password.');
       return;
     }
 
     if (newPassword.length < 8) {
       setError('New password must be at least 8 characters long.');
+      return;
+    }
+
+    if (!confirmPassword.trim()) {
+      setError('Please confirm your new password.');
       return;
     }
 
@@ -85,23 +116,46 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+  return createPortal(
+    <div
+      className="animate-in fade-in"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 10000,
+        backgroundColor: 'rgba(0, 0, 0, 0.65)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !loading) {
+          handleClose();
+        }
+      }}
+    >
       <div
         className="w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95"
         style={{
           backgroundColor: 'rgb(var(--surface))',
           borderColor: 'rgb(var(--border))',
+          maxHeight: 'calc(100vh - 32px)',
+          display: 'flex',
+          flexDirection: 'column',
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div
-          className="px-6 py-4 border-b flex items-center justify-between"
+          className="px-6 py-4 border-b flex items-center justify-between shrink-0"
           style={{ borderColor: 'rgb(var(--border))' }}
         >
           <div className="flex items-center gap-3">
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
               style={{
                 backgroundColor: 'rgba(124, 58, 237, 0.15)',
                 color: 'rgb(var(--accent))',
@@ -121,18 +175,20 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
           <button
             type="button"
             onClick={handleClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-200 transition-colors"
+            disabled={loading}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-200 transition-colors disabled:opacity-50"
             style={{ backgroundColor: 'transparent' }}
+            title="Close"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
           {error && (
             <div
-              className="p-3 rounded-xl flex items-start gap-2.5 text-xs font-medium border"
+              className="p-3 rounded-xl flex items-start gap-2.5 text-xs font-medium border animate-in fade-in"
               style={{
                 backgroundColor: 'rgba(239, 68, 68, 0.12)',
                 borderColor: 'rgba(239, 68, 68, 0.3)',
@@ -146,7 +202,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
 
           {success && (
             <div
-              className="p-3 rounded-xl flex items-start gap-2.5 text-xs font-medium border"
+              className="p-3 rounded-xl flex items-start gap-2.5 text-xs font-medium border animate-in fade-in"
               style={{
                 backgroundColor: 'rgba(34, 197, 94, 0.12)',
                 borderColor: 'rgba(34, 197, 94, 0.3)',
@@ -170,16 +226,19 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
               <input
                 type={showCurrent ? 'text' : 'password'}
                 value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
+                onChange={(e) => {
+                  setCurrentPassword(e.target.value);
+                  if (error) setError(null);
+                }}
                 placeholder="Enter current password"
-                className="w-full pl-9 pr-10 py-2 rounded-xl text-sm border transition-all focus:outline-hidden"
+                className="w-full pl-9 pr-10 py-2.5 rounded-xl text-sm border transition-all focus:outline-hidden"
                 style={{
                   backgroundColor: 'rgb(var(--surface-2))',
                   borderColor: 'rgb(var(--border))',
                   color: 'rgb(var(--text-1))',
                 }}
                 disabled={loading || !!success}
-                required
+                autoComplete="current-password"
               />
               <button
                 type="button"
@@ -203,17 +262,19 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
               <input
                 type={showNew ? 'text' : 'password'}
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  if (error) setError(null);
+                }}
                 placeholder="At least 8 characters"
-                className="w-full pl-9 pr-10 py-2 rounded-xl text-sm border transition-all focus:outline-hidden"
+                className="w-full pl-9 pr-10 py-2.5 rounded-xl text-sm border transition-all focus:outline-hidden"
                 style={{
                   backgroundColor: 'rgb(var(--surface-2))',
                   borderColor: 'rgb(var(--border))',
                   color: 'rgb(var(--text-1))',
                 }}
                 disabled={loading || !!success}
-                required
-                minLength={8}
+                autoComplete="new-password"
               />
               <button
                 type="button"
@@ -240,16 +301,19 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
               <input
                 type={showConfirm ? 'text' : 'password'}
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (error) setError(null);
+                }}
                 placeholder="Re-enter new password"
-                className="w-full pl-9 pr-10 py-2 rounded-xl text-sm border transition-all focus:outline-hidden"
+                className="w-full pl-9 pr-10 py-2.5 rounded-xl text-sm border transition-all focus:outline-hidden"
                 style={{
                   backgroundColor: 'rgb(var(--surface-2))',
                   borderColor: 'rgb(var(--border))',
                   color: 'rgb(var(--text-1))',
                 }}
                 disabled={loading || !!success}
-                required
+                autoComplete="new-password"
               />
               <button
                 type="button"
@@ -266,24 +330,15 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 rounded-xl text-sm font-medium transition-colors border"
-              style={{
-                backgroundColor: 'transparent',
-                borderColor: 'rgb(var(--border))',
-                color: 'rgb(var(--text-2))',
-              }}
+              className="btn-secondary px-4 py-2 rounded-xl text-sm font-medium"
               disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={loading || !!success || !currentPassword || !newPassword || !confirmPassword}
-              className="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              style={{
-                backgroundColor: 'rgb(var(--accent))',
-                boxShadow: '0 2px 10px rgba(124, 58, 237, 0.4)',
-              }}
+              disabled={loading || !!success}
+              className="btn-primary px-5 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -297,6 +352,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
