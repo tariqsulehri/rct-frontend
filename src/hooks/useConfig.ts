@@ -248,6 +248,39 @@ export interface ConfigAssessmentProject {
   updated_at: string;
 }
 
+export interface ConfigAppraisalPeriod {
+  id: number;
+  code: string;
+  name: string;
+  period_type: 'ANNUAL' | 'BIANNUAL' | 'QUARTERLY' | 'CUSTOM';
+  calendar_year: number;
+  start_date: string;
+  end_date: string;
+  grace_period_end: string | null;
+  status: 'DRAFT' | 'OPEN' | 'LOCKED' | 'ARCHIVED';
+  is_active: boolean;
+  allow_self_submission: boolean;
+  auto_rollover_skills: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateAppraisalPeriodPayload {
+  code: string;
+  name: string;
+  period_type?: 'ANNUAL' | 'BIANNUAL' | 'QUARTERLY' | 'CUSTOM';
+  calendar_year: number;
+  start_date: string;
+  end_date: string;
+  grace_period_end?: string | null;
+  status?: 'DRAFT' | 'OPEN' | 'LOCKED' | 'ARCHIVED';
+  is_active?: boolean;
+  allow_self_submission?: boolean;
+  auto_rollover_skills?: boolean;
+}
+
+export type UpdateAppraisalPeriodPayload = Partial<CreateAppraisalPeriodPayload>;
+
 // ── Assessment Types ─────────────────────────────────────────────────────────
 
 export const useConfigAssessmentTypes = () =>
@@ -1276,3 +1309,67 @@ export const useDeleteCompetencyCategory = () => {
     },
   });
 };
+
+// ── Appraisal Periods (Multi-Year Configuration) ──────────────────────────
+export const useAppraisalPeriods = (query?: { year?: number; status?: string; type?: string }) =>
+  useQuery({
+    queryKey: ['config', 'appraisal-periods', query],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (query?.year) params.append('year', String(query.year));
+      if (query?.status) params.append('status', query.status);
+      if (query?.type) params.append('type', query.type);
+
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+      const res = await apiClient.get<{ success: boolean; data: ConfigAppraisalPeriod[] }>(
+        `/config/appraisal-periods${queryString}`
+      );
+      return res.data.data;
+    },
+  });
+
+export const useCreateAppraisalPeriod = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: CreateAppraisalPeriodPayload) => {
+      const res = await apiClient.post<{ success: boolean; data: ConfigAppraisalPeriod }>(
+        '/config/appraisal-periods',
+        payload
+      );
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'appraisal-periods'] });
+    },
+  });
+};
+
+export const useUpdateAppraisalPeriod = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: UpdateAppraisalPeriodPayload }) => {
+      const res = await apiClient.patch<{ success: boolean; data: ConfigAppraisalPeriod }>(
+        `/config/appraisal-periods/${id}`,
+        data
+      );
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'appraisal-periods'] });
+    },
+  });
+};
+
+export const useDeleteAppraisalPeriod = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiClient.delete<{ success: boolean }>(`/config/appraisal-periods/${id}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'appraisal-periods'] });
+    },
+  });
+};
+

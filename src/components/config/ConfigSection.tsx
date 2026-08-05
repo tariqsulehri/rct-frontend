@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Award, Building2, Cpu, Layers, Network, Settings, ShieldCheck, Tag, User, Users, Zap } from 'lucide-react';
+import { Award, Building2, Calendar, Cpu, Layers, Network, Settings, ShieldCheck, Tag, User, Users, Zap } from 'lucide-react';
 import SkillTaxonomyView from './SkillTaxonomyView';
 import { AccessManagementSection } from './access/AccessManagementSection';
 import { DepartmentsSection } from './organization/DepartmentsSection';
@@ -11,21 +11,23 @@ import { CategoriesSection } from './taxonomy/CategoriesSection';
 import { CompetenciesSection } from './taxonomy/CompetenciesSection';
 import { SkillDomainsSection } from './taxonomy/SkillDomainsSection';
 import { TechnologiesSection } from './taxonomy/TechnologiesSection';
+import { EvaluationPeriodsSection } from './periods/EvaluationPeriodsSection';
 
-type ConfigTab = 'scoring' | 'access' | 'departments' | 'employees' | 'users' | 'grades' | 'skill-domains' | 'competencies' | 'technologies' | 'categories' | 'skill-map';
+type ConfigTab = 'scoring' | 'periods' | 'access' | 'departments' | 'employees' | 'users' | 'grades' | 'skill-domains' | 'competencies' | 'technologies' | 'categories' | 'skill-map';
 
 const CONFIG_TABS: Array<{ id: ConfigTab; label: string; help: string; icon: React.ElementType }> = [
-  { id: 'scoring',      label: 'Scoring',          help: 'Rules used to count skill scores.', icon: Settings },
-  { id: 'access',       label: 'Access',           help: 'Who can open each part of the app.', icon: ShieldCheck },
-  { id: 'departments',   label: 'Departments',       help: 'Company groups for employees.', icon: Building2 },
-  { id: 'employees',     label: 'Employees',         help: 'People whose skills and readiness are tracked.', icon: Users },
-  { id: 'users',         label: 'Users',             help: 'Login accounts and app roles.', icon: User },
-  { id: 'grades',        label: 'Grades',            help: 'Career levels such as G13, G14, and G15.', icon: Award },
-  { id: 'categories',    label: 'Categories',        help: 'Simple labels used to group skills.', icon: Tag },
-  { id: 'skill-domains', label: 'Skill Areas',       help: 'Large skill groups such as Cloud or SRE.', icon: Layers },
-  { id: 'competencies',  label: 'Skills',            help: 'Skills that employees are checked on.', icon: Cpu },
-  { id: 'technologies',  label: 'Tools',             help: 'Tools linked to a skill.', icon: Zap },
-  { id: 'skill-map',     label: 'Skill Map',         help: 'See how skill groups, skills, and tools connect.', icon: Network },
+  { id: 'scoring',      label: 'Scoring',            help: 'Rules used to count skill scores.', icon: Settings },
+  { id: 'periods',      label: 'Evaluation Periods', help: 'Set up review cycles and years (e.g. 2024, 2025, 2026).', icon: Calendar },
+  { id: 'access',       label: 'Access',             help: 'Who can open each part of the app.', icon: ShieldCheck },
+  { id: 'departments',   label: 'Departments',         help: 'Company groups for employees.', icon: Building2 },
+  { id: 'employees',     label: 'Employees',           help: 'People whose skills and readiness are tracked.', icon: Users },
+  { id: 'users',         label: 'Users',               help: 'Login accounts and app roles.', icon: User },
+  { id: 'grades',        label: 'Grades',              help: 'Career levels such as G13, G14, and G15.', icon: Award },
+  { id: 'categories',    label: 'Categories',          help: 'Simple labels used to group skills.', icon: Tag },
+  { id: 'skill-domains', label: 'Skill Areas',         help: 'Large skill groups such as Cloud or SRE.', icon: Layers },
+  { id: 'competencies',  label: 'Skills',              help: 'Skills that employees are checked on.', icon: Cpu },
+  { id: 'technologies',  label: 'Tools',               help: 'Tools linked to a skill.', icon: Zap },
+  { id: 'skill-map',     label: 'Skill Map',           help: 'See how skill groups, skills, and tools connect.', icon: Network },
 ];
 
 export const ConfigSection: React.FC = () => {
@@ -36,7 +38,7 @@ export const ConfigSection: React.FC = () => {
       <div>
         <h2 className="section-title">Setup</h2>
         <p className="section-desc">
-          Set up people, grades, skill groups, skills, and tools used in the app.
+          Set up review periods, people, grades, skill groups, skills, and tools used in the app.
         </p>
       </div>
 
@@ -65,6 +67,7 @@ export const ConfigSection: React.FC = () => {
       {/* Content */}
       <div>
         {activeTab === 'scoring'       && <ScoringConfigSection />}
+        {activeTab === 'periods'       && <EvaluationPeriodsSection />}
         {activeTab === 'access'        && <AccessManagementSection />}
         {activeTab === 'departments'   && <DepartmentsSection />}
         {activeTab === 'employees'     && <EmployeesSection />}
@@ -79,3 +82,4 @@ export const ConfigSection: React.FC = () => {
     </div>
   );
 };
+

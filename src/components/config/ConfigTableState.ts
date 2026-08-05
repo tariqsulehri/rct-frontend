@@ -22,6 +22,7 @@ export const HEADER_GRADIENTS: Record<string, string> = {
   competencies: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)',
   technologies: 'linear-gradient(135deg, #f97316 0%, #f59e0b 100%)',
   categories: 'linear-gradient(135deg, #ec4899 0%, #f97316 100%)',
+  'appraisal-periods': 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)',
 };
 
 export function useTableState<T>(
