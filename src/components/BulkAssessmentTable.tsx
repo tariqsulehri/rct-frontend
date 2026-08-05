@@ -4,7 +4,7 @@ import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { Stars } from '@/components/ui/Stars';
 import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, ShieldCheck, Info, Copy, Layers, SaveAll, RefreshCw } from 'lucide-react';
 import { CloneColleagueDialog } from './CloneColleagueDialog';
-import { BulkAddDialog } from './BulkAddDialog';
+import { BulkAddDialog, BulkAddTechnologyPayload } from './BulkAddDialog';
 import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
 import { getApiErrorMessage } from '@/lib/apiError';
 import { toast } from '@/lib/toast';
@@ -647,7 +647,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     }
   }, [rows, techLocationMap]);
 
-  const handleBulkAdd = useCallback((technologies: { domainId: number; competencyId: number; technologyId: number }[]) => {
+  const handleBulkAdd = useCallback((technologies: BulkAddTechnologyPayload[]) => {
     const newRows: BulkRow[] = technologies.map(t => ({
       id: createRowId(),
       isNew: true,
@@ -655,13 +655,13 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       domainId: t.domainId,
       competencyId: t.competencyId,
       technologyId: t.technologyId,
-      type: 'Primary',
-      projects: 0,
+      type: t.type ?? 'Primary',
+      projects: t.projects ?? 2,
       level: 'Unset',
     }));
     if (newRows.length > 0) {
       setRows(prev => [...newRows, ...prev]);
-      toast.success(`Added ${newRows.length} skills. Fill details and click Save.`, 'Skills Added');
+      toast.success(`Added ${newRows.length} skills. Review details and click Submit for Approval.`, 'Skills Added');
     }
   }, []);
 
@@ -675,7 +675,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     }
     setIsSavingAll(false);
     if (successCount > 0) {
-      toast.success(`Saved ${successCount} skills successfully!`, 'All Skills Saved');
+      toast.success(`Submitted ${successCount} skills for manager approval!`, 'Submitted for Approval');
     }
   }, [rows, handleSaveRow]);
 
@@ -893,17 +893,17 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
               <button
                 onClick={handleSaveAllUnsaved}
                 disabled={isSavingAll}
-                className="btn-primary flex items-center gap-1.5 px-3 py-1.5 h-auto text-xs"
+                className="btn-primary flex items-center gap-1.5 px-3 py-1.5 h-auto text-xs font-semibold shadow-sm"
               >
                 <SaveAll size={14} />
-                {isSavingAll ? 'Saving...' : 'Save All'}
+                {isSavingAll ? 'Submitting...' : readOnlyLevel ? 'Submit for Approval' : 'Save All'}
               </button>
               <span
                 className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
-                title="Rows added on screen but not saved yet."
+                title="Rows drafted on screen but not submitted yet."
                 style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
               >
-                {unsavedCount} unsaved
+                {unsavedCount} drafted
               </span>
             </div>
           )}

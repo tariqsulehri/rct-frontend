@@ -2,12 +2,31 @@ import React, { useState } from 'react';
 import { useSkillsHierarchy } from '@/hooks/useAssessment';
 import { X, Layers, Search, CheckSquare, Square, Loader2, Sparkles } from 'lucide-react';
 
+export interface BulkAddTechnologyPayload {
+  domainId: number;
+  competencyId: number;
+  technologyId: number;
+  type: 'Primary' | 'Secondary' | 'Tertiary';
+  projects: number;
+}
+
+interface SkillConfig {
+  domainId: number;
+  competencyId: number;
+  technologyId: number;
+  type: 'Primary' | 'Secondary' | 'Tertiary';
+  projects: number;
+}
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onBulkAdd: (technologies: { domainId: number; competencyId: number; technologyId: number }[]) => void;
+  onBulkAdd: (technologies: BulkAddTechnologyPayload[]) => void;
   existingTechnologyIds: Set<number>;
 }
+
+const DEFAULT_INITIAL_TYPE: 'Primary' | 'Secondary' | 'Tertiary' = 'Tertiary';
+const DEFAULT_INITIAL_PROJECTS = 1;
 
 export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, existingTechnologyIds }) => {
   const { data: hierarchy = [], isLoading } = useSkillsHierarchy();
@@ -15,8 +34,8 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
   const [selectedDomainId, setSelectedDomainId] = useState<number | null>(null);
   const [selectedCompetencyId, setSelectedCompetencyId] = useState<number | null>(null);
   
-  // Track selected technologies by ID
-  const [selectedTechIds, setSelectedTechIds] = useState<Set<number>>(new Set());
+  // Track selected skills with their individual type and projects
+  const [selectedSkills, setSelectedSkills] = useState<Map<number, SkillConfig>>(new Map());
   const [searchTerm, setSearchTerm] = useState('');
 
   // Reset state when modal opens
@@ -24,7 +43,7 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
     if (isOpen) {
       setSelectedDomainId(null);
       setSelectedCompetencyId(null);
-      setSelectedTechIds(new Set());
+      setSelectedSkills(new Map());
       setSearchTerm('');
     }
   }, [isOpen]);
@@ -39,37 +58,75 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
   ) || [];
 
   const toggleTech = (techId: number) => {
-    const next = new Set(selectedTechIds);
-    if (next.has(techId)) {
-      next.delete(techId);
-    } else {
-      next.add(techId);
-    }
-    setSelectedTechIds(next);
+    if (!selectedDomainId || !selectedCompetencyId) return;
+
+    setSelectedSkills(prev => {
+      const next = new Map(prev);
+      if (next.has(techId)) {
+        next.delete(techId);
+      } else {
+        next.set(techId, {
+          domainId: selectedDomainId,
+          competencyId: selectedCompetencyId,
+          technologyId: techId,
+          type: DEFAULT_INITIAL_TYPE,
+          projects: DEFAULT_INITIAL_PROJECTS,
+        });
+      }
+      return next;
+    });
+  };
+
+  const updateSkillRowConfig = (
+    techId: number,
+    field: 'type' | 'projects',
+    value: 'Primary' | 'Secondary' | 'Tertiary' | number
+  ) => {
+    setSelectedSkills(prev => {
+      const next = new Map(prev);
+      const existing = next.get(techId);
+      if (existing) {
+        next.set(techId, {
+          ...existing,
+          [field]: value,
+        });
+      }
+      return next;
+    });
   };
 
   const toggleAll = () => {
+    if (!selectedDomainId || !selectedCompetencyId) return;
+
     const nonExistingTechs = filteredTechs.filter(t => !existingTechnologyIds.has(t.id));
     if (nonExistingTechs.length === 0) return;
 
-    const allSelected = nonExistingTechs.every(t => selectedTechIds.has(t.id));
-    const next = new Set(selectedTechIds);
+    const allSelected = nonExistingTechs.every(t => selectedSkills.has(t.id));
 
-    if (allSelected) {
-      nonExistingTechs.forEach(t => next.delete(t.id));
-    } else {
-      nonExistingTechs.forEach(t => next.add(t.id));
-    }
-    setSelectedTechIds(next);
+    setSelectedSkills(prev => {
+      const next = new Map(prev);
+      if (allSelected) {
+        nonExistingTechs.forEach(t => next.delete(t.id));
+      } else {
+        nonExistingTechs.forEach(t => {
+          if (!next.has(t.id)) {
+            next.set(t.id, {
+              domainId: selectedDomainId,
+              competencyId: selectedCompetencyId,
+              technologyId: t.id,
+              type: DEFAULT_INITIAL_TYPE,
+              projects: DEFAULT_INITIAL_PROJECTS,
+            });
+          }
+        });
+      }
+      return next;
+    });
   };
 
   const handleConfirm = () => {
-    if (selectedDomainId && selectedCompetencyId && selectedTechIds.size > 0) {
-      const payload = Array.from(selectedTechIds).map(techId => ({
-        domainId: selectedDomainId,
-        competencyId: selectedCompetencyId,
-        technologyId: techId
-      }));
+    if (selectedSkills.size > 0) {
+      const payload: BulkAddTechnologyPayload[] = Array.from(selectedSkills.values());
       onBulkAdd(payload);
       onClose();
     }
@@ -77,13 +134,13 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-md animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="w-full max-w-4xl rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--surface))] shadow-2xl overflow-hidden flex flex-col h-[85vh] animate-scale-in"
+        className="w-full max-w-5xl xl:max-w-6xl rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--surface))] shadow-2xl overflow-hidden flex flex-col h-[88vh] max-h-[850px] animate-scale-in"
         style={{
           backgroundColor: 'rgb(var(--surface))',
           boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.5)',
@@ -98,7 +155,7 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
             <div>
               <h2 className="text-base font-bold text-[rgb(var(--text-1))]">Bulk Add Skills</h2>
               <p className="text-xs text-[rgb(var(--text-2))]">
-                Browse skill taxonomy to select and add multiple skills in one go
+                Browse skill taxonomy, check skills, and customize Importance & Projects per row
               </p>
             </div>
           </div>
@@ -115,7 +172,7 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-[rgb(var(--border))] bg-[rgb(var(--surface))]">
           
           {/* Column 1: Domains */}
-          <div className="flex-1 flex flex-col min-h-0 bg-[rgb(var(--surface))]">
+          <div className="w-full md:w-[28%] lg:w-[26%] flex flex-col min-h-0 min-w-0 bg-[rgb(var(--surface))] shrink-0">
             <div className="px-4 py-2.5 bg-[rgb(var(--surface-2))] font-semibold text-xs text-[rgb(var(--text-2))] uppercase tracking-wider border-b border-[rgb(var(--border))] flex items-center justify-between">
               <span>1. Skill Area / Domain</span>
               <span className="font-mono text-[10px] text-[rgb(var(--text-3))]">{hierarchy.length}</span>
@@ -143,8 +200,8 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                           : 'hover:bg-[rgb(var(--surface-2))] text-[rgb(var(--text-1))]'
                       }`}
                     >
-                      <span className="truncate">{domain.domainName}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-[rgb(var(--surface-3))] text-[rgb(var(--text-2))]'}`}>
+                      <span className="truncate pr-2">{domain.domainName}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-[rgb(var(--surface-3))] text-[rgb(var(--text-2))]'}`}>
                         {domain.competencies.length}
                       </span>
                     </button>
@@ -155,7 +212,7 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
           </div>
 
           {/* Column 2: Competencies */}
-          <div className="flex-1 flex flex-col min-h-0 bg-[rgb(var(--surface))]">
+          <div className="w-full md:w-[34%] lg:w-[32%] flex flex-col min-h-0 min-w-0 bg-[rgb(var(--surface))] shrink-0">
             <div className="px-4 py-2.5 bg-[rgb(var(--surface-2))] font-semibold text-xs text-[rgb(var(--text-2))] uppercase tracking-wider border-b border-[rgb(var(--border))] flex items-center justify-between">
               <span>2. Competency</span>
               {currentDomain && (
@@ -181,8 +238,8 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                           : 'hover:bg-[rgb(var(--surface-2))] text-[rgb(var(--text-1))]'
                       }`}
                     >
-                      <span className="truncate">{comp.competencyName}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-[rgb(var(--surface-3))] text-[rgb(var(--text-2))]'}`}>
+                      <span className="truncate pr-2">{comp.competencyName}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-[rgb(var(--surface-3))] text-[rgb(var(--text-2))]'}`}>
                         {comp.technologies.length}
                       </span>
                     </button>
@@ -193,12 +250,12 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
           </div>
 
           {/* Column 3: Tools/Technologies */}
-          <div className="flex-[1.4] flex flex-col min-h-0 bg-[rgb(var(--surface))]">
-            <div className="px-4 py-2.5 bg-[rgb(var(--surface-2))] font-semibold text-xs text-[rgb(var(--text-2))] uppercase tracking-wider border-b border-[rgb(var(--border))] flex justify-between items-center">
-              <span>3. Specific Skills & Tools</span>
-              {selectedCompetencyId && (
-                <span className="text-xs font-bold px-2 py-0.5 bg-[rgb(var(--accent-soft))] text-[rgb(var(--accent-txt))] rounded-md">
-                  {selectedTechIds.size} selected
+          <div className="w-full md:flex-1 flex flex-col min-h-0 min-w-0 bg-[rgb(var(--surface))] overflow-hidden">
+            <div className="px-4 py-2.5 bg-[rgb(var(--surface-2))] font-semibold text-xs text-[rgb(var(--text-2))] uppercase tracking-wider border-b border-[rgb(var(--border))] flex justify-between items-center gap-2">
+              <span className="truncate">3. Specific Skills & Tools</span>
+              {selectedSkills.size > 0 && (
+                <span className="text-xs font-bold px-2.5 py-0.5 bg-[rgb(var(--accent-soft))] text-[rgb(var(--accent-txt))] rounded-md shrink-0 whitespace-nowrap">
+                  {selectedSkills.size} selected
                 </span>
               )}
             </div>
@@ -210,6 +267,7 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                 </div>
               ) : (
                 <>
+                  {/* Search and Filter */}
                   <div className="p-3 border-b border-[rgb(var(--border))] bg-[rgb(var(--surface))]">
                     <div className="relative">
                       <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgb(var(--text-3))] pointer-events-none" />
@@ -232,7 +290,8 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                     </div>
                   </div>
                   
-                  <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                  {/* Skills List with Per-Row Customization */}
+                  <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
                     {filteredTechs.length > 0 && (
                       <button
                         type="button"
@@ -240,7 +299,7 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                         className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-[rgb(var(--surface-2))] hover:bg-[rgb(var(--surface-3))] text-[rgb(var(--text-1))] transition-colors"
                       >
                         {filteredTechs.filter(t => !existingTechnologyIds.has(t.id)).length > 0 &&
-                         filteredTechs.filter(t => !existingTechnologyIds.has(t.id)).every(t => selectedTechIds.has(t.id)) ? (
+                         filteredTechs.filter(t => !existingTechnologyIds.has(t.id)).every(t => selectedSkills.has(t.id)) ? (
                           <><CheckSquare size={16} className="text-[rgb(var(--accent))]" /> Deselect All Visible</>
                         ) : (
                           <><Square size={16} className="text-[rgb(var(--text-3))]" /> Select All Available</>
@@ -250,40 +309,81 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                     
                     {filteredTechs.map(tech => {
                       const isExisting = existingTechnologyIds.has(tech.id);
-                      const isSelected = selectedTechIds.has(tech.id);
+                      const isSelected = selectedSkills.has(tech.id);
+                      const config = selectedSkills.get(tech.id) || { type: DEFAULT_INITIAL_TYPE, projects: DEFAULT_INITIAL_PROJECTS };
                       
                       return (
-                        <button
+                        <div
                           key={tech.id}
-                          type="button"
-                          onClick={() => !isExisting && toggleTech(tech.id)}
-                          disabled={isExisting}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all text-left border ${
+                          className={`w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl transition-all border ${
                             isExisting
                               ? 'opacity-40 cursor-not-allowed bg-[rgb(var(--surface-2))] border-transparent'
                               : isSelected
-                              ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent-soft))]'
+                              ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent-soft))] shadow-xs'
                               : 'border-transparent hover:bg-[rgb(var(--surface-2))]'
                           }`}
                         >
-                          {isSelected ? (
-                            <CheckSquare size={16} className="text-[rgb(var(--accent))] shrink-0" />
-                          ) : isExisting ? (
-                            <CheckSquare size={16} className="text-[rgb(var(--text-3))] shrink-0" />
-                          ) : (
-                            <Square size={16} className="text-[rgb(var(--text-3))] shrink-0" />
-                          )}
-                          <span className={`flex-1 truncate ${isExisting ? 'text-[rgb(var(--text-3))] line-through' : 'text-[rgb(var(--text-1))] font-medium'}`}>
-                            {tech.name}
-                          </span>
-                          {isExisting && (
-                            <span className="text-[11px] font-semibold text-[rgb(var(--text-3))] bg-[rgb(var(--surface-3))] px-1.5 py-0.5 rounded">
-                              Already added
+                          {/* Checkbox and Skill Name */}
+                          <button
+                            type="button"
+                            onClick={() => !isExisting && toggleTech(tech.id)}
+                            disabled={isExisting}
+                            className="flex items-center gap-2.5 min-w-0 flex-1 text-left select-none"
+                          >
+                            {isSelected ? (
+                              <CheckSquare size={16} className="text-[rgb(var(--accent))] shrink-0" />
+                            ) : isExisting ? (
+                              <CheckSquare size={16} className="text-[rgb(var(--text-3))] shrink-0" />
+                            ) : (
+                              <Square size={16} className="text-[rgb(var(--text-3))] shrink-0" />
+                            )}
+                            <span className={`truncate text-xs ${isExisting ? 'text-[rgb(var(--text-3))] line-through' : 'text-[rgb(var(--text-1))] font-medium'}`}>
+                              {tech.name}
                             </span>
+                            {isExisting && (
+                              <span className="text-[10px] font-semibold text-[rgb(var(--text-3))] bg-[rgb(var(--surface-3))] px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap ml-2">
+                                Already added
+                              </span>
+                            )}
+                          </button>
+
+                          {/* Per-Row Importance & Projects Controls */}
+                          {isSelected && !isExisting && (
+                            <div className="flex items-center gap-2 shrink-0 animate-fade-in pl-6 sm:pl-0">
+                              <div className="flex items-center gap-1">
+                                <label className="text-[10px] uppercase font-semibold text-[rgb(var(--text-2))]">Imp:</label>
+                                <select
+                                  value={config.type}
+                                  onChange={(e) => updateSkillRowConfig(tech.id, 'type', e.target.value as 'Primary' | 'Secondary' | 'Tertiary')}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="field h-7 px-1.5 py-0 text-[11px] font-semibold rounded-md min-w-[80px] bg-[rgb(var(--surface))]"
+                                >
+                                  <option value="Tertiary">Tertiary</option>
+                                  <option value="Secondary">Secondary</option>
+                                  <option value="Primary">Primary</option>
+                                </select>
+                              </div>
+
+                              <div className="flex items-center gap-1">
+                                <label className="text-[10px] uppercase font-semibold text-[rgb(var(--text-2))]">Proj:</label>
+                                <select
+                                  value={config.projects}
+                                  onChange={(e) => updateSkillRowConfig(tech.id, 'projects', Number(e.target.value))}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="field h-7 px-1.5 py-0 text-[11px] font-semibold rounded-md min-w-[58px] bg-[rgb(var(--surface))]"
+                                >
+                                  <option value={1}>1</option>
+                                  <option value={2}>2</option>
+                                  <option value={3}>3+</option>
+                                  <option value={0}>0</option>
+                                </select>
+                              </div>
+                            </div>
                           )}
-                        </button>
+                        </div>
                       );
                     })}
+
                     {filteredTechs.length === 0 && (
                       <div className="py-8 text-center text-xs text-[rgb(var(--text-3))]">
                         No skills found matching "{searchTerm}"
@@ -297,22 +397,25 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-[rgb(var(--border))] bg-[rgb(var(--surface-2))] flex justify-between items-center">
+        <div className="px-6 py-4 border-t border-[rgb(var(--border))] bg-[rgb(var(--surface-2))] flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm text-[rgb(var(--text-2))]">
             <Sparkles size={16} className="text-[rgb(var(--accent))]" />
             <span>
-              <strong className="text-[rgb(var(--text-1))]">{selectedTechIds.size}</strong> skills selected to add
+              <strong className="text-[rgb(var(--text-1))]">{selectedSkills.size}</strong> skills selected
             </span>
           </div>
+
           <div className="flex items-center gap-3">
-            <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
+            <button type="button" onClick={onClose} className="btn-secondary text-xs px-4 h-9">
+              Cancel
+            </button>
             <button 
               type="button"
               onClick={handleConfirm} 
-              disabled={selectedTechIds.size === 0}
-              className="btn-primary"
+              disabled={selectedSkills.size === 0}
+              className="btn-primary text-xs px-4 h-9 flex items-center gap-1.5 font-semibold"
             >
-              Add {selectedTechIds.size > 0 ? `${selectedTechIds.size} Skills` : 'Skills'}
+              Add {selectedSkills.size > 0 ? `${selectedSkills.size} Skills` : 'Skills'}
             </button>
           </div>
         </div>
