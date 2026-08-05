@@ -6,7 +6,7 @@ import {
   Sun, Moon, Zap, LogOut, Bell, Search,
   TrendingUp, Activity, Info,
   Bot, Sparkles, Clock3, Target, AlertTriangle, CheckCircle2,
-  MessageSquare, Send, UserRound, CheckSquare, KeyRound,
+  MessageSquare, Send, UserRound, CheckSquare, KeyRound, RefreshCw,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -41,6 +41,7 @@ import {
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { queryClient } from '@/lib/queryClient';
 import apiClient from '@/lib/api';
+import { toast } from '@/lib/toast';
 import { hasPermission, isLeaderRole, type PermissionCode, type RoleCode } from '@/types/rbac';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
@@ -1219,9 +1220,23 @@ function RadarTick({ payload, x = 0, y = 0, cx = 0, cy = 0 }: {
 /* ── Assessments Tab ────────────────────────────────────────────────────── */
 
 const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => void }> = ({ user, onNavigate }) => {
-  const { data: compData, isLoading } = useCompetencyScores();
-  const { data: promoData }           = usePromotionReadiness();
-  const { data: gapData }             = useGapMatrix();
+  const { data: compData, isLoading, isFetching: isFetchingComp, refetch: refetchComp } = useCompetencyScores();
+  const { data: promoData, isFetching: isFetchingPromo, refetch: refetchPromo }           = usePromotionReadiness();
+  const { data: gapData, isFetching: isFetchingGap, refetch: refetchGap }               = useGapMatrix();
+  const [isManualRefreshing, setIsManualRefreshing] = React.useState(false);
+
+  const handleRefresh = React.useCallback(async () => {
+    setIsManualRefreshing(true);
+    try {
+      await Promise.all([refetchComp(), refetchPromo(), refetchGap()]);
+      toast.success('Skill progress and reports refreshed.', 'Refreshed');
+    } catch {
+      toast.error('Failed to refresh data. Please try again.', 'Refresh Failed');
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  }, [refetchComp, refetchPromo, refetchGap]);
+
   const c = useChartColors();
   const isPrivileged = isLeaderRole(user?.role);
   const canViewReports = hasPermission(user?.permissions, 'reports.view');
@@ -1468,11 +1483,26 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
               {avgThreshold > 0 ? 'Achieved / Required' : 'Achieved Score'}
             </p>
           </div>
-          {isPrivileged && canViewReports && (
-            <button onClick={() => onNavigate('reports')} className="btn-secondary text-xs">
-              Full Reports →
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isLoading || isFetchingComp || isFetchingPromo || isFetchingGap || isManualRefreshing}
+              className="btn-secondary flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg"
+              title="Refresh skill progress and scores"
+            >
+              <RefreshCw
+                size={13}
+                className={isFetchingComp || isFetchingPromo || isFetchingGap || isManualRefreshing ? 'animate-spin' : ''}
+              />
+              <span>Refresh</span>
             </button>
-          )}
+            {isPrivileged && canViewReports && (
+              <button onClick={() => onNavigate('reports')} className="btn-secondary text-xs">
+                Full Reports →
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1942,7 +1972,11 @@ const AssessmentsTab: React.FC<{ user: User | null; onNavigate: (t: TabType) => 
                 employeeId={user.empCode}
                 employeeName={user.employeeName || user.username}
                 readOnlyLevel
-                onSuccess={() => {}}
+                onSuccess={() => {
+                  refetchComp();
+                  refetchPromo();
+                  refetchGap();
+                }}
                 onClose={() => setShowSkillEditor(false)}
               />
             </div>

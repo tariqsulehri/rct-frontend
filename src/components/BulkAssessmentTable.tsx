@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { Stars } from '@/components/ui/Stars';
-import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, ShieldCheck, Info, Copy, Layers, SaveAll } from 'lucide-react';
+import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, ShieldCheck, Info, Copy, Layers, SaveAll, RefreshCw } from 'lucide-react';
 import { CloneColleagueDialog } from './CloneColleagueDialog';
 import { BulkAddDialog } from './BulkAddDialog';
 import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
@@ -315,6 +315,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const {
     data: existingAssessments = [],
     isLoading: existingAssessmentsLoading,
+    isFetching: existingAssessmentsFetching,
     isError: existingAssessmentsIsError,
     error: existingAssessmentsError,
     refetch: refetchExistingAssessments,
@@ -327,7 +328,6 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const { data: assessmentTypes = [] } = useConfigAssessmentTypes();
   const { data: assessmentLevels = [] } = useConfigAssessmentLevels();
   const { data: assessmentProjects = [] } = useConfigAssessmentProjects();
-  const loadedEmployeeRef = useRef<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const [rows, setRows] = useState<BulkRow[]>([createEmptyRow()]);
@@ -342,6 +342,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [isBulkAddModalOpen, setIsBulkAddModalOpen] = useState(false);
   const [isSavingAll, setIsSavingAll] = useState(false);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const techLocationMap = useMemo(() => buildTechnologyLocationMap(hierarchy), [hierarchy]);
   const scoringValues = useMemo(() => ({
@@ -380,7 +381,6 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   }, [assessmentProjects]);
 
   useEffect(() => {
-    loadedEmployeeRef.current = null;
     setRows([createEmptyRow()]);
     setEditingRowIds(new Set());
     setApprovingRowIds(new Set());
@@ -391,20 +391,12 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
 
   useEffect(() => {
     if (hierarchyLoading || existingAssessmentsLoading) return;
-    if (loadedEmployeeRef.current === employeeId) return;
-
-    loadedEmployeeRef.current = employeeId;
-
-    if (!existingAssessments.length) {
-      setRows([createEmptyRow()]);
-      return;
-    }
 
     const populatedRows: BulkRow[] = existingAssessments.map((assessment) => {
       const mapped = techLocationMap.get(assessment.technology_id);
 
       return {
-        id: createRowId(),
+        id: `existing-${assessment.id}`,
         existingAssessmentId: assessment.id,
         isNew: false,
         status: (assessment.status as 'approved' | 'pending') ?? 'approved',
@@ -438,8 +430,13 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
       );
     });
 
-    // New empty row at top, existing assessments below
-    setRows([createEmptyRow(), ...populatedRows]);
+    setRows((currentRows) => {
+      const unsavedDrafts = currentRows.filter((r) => r.isNew);
+      if (unsavedDrafts.length > 0) {
+        return [...unsavedDrafts, ...populatedRows];
+      }
+      return [createEmptyRow(), ...populatedRows];
+    });
   }, [
     hierarchyLoading,
     existingAssessmentsLoading,
@@ -682,6 +679,19 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     }
   }, [rows, handleSaveRow]);
 
+  const handleRefresh = useCallback(async () => {
+    setIsManualRefreshing(true);
+    try {
+      await refetchExistingAssessments();
+      toast.success('Skill rows refreshed from server.', 'Refreshed');
+      onSuccess?.();
+    } catch {
+      toast.error('Failed to refresh skill rows. Please try again.', 'Refresh Failed');
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  }, [refetchExistingAssessments, onSuccess]);
+
   const deleteRow = useCallback(async (rowId: string) => {
     const row = rows.find((r) => r.id === rowId);
     if (!row) return;
@@ -858,13 +868,25 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2 items-center">
-        <input
-          type="text"
-          placeholder="Search by skill area, skill, or tool..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="field w-full h-10"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Search by skill area, skill, or tool..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="field w-full h-10"
+          />
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={existingAssessmentsLoading || existingAssessmentsFetching || isManualRefreshing}
+            className="btn-secondary flex items-center gap-1.5 px-3 h-10 text-xs shrink-0 rounded-lg"
+            title="Refresh skill rows from server"
+          >
+            <RefreshCw size={14} className={existingAssessmentsFetching || isManualRefreshing ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+        </div>
         <div className="flex items-center gap-2">
           {unsavedCount > 0 && (
             <div className="flex items-center gap-2">

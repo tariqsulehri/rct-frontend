@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Info, Search } from "lucide-react";
+import { Info, Search, RefreshCw } from "lucide-react";
 import { useTeamRoster } from "@/hooks/useAssessment";
 import { useAuthStore } from "@/store/authStore";
 import { BulkAssessmentTable } from "@/components/BulkAssessmentTable";
 import { usePromotionReadiness, PromotionRow } from "@/hooks/useReports";
+import { toast } from "@/lib/toast";
 
 interface AssessmentModalState {
   isOpen: boolean;
@@ -38,8 +39,21 @@ export const TeamRoster: React.FC = () => {
   const [teamSearch, setTeamSearch] = useState("");
   const [selectedGrade, setSelectedGrade] = useState<string>("all");
   const { user } = useAuthStore();
-  const { data: roster, isLoading, error } = useTeamRoster();
-  const { data: promotionRows } = usePromotionReadiness();
+  const { data: roster, isLoading, isFetching: isFetchingRoster, error, refetch: refetchRoster } = useTeamRoster();
+  const { data: promotionRows, isFetching: isFetchingPromo, refetch: refetchPromo } = usePromotionReadiness();
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsManualRefreshing(true);
+    try {
+      await Promise.all([refetchRoster(), refetchPromo()]);
+      toast.success('Team roster refreshed from server.', 'Refreshed');
+    } catch {
+      toast.error('Failed to refresh roster. Please try again.', 'Refresh Failed');
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  };
 
   const rosterRows = roster ?? [];
   const gradeOptions = Array.from(new Set(rosterRows.map((member) => member.current_grade.code)))
@@ -242,6 +256,19 @@ export const TeamRoster: React.FC = () => {
               <option key={gradeCode} value={gradeCode}>{gradeCode}</option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isLoading || isFetchingRoster || isFetchingPromo || isManualRefreshing}
+            className="btn-secondary flex items-center gap-1.5 px-3 py-2 text-xs rounded-lg shrink-0"
+            title="Refresh team roster from server"
+          >
+            <RefreshCw
+              size={14}
+              className={isFetchingRoster || isFetchingPromo || isManualRefreshing ? 'animate-spin' : ''}
+            />
+            <span>Refresh</span>
+          </button>
         </div>
       )}
 
@@ -410,7 +437,10 @@ export const TeamRoster: React.FC = () => {
                   employeeId={modal.employeeId}
                   employeeName={modal.employeeName ?? undefined}
                   canApprove
-                  onSuccess={() => {}}
+                  onSuccess={() => {
+                    refetchRoster();
+                    refetchPromo();
+                  }}
                   onClose={() => setModal({ isOpen: false, employeeId: null, employeeName: null })}
                 />
               </div>

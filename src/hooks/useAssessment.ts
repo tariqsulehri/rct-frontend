@@ -149,6 +149,9 @@ export const useCreateAssessment = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
       queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-dashboard'] });
     },
   });
 };
@@ -162,6 +165,9 @@ export const useDeleteAssessment = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
       queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-dashboard'] });
     },
   });
 };
@@ -183,6 +189,9 @@ export const useApproveAssessment = () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
       queryClient.invalidateQueries({ queryKey: ['assessments', 'pending-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-dashboard'] });
     },
   });
 };
@@ -208,6 +217,9 @@ export const useUpdateAssessment = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
       queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-dashboard'] });
     },
   });
 };
