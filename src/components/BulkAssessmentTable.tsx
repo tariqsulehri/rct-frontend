@@ -163,17 +163,22 @@ const SearchableSelect: React.FC<{
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  // Close on any scroll or resize to avoid stale positioning
+  // Update position on scroll or resize; ignore scrolls originating from within the dropdown itself
   useEffect(() => {
     if (!open) return;
-    const handler = () => setOpen(false);
-    window.addEventListener('scroll', handler, true);
-    window.addEventListener('resize', handler);
-    return () => {
-      window.removeEventListener('scroll', handler, true);
-      window.removeEventListener('resize', handler);
+    const updatePosition = (e: Event) => {
+      if (dropdownRef.current && dropdownRef.current.contains(e.target as Node)) {
+        return;
+      }
+      calcPosition();
     };
-  }, [open]);
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [open, calcPosition]);
 
   // Clear search when closed
   useEffect(() => {
