@@ -5,6 +5,8 @@ import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 import {
   ConfigGrade,
   useConfigDepartments,
@@ -64,9 +66,18 @@ export const GradesSection: React.FC = () => {
       performance_note: form.performance_note || undefined,
       is_active: form.is_active,
     };
-    if (modal === 'create') await createGrade.mutateAsync(payload);
-    else if (editing) await updateGrade.mutateAsync({ id: editing.id, data: payload });
-    setModal(null);
+    try {
+      if (modal === 'create') {
+        await createGrade.mutateAsync(payload);
+        toast.success(`Grade "${payload.code}" created successfully.`, 'Grade Created');
+      } else if (editing) {
+        await updateGrade.mutateAsync({ id: editing.id, data: payload });
+        toast.success(`Grade "${payload.code}" updated successfully.`, 'Grade Updated');
+      }
+      setModal(null);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to save grade.'), 'Error');
+    }
   };
 
   const filteredGrades = useMemo(
@@ -138,7 +149,16 @@ export const GradesSection: React.FC = () => {
             <TD>
               <StatusBadge active={g.is_active} />
             </TD>
-            <ActionBtns onEdit={() => openEdit(g)} onDelete={async () => { if (await confirm({ title: 'Delete Grade', message: `Grade "${g.code} – ${g.title}" will be permanently deleted.`, confirmLabel: 'Delete' })) deleteGrade.mutate(g.id); }} />
+            <ActionBtns onEdit={() => openEdit(g)} onDelete={async () => {
+              if (await confirm({ title: 'Delete Grade', message: `Grade "${g.code} – ${g.title}" will be permanently deleted.`, confirmLabel: 'Delete' })) {
+                try {
+                  await deleteGrade.mutateAsync(g.id);
+                  toast.success(`Grade "${g.code}" deleted.`, 'Grade Deleted');
+                } catch (err: unknown) {
+                  toast.error(getApiErrorMessage(err, 'Failed to delete grade.'), 'Delete Error');
+                }
+              }
+            }} />
           </TR>
         ))}
       </TableShell>

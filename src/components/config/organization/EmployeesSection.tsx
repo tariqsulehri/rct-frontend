@@ -7,6 +7,8 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { PanelHeader } from '@/components/ui/PanelHeader';
 import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { HEADER_GRADIENTS, useTableState } from '../ConfigTableState';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 import {
   ConfigEmployee,
   useConfigDepartments,
@@ -222,9 +224,18 @@ export const EmployeesSection: React.FC = () => {
       manager_user_id: form.manager_user_id ? Number(form.manager_user_id) : null,
       is_active: form.is_active,
     };
-    if (modal === 'create') await createEmployee.mutateAsync(payload);
-    else if (editing) await updateEmployee.mutateAsync({ id: editing.id, data: payload });
-    setModal(null);
+    try {
+      if (modal === 'create') {
+        await createEmployee.mutateAsync(payload);
+        toast.success(`Employee "${payload.full_name}" added successfully.`, 'Employee Created');
+      } else if (editing) {
+        await updateEmployee.mutateAsync({ id: editing.id, data: payload });
+        toast.success(`Employee "${payload.full_name}" updated successfully.`, 'Employee Updated');
+      }
+      setModal(null);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to save employee.'), 'Error');
+    }
   };
 
   const [statusFilter, setStatusFilter] = useState('');
@@ -327,7 +338,16 @@ export const EmployeesSection: React.FC = () => {
               </TD>
               <TD muted>{e.line_manager_assignments?.[0]?.manager_user?.employee?.full_name ?? e.line_manager_assignments?.[0]?.manager_user?.username ?? '-'}</TD>
               <TD><StatusBadge active={e.is_active ?? true} /></TD>
-              <ActionBtns onEdit={() => openEdit(e)} onDelete={async () => { if (await confirm({ title: 'Archive Employee', message: `"${e.full_name}" will be archived and hidden from active rosters.`, confirmLabel: 'Archive', variant: 'warning' })) deleteEmployee.mutate(e.id); }} />
+              <ActionBtns onEdit={() => openEdit(e)} onDelete={async () => {
+                if (await confirm({ title: 'Archive Employee', message: `"${e.full_name}" will be archived and hidden from active rosters.`, confirmLabel: 'Archive', variant: 'warning' })) {
+                  try {
+                    await deleteEmployee.mutateAsync(e.id);
+                    toast.success(`Employee "${e.full_name}" archived.`, 'Employee Archived');
+                  } catch (err: unknown) {
+                    toast.error(getApiErrorMessage(err, 'Failed to archive employee.'), 'Archive Error');
+                  }
+                }
+              }} />
             </TR>
           ))}
         </TableShell>

@@ -7,6 +7,7 @@ import { CloneColleagueDialog } from './CloneColleagueDialog';
 import { BulkAddDialog } from './BulkAddDialog';
 import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
 import { getApiErrorMessage } from '@/lib/apiError';
+import { toast } from '@/lib/toast';
 import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes } from '@/hooks/useConfig';
 import {
   useSkillsHierarchy,
@@ -585,6 +586,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           r.id === rowId ? { ...r, status: 'approved', level: saved.level as AssessmentLevel } : r
         ));
         setApprovingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
+        toast.success('Skill assessment approved successfully!', 'Approved');
       } else if (row.existingAssessmentId) {
         // Regular update
         await updateAssessment.mutateAsync({
@@ -592,6 +594,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           data: { type: row.type, projects: row.projects, level: row.level },
         });
         setEditingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
+        toast.success('Skill assessment updated successfully!', 'Saved');
       } else {
         // Create new assessment
         const saved = await createAssessment.mutateAsync({
@@ -606,10 +609,13 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
             ? { ...r, isNew: false, status: saved.status as 'approved' | 'pending', existingAssessmentId: saved.id, error: undefined }
             : r
         ));
+        toast.success('Skill assessment added successfully!', 'Added');
       }
       onSuccess?.();
     } catch (err: unknown) {
-      setRowError(rowId, getApiErrorMessage(err, 'Save failed. Try again.'));
+      const errMsg = getApiErrorMessage(err, 'Save failed. Try again.');
+      setRowError(rowId, errMsg);
+      toast.error(errMsg, 'Save Failed');
     } finally {
       setSavingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
     }
@@ -638,6 +644,9 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     });
     if (newRows.length > 0) {
       setRows(prev => [...newRows, ...prev]);
+      toast.success(`Cloned ${newRows.length} skills. Click Save on rows to finalize.`, 'Skills Cloned');
+    } else {
+      toast.info('All skills from this colleague are already present in your table.', 'No New Skills');
     }
   }, [rows, techLocationMap]);
 
@@ -655,16 +664,22 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     }));
     if (newRows.length > 0) {
       setRows(prev => [...newRows, ...prev]);
+      toast.success(`Added ${newRows.length} skills. Fill details and click Save.`, 'Skills Added');
     }
   }, []);
 
   const handleSaveAllUnsaved = useCallback(async () => {
     setIsSavingAll(true);
     const unsavedRows = rows.filter(r => r.isNew);
+    let successCount = 0;
     for (const row of unsavedRows) {
       await handleSaveRow(row.id);
+      successCount++;
     }
     setIsSavingAll(false);
+    if (successCount > 0) {
+      toast.success(`Saved ${successCount} skills successfully!`, 'All Skills Saved');
+    }
   }, [rows, handleSaveRow]);
 
   const deleteRow = useCallback(async (rowId: string) => {
@@ -681,10 +696,15 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       if (!confirmed) return;
       try {
         await deleteAssessment.mutateAsync(row.existingAssessmentId);
+        toast.success('Skill assessment deleted.', 'Removed');
       } catch {
-        setRowError(rowId, 'Delete failed. Try again.');
+        const errMsg = 'Delete failed. Please try again.';
+        setRowError(rowId, errMsg);
+        toast.error(errMsg, 'Delete Failed');
         return;
       }
+    } else {
+      toast.info('Row removed from table.', 'Removed');
     }
 
     setEditingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });

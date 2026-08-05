@@ -8,6 +8,8 @@ import {
 } from '@/hooks/useConfig';
 import { calcHeader, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 const F = 'field';
 const L = 'field-label';
@@ -33,18 +35,23 @@ export const AssessmentStatusesSection: React.FC = () => {
 
   const handleSave = async () => {
     if (!editing) return;
-    await updateStatus.mutateAsync({
-      id: editing.id,
-      data: {
-        label: form.label,
-        description: form.description || null,
-        counts_toward_score: form.counts_toward_score,
-        is_terminal: form.is_terminal,
-        sort_order: Number(form.sort_order),
-        is_active: form.is_active,
-      },
-    });
-    setEditing(null);
+    try {
+      await updateStatus.mutateAsync({
+        id: editing.id,
+        data: {
+          label: form.label,
+          description: form.description || null,
+          counts_toward_score: form.counts_toward_score,
+          is_terminal: form.is_terminal,
+          sort_order: Number(form.sort_order),
+          is_active: form.is_active,
+        },
+      });
+      toast.success(`Assessment status "${form.label}" updated successfully.`, 'Status Updated');
+      setEditing(null);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to update assessment status.'), 'Update Error');
+    }
   };
 
   const filteredStatuses = useMemo(() => {

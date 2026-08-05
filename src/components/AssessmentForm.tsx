@@ -10,6 +10,7 @@ import {
 } from '@/hooks/useAssessment';
 import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes } from '@/hooks/useConfig';
 import { getApiErrorMessage } from '@/lib/apiError';
+import { toast } from '@/lib/toast';
 
 interface Props {
   employeeId: string;   // emp_code e.g. "1818"
@@ -68,7 +69,7 @@ const DuplicateModal: React.FC<{
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
-      style={{ backgroundColor: 'rgb(0 0 0 / 0.6)', backdropFilter: 'blur(4px)' }}
+      style={{ backgroundColor: 'rgb(0 0 0 / 0.7)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
     >
       <div
         className="w-full max-w-md rounded-2xl shadow-elevated animate-scale-in overflow-hidden"
@@ -278,13 +279,15 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
       setSelectedTechnologyId(null);
       setProjects(1);
       setType('Primary');
-      setLevel('Unset');
+      toast.success('Skill assessment created successfully!', 'Skill Added');
       onSuccess?.();
 
       // Close modal after 2 seconds
       setTimeout(() => onClose?.(), 2000);
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, 'Could not save this skill check.'));
+      const errMsg = getApiErrorMessage(err, 'Could not save this skill check.');
+      setError(errMsg);
+      toast.error(errMsg, 'Save Failed');
     }
   };
 
@@ -306,12 +309,15 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
       }
 
       setDuplicateModal({ show: false, assessment: null });
+      toast.success('Skill assessment updated successfully!', 'Skill Updated');
       onSuccess?.();
 
       // Close modal after 2 seconds
       setTimeout(() => onClose?.(), 2000);
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, 'Could not update this skill check.'));
+      const errMsg = getApiErrorMessage(err, 'Could not update this skill check.');
+      setError(errMsg);
+      toast.error(errMsg, 'Update Failed');
       setDuplicateModal({ show: false, assessment: null });
     }
   };

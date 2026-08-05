@@ -7,6 +7,7 @@ import { getApiErrorMessage } from '@/lib/apiError';
 import { useAuthStore } from '@/store/authStore';
 import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
+import { toast } from '@/lib/toast';
 import {
   ConfigEmployee,
   ConfigUser,
@@ -66,6 +67,7 @@ export const UsersSection: React.FC = () => {
           employee_id: Number(form.employee_id),
           is_active: form.is_active,
         });
+        toast.success(`User "${form.username}" created successfully.`, 'User Created');
       } else if (editing) {
         const data: Partial<UserPayload> = {
           username: form.username,
@@ -75,6 +77,7 @@ export const UsersSection: React.FC = () => {
         };
         if (form.password) data.password = form.password;
         const updated = await updateUser.mutateAsync({ id: editing.id, data });
+        toast.success(`User "${form.username}" updated successfully.`, 'User Updated');
         if (currentUser?.id === updated.id) {
           const selectedEmployee = (employees ?? []).find((employee) => employee.id === updated.employee_id);
           setCurrentUser({
@@ -94,7 +97,9 @@ export const UsersSection: React.FC = () => {
       }
       setModal(null);
     } catch (err: unknown) {
-      setSaveError(getApiErrorMessage(err, 'Failed to save user. Please check the details and try again.'));
+      const msg = getApiErrorMessage(err, 'Failed to save user. Please check the details and try again.');
+      setSaveError(msg);
+      toast.error(msg, 'Error');
     }
   };
 
@@ -164,7 +169,16 @@ export const UsersSection: React.FC = () => {
             <TD>
               <StatusBadge active={u.is_active} />
             </TD>
-            <ActionBtns onEdit={() => openEdit(u)} onDelete={async () => { if (await confirm({ title: 'Deactivate User', message: `"${u.username}" will be deactivated and lose access.`, confirmLabel: 'Deactivate', variant: 'warning' })) deleteUser.mutate(u.id); }} />
+            <ActionBtns onEdit={() => openEdit(u)} onDelete={async () => {
+              if (await confirm({ title: 'Deactivate User', message: `"${u.username}" will be deactivated and lose access.`, confirmLabel: 'Deactivate', variant: 'warning' })) {
+                try {
+                  await deleteUser.mutateAsync(u.id);
+                  toast.success(`User "${u.username}" deactivated.`, 'User Deactivated');
+                } catch (err: unknown) {
+                  toast.error(getApiErrorMessage(err, 'Failed to deactivate user.'), 'Error');
+                }
+              }
+            }} />
           </TR>
         ))}
       </TableShell>

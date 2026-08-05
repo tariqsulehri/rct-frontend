@@ -3,6 +3,7 @@ import { AlertCircle, Check, RefreshCw, Search, ShieldCheck } from 'lucide-react
 import { useApproveAssessment, usePendingApprovals, PendingApproval } from '@/hooks/useAssessment';
 import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes } from '@/hooks/useConfig';
 import { getApiErrorMessage } from '@/lib/apiError';
+import { toast } from '@/lib/toast';
 
 type ApprovalDraft = {
   type: PendingApproval['type'];
@@ -111,11 +112,14 @@ export const PendingApprovalsPanel: React.FC = () => {
         id: row.id,
         data: draft,
       });
+      toast.success(`Approved assessment for "${row.employee_name}" - ${row.competency_name}.`, 'Assessment Approved');
     } catch (error) {
+      const msg = getApiErrorMessage(error, 'Approval failed. Try again.');
       setRowErrors((current) => ({
         ...current,
-        [row.id]: getApiErrorMessage(error, 'Approval failed. Try again.'),
+        [row.id]: msg,
       }));
+      toast.error(msg, 'Approval Error');
     } finally {
       setSavingIds((current) => {
         const next = new Set(current);

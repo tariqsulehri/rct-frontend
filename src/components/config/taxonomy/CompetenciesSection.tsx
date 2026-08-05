@@ -17,6 +17,8 @@ import {
 import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { HEADER_GRADIENTS, useTableState } from '../ConfigTableState';
 import { CompetencyThresholdMatrix, DepartmentSkillMapSection } from './DepartmentSkillMapSection';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 const F = 'field';
 const L = 'field-label';
@@ -88,9 +90,18 @@ export const CompetenciesSection: React.FC = () => {
       category_id: categoryId,
       domain_ids: [selectedDomain.id],
     };
-    if (modal === 'create') await createCompetency.mutateAsync(payload);
-    else if (editing) await updateCompetency.mutateAsync({ id: editing.id, data: payload });
-    setModal(null);
+    try {
+      if (modal === 'create') {
+        await createCompetency.mutateAsync(payload);
+        toast.success(`Skill "${payload.name}" created successfully.`, 'Skill Created');
+      } else if (editing) {
+        await updateCompetency.mutateAsync({ id: editing.id, data: payload });
+        toast.success(`Skill "${payload.name}" updated successfully.`, 'Skill Updated');
+      }
+      setModal(null);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to save skill.'), 'Error');
+    }
   };
 
   const managementCompetencies = useMemo(() => {
@@ -235,7 +246,16 @@ export const CompetenciesSection: React.FC = () => {
                 <TD>
                   <StatusBadge active={c.is_active} />
                 </TD>
-                <ActionBtns onEdit={() => openEdit(c)} onDelete={async () => { if (await confirm({ title: 'Delete Skill', message: `"${c.name}" and all its tool links will be deleted.`, confirmLabel: 'Delete' })) deleteCompetency.mutate(c.id); }} />
+                <ActionBtns onEdit={() => openEdit(c)} onDelete={async () => {
+                  if (await confirm({ title: 'Delete Skill', message: `"${c.name}" and all its tool links will be deleted.`, confirmLabel: 'Delete' })) {
+                    try {
+                      await deleteCompetency.mutateAsync(c.id);
+                      toast.success(`Skill "${c.name}" deleted.`, 'Skill Deleted');
+                    } catch (err: unknown) {
+                      toast.error(getApiErrorMessage(err, 'Failed to delete skill.'), 'Delete Error');
+                    }
+                  }
+                }} />
               </TR>
             ))}
           </TableShell>
