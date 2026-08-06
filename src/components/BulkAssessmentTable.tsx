@@ -332,7 +332,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const { data: assessmentProjects = [] } = useConfigAssessmentProjects();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
-  const [rows, setRows] = useState<BulkRow[]>([createEmptyRow()]);
+  const [rows, setRows] = useState<BulkRow[]>([]);
 
   const [search, setSearch] = useState('');
   // Sort state is purely cosmetic (header indicators). Actual order lives in `rows`.
@@ -384,7 +384,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   }, [assessmentProjects]);
 
   useEffect(() => {
-    setRows([createEmptyRow()]);
+    setRows([]);
     setEditingRowIds(new Set());
     setApprovingRowIds(new Set());
     setSavingRowIds(new Set());
@@ -435,10 +435,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
 
     setRows((currentRows) => {
       const unsavedDrafts = currentRows.filter((r) => r.isNew);
-      if (unsavedDrafts.length > 0) {
-        return [...unsavedDrafts, ...populatedRows];
-      }
-      return [createEmptyRow(), ...populatedRows];
+      return [...unsavedDrafts, ...populatedRows];
     });
   }, [
     hierarchyLoading,
@@ -907,16 +904,16 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
             placeholder="Search by skill area, skill, or tool..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="field w-full h-10"
+            className="field w-full h-8 text-xs"
           />
           <button
             type="button"
             onClick={handleRefresh}
             disabled={existingAssessmentsLoading || existingAssessmentsFetching || isManualRefreshing}
-            className="btn-secondary flex items-center gap-1.5 px-3 h-10 text-xs shrink-0 rounded-lg"
+            className="btn-secondary flex items-center gap-1.5 px-3 h-8 text-xs font-medium shrink-0 rounded-lg"
             title="Refresh skill rows from server"
           >
-            <RefreshCw size={14} className={existingAssessmentsFetching || isManualRefreshing ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={existingAssessmentsFetching || isManualRefreshing ? 'animate-spin' : ''} />
             <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
@@ -928,10 +925,10 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                   type="button"
                   onClick={handleSaveAllDrafts}
                   disabled={isSavingAll || isSubmittingDrafts}
-                  className="btn-secondary flex items-center gap-1.5 px-3 py-1.5 h-auto text-xs font-semibold shadow-sm"
+                  className="btn-secondary flex items-center gap-1.5 px-3 h-8 text-xs font-semibold shadow-sm rounded-lg"
                   title="Save all unpersisted rows as drafts without submitting"
                 >
-                  <SaveAll size={14} />
+                  <SaveAll size={13} />
                   {isSavingAll ? 'Saving...' : `Save Draft (${unsavedCount})`}
                 </button>
               )}
@@ -940,10 +937,10 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                   type="button"
                   onClick={handleSubmitAllDrafts}
                   disabled={isSubmittingDrafts || isSavingAll}
-                  className="btn-primary flex items-center gap-1.5 px-3 py-1.5 h-auto text-xs font-semibold shadow-sm"
+                  className="btn-primary flex items-center gap-1.5 px-3 h-8 text-xs font-semibold shadow-sm rounded-lg"
                   title="Submit all draft skills to manager for review and approval"
                 >
-                  <Send size={14} />
+                  <Send size={13} />
                   {isSubmittingDrafts ? 'Submitting...' : `Submit for Approval (${draftCount})`}
                 </button>
               )}
@@ -954,10 +951,10 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                 type="button"
                 onClick={handleSaveAllDrafts}
                 disabled={isSavingAll}
-                className="btn-primary flex items-center gap-1.5 px-3 py-1.5 h-auto text-xs font-semibold shadow-sm"
+                className="btn-primary flex items-center gap-1.5 px-3 h-8 text-xs font-semibold shadow-sm rounded-lg"
                 title="Save and approve all unsaved rows"
               >
-                <SaveAll size={14} />
+                <SaveAll size={13} />
                 {isSavingAll ? 'Saving...' : `Save All (${unsavedCount})`}
               </button>
             )
@@ -965,7 +962,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
 
           {draftCount > 0 && (
             <span
-              className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
+              className="rounded-lg px-2.5 h-8 inline-flex items-center text-xs font-medium whitespace-nowrap"
               title="Skills saved as drafts. Click 'Submit for Approval' to send to manager."
               style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
             >
@@ -974,7 +971,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           )}
           {pendingCount > 0 && (
             <span
-              className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
+              className="rounded-lg px-2.5 h-8 inline-flex items-center text-xs font-medium whitespace-nowrap"
               title="Waiting for manager approval. Pending rows do not count in final scores yet."
               style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#f97316' }}
             >
@@ -982,7 +979,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
             </span>
           )}
           <span
-            className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
+            className="rounded-lg px-2.5 h-8 inline-flex items-center text-xs font-medium whitespace-nowrap"
             title="Approved rows count in reports and dashboards."
             style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}
           >
@@ -1052,7 +1049,28 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
             </tr>
           </thead>
           <tbody>
-            {displayRows.map((row) => {
+            {displayRows.length === 0 && !isInitializing ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-12 text-center text-xs" style={{ color: 'rgb(var(--text-3))' }}>
+                  <p className="font-semibold text-sm mb-1" style={{ color: 'rgb(var(--text-2))' }}>
+                    No skill rows found
+                  </p>
+                  <p className="text-xs mb-3">
+                    {search ? 'Try clearing your search query.' : 'Click "+ Add Row" or "Bulk Add" below to add skills.'}
+                  </p>
+                  {!search && (
+                    <button
+                      type="button"
+                      onClick={addRow}
+                      className="btn-primary text-xs px-3 h-8 inline-flex items-center gap-1.5 mx-auto rounded-lg font-medium"
+                    >
+                      <Plus size={14} /> Add First Skill
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ) : (
+              displayRows.map((row) => {
               const enriched = validateAndEnrichRow(row);
               const competencies = getCompetenciesForDomain(row.domainId);
               const technologies = getTechnologiesForCompetency(row.domainId, row.competencyId);
@@ -1247,7 +1265,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                   </td>
                 </tr>
               );
-            })}
+            }))}
           </tbody>
         </table>
       </div>
@@ -1257,30 +1275,30 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           <button
             onClick={addRow}
             disabled={isInitializing}
-            className="btn-secondary flex items-center gap-2 px-4 text-xs"
+            className="btn-secondary flex items-center gap-1.5 px-3 h-8 text-xs font-medium rounded-lg"
           >
-            <Plus size={15} /> Add Row
+            <Plus size={14} /> Add Row
           </button>
           
           <button 
             onClick={() => setIsCloneModalOpen(true)}
             disabled={isInitializing}
-            className="btn-secondary flex items-center gap-2 px-4 text-xs"
+            className="btn-secondary flex items-center gap-1.5 px-3 h-8 text-xs font-medium rounded-lg"
           >
-            <Copy size={15} /> Clone Colleague
+            <Copy size={14} /> Clone Colleague
           </button>
 
           <button 
             onClick={() => setIsBulkAddModalOpen(true)}
             disabled={isInitializing}
-            className="btn-secondary flex items-center gap-2 px-4 text-xs"
+            className="btn-secondary flex items-center gap-1.5 px-3 h-8 text-xs font-medium rounded-lg"
           >
-            <Layers size={15} /> Bulk Add
+            <Layers size={14} /> Bulk Add
           </button>
         </div>
 
         {onClose && (
-          <button onClick={onClose} className="btn-ghost px-5 text-xs">
+          <button onClick={onClose} className="btn-ghost px-4 h-8 text-xs font-medium rounded-lg">
             Close
           </button>
         )}
