@@ -10,7 +10,7 @@ export interface SkillAssessment {
   type: 'Primary' | 'Secondary' | 'Tertiary';
   projects: number;
   level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
-  status: 'approved' | 'pending';
+  status: 'draft' | 'pending' | 'approved';
   assessed_by: string;   // emp_code of assessor e.g. "1139"
   assessed_at: string;
   updated_at: string;
@@ -139,6 +139,7 @@ export const useCreateAssessment = () => {
       type: 'Primary' | 'Secondary' | 'Tertiary';
       projects: number;
       level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
+      status?: 'draft' | 'pending' | 'approved';
     }) => {
       const response = await apiClient.post<{ success: boolean; data: SkillAssessment }>(
         '/assessments/skill-assessments',
@@ -206,6 +207,7 @@ export const useUpdateAssessment = () => {
         type: 'Primary' | 'Secondary' | 'Tertiary';
         projects: number;
         level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
+        status: 'draft' | 'pending' | 'approved';
       }>;
     }) => {
       const response = await apiClient.patch<{ success: boolean; data: SkillAssessment }>(
@@ -216,6 +218,28 @@ export const useUpdateAssessment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
+      queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-dashboard'] });
+    },
+  });
+};
+
+export const useSubmitDraftsForApproval = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ empCode, assessmentIds }: { empCode: string; assessmentIds?: number[] }) => {
+      const response = await apiClient.post<{ success: boolean; data: { count: number; data: SkillAssessment[] } }>(
+        `/assessments/employees/${empCode}/submit-drafts`,
+        { assessment_ids: assessmentIds },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assessments'] });
+      queryClient.invalidateQueries({ queryKey: ['assessments', 'pending-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
       queryClient.invalidateQueries({ queryKey: ['reports'] });
       queryClient.invalidateQueries({ queryKey: ['employees'] });

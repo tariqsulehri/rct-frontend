@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { Stars } from '@/components/ui/Stars';
-import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, ShieldCheck, Info, Copy, Layers, SaveAll, RefreshCw } from 'lucide-react';
+import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, ShieldCheck, Info, Copy, Layers, SaveAll, Send, RefreshCw } from 'lucide-react';
 import { CloneColleagueDialog } from './CloneColleagueDialog';
 import { BulkAddDialog, BulkAddTechnologyPayload } from './BulkAddDialog';
 import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
@@ -17,6 +17,7 @@ import {
   useUpdateAssessment,
   useDeleteAssessment,
   useApproveAssessment,
+  useSubmitDraftsForApproval,
   SkillHierarchy,
   SkillAssessment,
 } from '@/hooks/useAssessment';
@@ -36,7 +37,7 @@ export interface BulkRow {
   id: string;
   existingAssessmentId?: number;
   isNew?: boolean;
-  status: 'approved' | 'pending';
+  status: 'draft' | 'pending' | 'approved';
   domainId: number | null;
   competencyId: number | null;
   technologyId: number | null;
@@ -272,7 +273,7 @@ function createEmptyRow(): BulkRow {
   return {
     id: createRowId(),
     isNew: true,
-    status: 'pending',      // new rows start pending until saved by manager
+    status: 'draft',
     domainId: null,
     competencyId: null,
     technologyId: null,
@@ -325,6 +326,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const updateAssessment = useUpdateAssessment();
   const deleteAssessment = useDeleteAssessment();
   const approveAssessment = useApproveAssessment();
+  const submitDrafts = useSubmitDraftsForApproval();
   const { data: assessmentTypes = [] } = useConfigAssessmentTypes();
   const { data: assessmentLevels = [] } = useConfigAssessmentLevels();
   const { data: assessmentProjects = [] } = useConfigAssessmentProjects();
@@ -342,6 +344,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [isBulkAddModalOpen, setIsBulkAddModalOpen] = useState(false);
   const [isSavingAll, setIsSavingAll] = useState(false);
+  const [isSubmittingDrafts, setIsSubmittingDrafts] = useState(false);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const techLocationMap = useMemo(() => buildTechnologyLocationMap(hierarchy), [hierarchy]);
@@ -399,7 +402,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
         id: `existing-${assessment.id}`,
         existingAssessmentId: assessment.id,
         isNew: false,
-        status: (assessment.status as 'approved' | 'pending') ?? 'approved',
+        status: (assessment.status as 'draft' | 'pending' | 'approved') ?? 'approved',
         domainId: mapped?.domainId ?? null,
         competencyId: mapped?.competencyId ?? null,
         technologyId: assessment.technology_id,
@@ -594,19 +597,21 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         toast.success('Skill assessment updated successfully!', 'Saved');
       } else {
         // Create new assessment
+        const initialStatus = readOnlyLevel ? 'draft' : 'approved';
         const saved = await createAssessment.mutateAsync({
           employee_id: employeeId,
           technology_id: row.technologyId!,
           type: row.type,
           projects: row.projects,
           level: row.level,
+          status: initialStatus,
         });
         setRows((prev) => prev.map((r) =>
           r.id === rowId
-            ? { ...r, isNew: false, status: saved.status as 'approved' | 'pending', existingAssessmentId: saved.id, error: undefined }
+            ? { ...r, isNew: false, status: saved.status as 'draft' | 'pending' | 'approved', existingAssessmentId: saved.id, error: undefined }
             : r
         ));
-        toast.success('Skill assessment added successfully!', 'Added');
+        toast.success(readOnlyLevel ? 'Skill saved as draft.' : 'Skill assessment added successfully!', 'Saved');
       }
       onSuccess?.();
     } catch (err: unknown) {
@@ -616,7 +621,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     } finally {
       setSavingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
     }
-  }, [rows, approvingRowIds, validateAndEnrichRow, approveAssessment, updateAssessment, createAssessment, employeeId, onSuccess, setRowError]);
+  }, [rows, approvingRowIds, validateAndEnrichRow, approveAssessment, updateAssessment, createAssessment, readOnlyLevel, employeeId, onSuccess, setRowError]);
 
   const handleCloneColleague = useCallback((clonedAssessments: SkillAssessment[]) => {
     const existingTechIds = new Set(rows.map(r => r.technologyId).filter(Boolean));
@@ -628,7 +633,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           newRows.push({
             id: createRowId(),
             isNew: true,
-            status: 'pending',
+            status: 'draft',
             domainId: loc.domainId,
             competencyId: loc.competencyId,
             technologyId: a.technology_id,
@@ -641,7 +646,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     });
     if (newRows.length > 0) {
       setRows(prev => [...newRows, ...prev]);
-      toast.success(`Cloned ${newRows.length} skills. Click Save on rows to finalize.`, 'Skills Cloned');
+      toast.success(`Cloned ${newRows.length} skills as drafts. Click Save Draft to persist.`, 'Skills Cloned');
     } else {
       toast.info('All skills from this colleague are already present in your table.', 'No New Skills');
     }
@@ -651,7 +656,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     const newRows: BulkRow[] = technologies.map(t => ({
       id: createRowId(),
       isNew: true,
-      status: 'pending',
+      status: 'draft',
       domainId: t.domainId,
       competencyId: t.competencyId,
       technologyId: t.technologyId,
@@ -661,13 +666,13 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     }));
     if (newRows.length > 0) {
       setRows(prev => [...newRows, ...prev]);
-      toast.success(`Added ${newRows.length} skills. Review details and click Submit for Approval.`, 'Skills Added');
+      toast.success(`Added ${newRows.length} skills as drafts. Click "Save Draft" or "Submit for Approval".`, 'Skills Added');
     }
   }, []);
 
-  const handleSaveAllUnsaved = useCallback(async () => {
+  const handleSaveAllDrafts = useCallback(async () => {
     setIsSavingAll(true);
-    const unsavedRows = rows.filter(r => r.isNew);
+    const unsavedRows = rows.filter(r => r.isNew && r.technologyId);
     let successCount = 0;
     for (const row of unsavedRows) {
       await handleSaveRow(row.id);
@@ -675,9 +680,36 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     }
     setIsSavingAll(false);
     if (successCount > 0) {
-      toast.success(`Submitted ${successCount} skills for manager approval!`, 'Submitted for Approval');
+      toast.success(readOnlyLevel ? `Saved ${successCount} draft skills.` : `Saved ${successCount} skills.`, 'Saved');
     }
-  }, [rows, handleSaveRow]);
+  }, [rows, handleSaveRow, readOnlyLevel]);
+
+  const handleSubmitAllDrafts = useCallback(async () => {
+    setIsSubmittingDrafts(true);
+    try {
+      // 1. Save any unpersisted rows first
+      const unsavedRows = rows.filter(r => r.isNew && r.technologyId);
+      for (const row of unsavedRows) {
+        await handleSaveRow(row.id);
+      }
+
+      // 2. Submit all drafts for this employee
+      const result = await submitDrafts.mutateAsync({ empCode: employeeId });
+      toast.success(
+        result.count > 0
+          ? `Submitted ${result.count} skill${result.count === 1 ? '' : 's'} for manager approval!`
+          : 'All skills are already submitted or approved.',
+        'Submitted for Approval',
+      );
+      await refetchExistingAssessments();
+      onSuccess?.();
+    } catch (err: unknown) {
+      const errMsg = getApiErrorMessage(err, 'Failed to submit drafts for approval.');
+      toast.error(errMsg, 'Submission Failed');
+    } finally {
+      setIsSubmittingDrafts(false);
+    }
+  }, [rows, handleSaveRow, submitDrafts, employeeId, refetchExistingAssessments, onSuccess]);
 
   const handleRefresh = useCallback(async () => {
     setIsManualRefreshing(true);
@@ -835,7 +867,8 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
   ].filter(Boolean);
   const savedCount = rows.filter((r) => !r.isNew && r.status === 'approved').length;
   const pendingCount = rows.filter((r) => !r.isNew && r.status === 'pending').length;
-  const unsavedCount = rows.filter((r) => r.isNew).length;
+  const unsavedCount = rows.filter((r) => r.isNew && r.technologyId).length;
+  const draftCount = rows.filter((r) => (r.status === 'draft' || r.isNew) && r.technologyId).length;
 
   return (
     <>
@@ -848,7 +881,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           </h3>
           <p className="text-xs mt-1 max-w-2xl" style={{ color: 'rgb(var(--text-3))' }}>
             {readOnlyLevel
-              ? 'Add skills and tools you have used. Saved rows wait for manager approval.'
+              ? 'Add skills and tools you have used. Save as drafts or submit for manager approval.'
               : 'Add skills used by this person. Managers approve rows and set the final level.'}
           </p>
           {employeeName && (
@@ -887,25 +920,57 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
             <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          {unsavedCount > 0 && (
-            <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {readOnlyLevel ? (
+            <>
+              {unsavedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleSaveAllDrafts}
+                  disabled={isSavingAll || isSubmittingDrafts}
+                  className="btn-secondary flex items-center gap-1.5 px-3 py-1.5 h-auto text-xs font-semibold shadow-sm"
+                  title="Save all unpersisted rows as drafts without submitting"
+                >
+                  <SaveAll size={14} />
+                  {isSavingAll ? 'Saving...' : `Save Draft (${unsavedCount})`}
+                </button>
+              )}
+              {draftCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleSubmitAllDrafts}
+                  disabled={isSubmittingDrafts || isSavingAll}
+                  className="btn-primary flex items-center gap-1.5 px-3 py-1.5 h-auto text-xs font-semibold shadow-sm"
+                  title="Submit all draft skills to manager for review and approval"
+                >
+                  <Send size={14} />
+                  {isSubmittingDrafts ? 'Submitting...' : `Submit for Approval (${draftCount})`}
+                </button>
+              )}
+            </>
+          ) : (
+            unsavedCount > 0 && (
               <button
-                onClick={handleSaveAllUnsaved}
+                type="button"
+                onClick={handleSaveAllDrafts}
                 disabled={isSavingAll}
                 className="btn-primary flex items-center gap-1.5 px-3 py-1.5 h-auto text-xs font-semibold shadow-sm"
+                title="Save and approve all unsaved rows"
               >
                 <SaveAll size={14} />
-                {isSavingAll ? 'Submitting...' : readOnlyLevel ? 'Submit for Approval' : 'Save All'}
+                {isSavingAll ? 'Saving...' : `Save All (${unsavedCount})`}
               </button>
-              <span
-                className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
-                title="Rows drafted on screen but not submitted yet."
-                style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
-              >
-                {unsavedCount} drafted
-              </span>
-            </div>
+            )
+          )}
+
+          {draftCount > 0 && (
+            <span
+              className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
+              title="Skills saved as drafts. Click 'Submit for Approval' to send to manager."
+              style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
+            >
+              {draftCount} draft
+            </span>
           )}
           {pendingCount > 0 && (
             <span
@@ -998,6 +1063,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
               const rowEditable = isRowEditable(row);
 
               const isApproving = approvingRowIds.has(row.id);
+              const isDraft = row.status === 'draft' || row.isNew;
               const isPending = row.status === 'pending' && !row.isNew;
               const rowBg = enriched.error
                 ? 'rgba(var(--danger-soft), 0.12)'
@@ -1007,7 +1073,9 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                     ? 'rgba(var(--accent-soft), 0.15)'
                     : isPending
                       ? 'rgba(251,146,60,0.06)' // subtle orange for pending
-                      : 'transparent';
+                      : isDraft
+                        ? 'rgba(var(--accent-soft), 0.05)'
+                        : 'transparent';
 
               return (
                 <tr
@@ -1021,7 +1089,9 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                         ? '3px solid rgb(var(--accent))'
                         : isPending
                           ? '3px solid #f97316'
-                          : '3px solid transparent',
+                          : isDraft
+                            ? '3px solid rgb(var(--accent-soft))'
+                            : '3px solid transparent',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(var(--surface-2))')}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = rowBg)}
@@ -1107,7 +1177,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                           onClick={() => handleSaveRow(row.id)}
                           disabled={savingRowIds.has(row.id)}
                           className="btn-ghost w-7 h-7 p-0 rounded-md flex items-center justify-center"
-                          title={isApproving ? 'Approve and save' : 'Save this row'}
+                          title={isApproving ? 'Approve and save' : isDraft ? 'Save draft' : 'Save this row'}
                         >
                           {savingRowIds.has(row.id)
                             ? <span className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: isApproving ? '#f97316' : 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
@@ -1148,7 +1218,16 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                         <Trash2 size={14} />
                       </button>
 
-                      {/* Pending Approval badge — shown after delete for pending rows */}
+                      {/* Status badges */}
+                      {isDraft && (
+                        <span
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
+                          style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
+                          title={row.isNew ? 'Unsaved local row' : 'Draft saved in database'}
+                        >
+                          {row.isNew ? 'Unsaved' : 'Draft'}
+                        </span>
+                      )}
                       {isPending && (
                         <span
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
