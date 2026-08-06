@@ -23,12 +23,13 @@ interface Props {
   onClose: () => void;
   onBulkAdd: (technologies: BulkAddTechnologyPayload[]) => void;
   existingTechnologyIds: Set<number>;
+  existingRows?: Array<{ competencyId?: number | null; type?: 'Primary' | 'Secondary' | 'Tertiary' }>;
 }
 
-const DEFAULT_INITIAL_TYPE: 'Primary' | 'Secondary' | 'Tertiary' = 'Tertiary';
+const ALL_IMPORTANCE_SLOTS: Array<'Primary' | 'Secondary' | 'Tertiary'> = ['Primary', 'Secondary', 'Tertiary'];
 const DEFAULT_INITIAL_PROJECTS = 1;
 
-export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, existingTechnologyIds }) => {
+export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, existingTechnologyIds, existingRows }) => {
   const { data: hierarchy = [], isLoading } = useSkillsHierarchy();
 
   const [selectedDomainId, setSelectedDomainId] = useState<number | null>(null);
@@ -57,6 +58,32 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
     t.name.toLowerCase().includes(searchTerm.toLowerCase().trim())
   ) || [];
 
+  // Helper to get taken slots for a competency (from existing rows + current modal selections)
+  const getTakenSlotsForCompetency = (compId: number, excludeTechId?: number) => {
+    const taken = new Set<'Primary' | 'Secondary' | 'Tertiary'>();
+    
+    if (existingRows) {
+      existingRows.forEach(r => {
+        if (r.competencyId === compId && r.type) {
+          taken.add(r.type);
+        }
+      });
+    }
+
+    selectedSkills.forEach((config, tId) => {
+      if (config.competencyId === compId && tId !== excludeTechId) {
+        taken.add(config.type);
+      }
+    });
+
+    return taken;
+  };
+
+  const getAvailableSlotsForCompetency = (compId: number, excludeTechId?: number) => {
+    const taken = getTakenSlotsForCompetency(compId, excludeTechId);
+    return ALL_IMPORTANCE_SLOTS.filter(s => !taken.has(s));
+  };
+
   const toggleTech = (techId: number) => {
     if (!selectedDomainId || !selectedCompetencyId) return;
 
@@ -65,11 +92,15 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
       if (next.has(techId)) {
         next.delete(techId);
       } else {
+        const availableSlots = getAvailableSlotsForCompetency(selectedCompetencyId);
+        if (availableSlots.length === 0) {
+          return next;
+        }
         next.set(techId, {
           domainId: selectedDomainId,
           competencyId: selectedCompetencyId,
           technologyId: techId,
-          type: DEFAULT_INITIAL_TYPE,
+          type: availableSlots[0],
           projects: DEFAULT_INITIAL_PROJECTS,
         });
       }
@@ -110,13 +141,25 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
       } else {
         nonExistingTechs.forEach(t => {
           if (!next.has(t.id)) {
-            next.set(t.id, {
-              domainId: selectedDomainId,
-              competencyId: selectedCompetencyId,
-              technologyId: t.id,
-              type: DEFAULT_INITIAL_TYPE,
-              projects: DEFAULT_INITIAL_PROJECTS,
+            const taken = new Set<'Primary' | 'Secondary' | 'Tertiary'>();
+            if (existingRows) {
+              existingRows.forEach(r => {
+                if (r.competencyId === selectedCompetencyId && r.type) taken.add(r.type);
+              });
+            }
+            next.forEach(config => {
+              if (config.competencyId === selectedCompetencyId) taken.add(config.type);
             });
+            const freeSlots = ALL_IMPORTANCE_SLOTS.filter(s => !taken.has(s));
+            if (freeSlots.length > 0) {
+              next.set(t.id, {
+                domainId: selectedDomainId,
+                competencyId: selectedCompetencyId,
+                technologyId: t.id,
+                type: freeSlots[0],
+                projects: DEFAULT_INITIAL_PROJECTS,
+              });
+            }
           }
         });
       }
@@ -155,7 +198,7 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
             <div>
               <h2 className="text-base font-bold text-[rgb(var(--text-1))]">Bulk Add Skills</h2>
               <p className="text-xs text-[rgb(var(--text-2))]">
-                Browse skill taxonomy, check skills, and customize Importance & Projects per row
+                Browse skill taxonomy, check skills, and customize Importance & Projects per row (Max 1 Primary, 1 Secondary, 1 Tertiary per skill)
               </p>
             </div>
           </div>
@@ -168,13 +211,13 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
           </button>
         </div>
 
-        {/* Body - 3 Columns */}
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-[rgb(var(--border))] bg-[rgb(var(--surface))]">
+        {/* 3-Column Layout */}
+        <div className="flex-1 flex flex-col md:flex-row min-h-0 divide-y md:divide-y-0 md:divide-x divide-[rgb(var(--border))] overflow-hidden">
           
           {/* Column 1: Domains */}
-          <div className="w-full md:w-[28%] lg:w-[26%] flex flex-col min-h-0 min-w-0 bg-[rgb(var(--surface))] shrink-0">
+          <div className="w-full md:w-[32%] lg:w-[30%] flex flex-col min-h-0 min-w-0 bg-[rgb(var(--surface))] shrink-0">
             <div className="px-4 py-2.5 bg-[rgb(var(--surface-2))] font-semibold text-xs text-[rgb(var(--text-2))] uppercase tracking-wider border-b border-[rgb(var(--border))] flex items-center justify-between">
-              <span>1. Skill Area / Domain</span>
+              <span>1. Skill Area</span>
               <span className="font-mono text-[10px] text-[rgb(var(--text-3))]">{hierarchy.length}</span>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -227,6 +270,8 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
               ) : (
                 currentDomain?.competencies.map(comp => {
                   const isSelected = selectedCompetencyId === comp.competencyId;
+                  const takenSlots = getTakenSlotsForCompetency(comp.competencyId);
+                  const isFull = takenSlots.size >= 3;
                   return (
                     <button
                       key={comp.competencyId}
@@ -239,9 +284,16 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                       }`}
                     >
                       <span className="truncate pr-2">{comp.competencyName}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-[rgb(var(--surface-3))] text-[rgb(var(--text-2))]'}`}>
-                        {comp.technologies.length}
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isFull && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${isSelected ? 'bg-white/20 text-white' : 'bg-amber-500/15 text-amber-500'}`}>
+                            3/3 Full
+                          </span>
+                        )}
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-[rgb(var(--surface-3))] text-[rgb(var(--text-2))]'}`}>
+                          {comp.technologies.length}
+                        </span>
+                      </div>
                     </button>
                   );
                 })
@@ -267,7 +319,6 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                 </div>
               ) : (
                 <>
-                  {/* Search and Filter */}
                   <div className="p-3 border-b border-[rgb(var(--border))] bg-[rgb(var(--surface))]">
                     <div className="relative">
                       <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgb(var(--text-3))] pointer-events-none" />
@@ -290,7 +341,6 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                     </div>
                   </div>
                   
-                  {/* Skills List with Per-Row Customization */}
                   <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
                     {filteredTechs.length > 0 && (
                       <button
@@ -302,7 +352,7 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                          filteredTechs.filter(t => !existingTechnologyIds.has(t.id)).every(t => selectedSkills.has(t.id)) ? (
                           <><CheckSquare size={16} className="text-[rgb(var(--accent))]" /> Deselect All Visible</>
                         ) : (
-                          <><Square size={16} className="text-[rgb(var(--text-3))]" /> Select All Available</>
+                          <><Square size={16} className="text-[rgb(var(--text-3))]" /> Select Available Slots</>
                         )}
                       </button>
                     )}
@@ -310,30 +360,31 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                     {filteredTechs.map(tech => {
                       const isExisting = existingTechnologyIds.has(tech.id);
                       const isSelected = selectedSkills.has(tech.id);
-                      const config = selectedSkills.get(tech.id) || { type: DEFAULT_INITIAL_TYPE, projects: DEFAULT_INITIAL_PROJECTS };
+                      const config = selectedSkills.get(tech.id);
+                      const availableSlots = getAvailableSlotsForCompetency(selectedCompetencyId);
+                      const isSlotBlocked = !isSelected && !isExisting && availableSlots.length === 0;
                       
                       return (
                         <div
                           key={tech.id}
                           className={`w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl transition-all border ${
-                            isExisting
-                              ? 'opacity-40 cursor-not-allowed bg-[rgb(var(--surface-2))] border-transparent'
+                            isExisting || isSlotBlocked
+                              ? 'opacity-45 cursor-not-allowed bg-[rgb(var(--surface-2))] border-transparent'
                               : isSelected
                               ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent-soft))] shadow-xs'
                               : 'border-transparent hover:bg-[rgb(var(--surface-2))]'
                           }`}
                         >
-                          {/* Checkbox and Skill Name */}
                           <button
                             type="button"
-                            onClick={() => !isExisting && toggleTech(tech.id)}
-                            disabled={isExisting}
+                            onClick={() => !isExisting && !isSlotBlocked && toggleTech(tech.id)}
+                            disabled={isExisting || isSlotBlocked}
                             className="flex items-center gap-2.5 min-w-0 flex-1 text-left select-none"
                           >
                             {isSelected ? (
                               <CheckSquare size={16} className="text-[rgb(var(--accent))] shrink-0" />
-                            ) : isExisting ? (
-                              <CheckSquare size={16} className="text-[rgb(var(--text-3))] shrink-0" />
+                            ) : isExisting || isSlotBlocked ? (
+                              <Square size={16} className="text-[rgb(var(--text-3))] shrink-0 opacity-50" />
                             ) : (
                               <Square size={16} className="text-[rgb(var(--text-3))] shrink-0" />
                             )}
@@ -345,10 +396,14 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                                 Already added
                               </span>
                             )}
+                            {isSlotBlocked && (
+                              <span className="text-[10px] font-semibold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap ml-2">
+                                3/3 slots full
+                              </span>
+                            )}
                           </button>
 
-                          {/* Per-Row Importance & Projects Controls */}
-                          {isSelected && !isExisting && (
+                          {isSelected && config && !isExisting && (
                             <div className="flex items-center gap-2 shrink-0 animate-fade-in pl-6 sm:pl-0">
                               <div className="flex items-center gap-1">
                                 <label className="text-[10px] uppercase font-semibold text-[rgb(var(--text-2))]">Imp:</label>
@@ -358,9 +413,14 @@ export const BulkAddDialog: React.FC<Props> = ({ isOpen, onClose, onBulkAdd, exi
                                   onClick={(e) => e.stopPropagation()}
                                   className="field h-7 px-1.5 py-0 text-[11px] font-semibold rounded-md min-w-[80px] bg-[rgb(var(--surface))]"
                                 >
-                                  <option value="Tertiary">Tertiary</option>
-                                  <option value="Secondary">Secondary</option>
-                                  <option value="Primary">Primary</option>
+                                  {ALL_IMPORTANCE_SLOTS.map((slot) => {
+                                    const isTakenByOther = getTakenSlotsForCompetency(selectedCompetencyId, tech.id).has(slot);
+                                    return (
+                                      <option key={slot} value={slot} disabled={isTakenByOther}>
+                                        {slot} {isTakenByOther ? '(In use)' : ''}
+                                      </option>
+                                    );
+                                  })}
                                 </select>
                               </div>
 

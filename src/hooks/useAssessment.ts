@@ -428,11 +428,43 @@ export const useDuplicateAssessmentCheck = (
     return { isDuplicate: false };
   }, [assessments, techLocationMap]);
 
+  const checkDuplicateImportance = React.useCallback((
+    compId: number,
+    type: 'Primary' | 'Secondary' | 'Tertiary',
+    excludeTechId?: number,
+    excludeAssessmentId?: number,
+  ): DuplicateCheckResult => {
+    if (!assessments) {
+      return { isDuplicate: false };
+    }
+
+    const existing = assessments.find((assessment) => {
+      if (excludeAssessmentId && assessment.id === excludeAssessmentId) return false;
+      if (excludeTechId && assessment.technology_id === excludeTechId) return false;
+      if (assessment.type !== type) return false;
+
+      const location = techLocationMap.get(assessment.technology_id);
+      if (!location) return false;
+
+      return location.competencyId === compId;
+    });
+
+    if (existing) {
+      return {
+        isDuplicate: true,
+        existingAssessmentId: existing.id,
+        existingAssessment: existing,
+      };
+    }
+
+    return { isDuplicate: false };
+  }, [assessments, techLocationMap]);
+
   // Optional: pre-check if specific IDs provided
   const isDuplicate = React.useMemo(() => {
     if (!domainId || !competencyId || !technologyId) return false;
     return checkDuplicate(domainId, competencyId, technologyId).isDuplicate;
   }, [domainId, competencyId, technologyId, checkDuplicate]);
 
-  return { checkDuplicate, isDuplicate };
+  return { checkDuplicate, checkDuplicateImportance, isDuplicate };
 };

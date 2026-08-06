@@ -298,6 +298,11 @@ function getDuplicateKey(employeeId: string, row: BulkRow) {
   return `${employeeId}:${row.domainId}:${row.competencyId}:${row.technologyId}`;
 }
 
+function getCompetencyImportanceKey(employeeId: string, row: BulkRow) {
+  if (!row.competencyId || !row.type) return null;
+  return `${employeeId}:${row.competencyId}:${row.type}`;
+}
+
 function buildTechnologyLocationMap(hierarchy: SkillHierarchy[]) {
   const map = new Map<number, { domainId: number; competencyId: number }>();
 
@@ -331,7 +336,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
     error: existingAssessmentsError,
     refetch: refetchExistingAssessments,
   } = useEmployeeAssessments(employeeId);
-  const { checkDuplicate } = useDuplicateAssessmentCheck(employeeId);
+  const { checkDuplicate, checkDuplicateImportance } = useDuplicateAssessmentCheck(employeeId);
   const createAssessment = useCreateAssessment();
   const updateAssessment = useUpdateAssessment();
   const deleteAssessment = useDeleteAssessment();
@@ -546,17 +551,38 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         errors.push('Duplicate: this person already has the same skill area, skill, and tool.');
       }
 
+      // Check importance uniqueness within the competency
+      const compImpKey = getCompetencyImportanceKey(employeeId, row);
+      const duplicateImportanceRow = rows.find((candidate) =>
+        candidate.id !== row.id &&
+        getCompetencyImportanceKey(employeeId, candidate) === compImpKey
+      );
+      const duplicateImportance = checkDuplicateImportance(
+        row.competencyId!,
+        row.type,
+        row.technologyId ?? undefined,
+        row.existingAssessmentId ?? undefined,
+      );
+
+      if (isRowEditable(row) && duplicateImportanceRow) {
+        errors.push(`Duplicate Importance: Only one ${row.type} tool is allowed for this skill.`);
+      } else if (isRowEditable(row) && duplicateImportance.isDuplicate) {
+        errors.push(`Duplicate Importance: A ${row.type} tool is already assigned for this skill.`);
+      }
+
       enriched.scorePreview = computeAssessmentScorePreview(row.type, row.projects, row.level, scoringValues, levelWeights, projectCredits);
     }
 
     if (errors.length > 0) {
       enriched.error = errors.some((error) => error.startsWith('Duplicate:'))
         ? errors.find((error) => error.startsWith('Duplicate:'))
+        : errors.some((error) => error.startsWith('Duplicate Importance:'))
+        ? errors.find((error) => error.startsWith('Duplicate Importance:'))
         : 'Missing: ' + errors.join(', ');
     }
 
     return enriched;
-  }, [checkDuplicate, employeeId, isRowEditable, rows, scoringValues, levelWeights, projectCredits]);
+  }, [checkDuplicate, checkDuplicateImportance, employeeId, isRowEditable, rows, scoringValues, levelWeights, projectCredits]);
 
   const addRow = useCallback(() => {
     // Prepend so new row stays at the top, never jumps
@@ -1470,6 +1496,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         onClose={() => setIsBulkAddModalOpen(false)}
         onBulkAdd={handleBulkAdd}
         existingTechnologyIds={new Set(rows.map(r => r.technologyId as number).filter(Boolean))}
+        existingRows={rows}
       />
     </div>
     </>

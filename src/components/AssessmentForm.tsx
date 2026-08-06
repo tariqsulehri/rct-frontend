@@ -152,7 +152,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
   const { data: assessmentTypes = [] } = useConfigAssessmentTypes();
   const { data: assessmentLevels = [] } = useConfigAssessmentLevels();
   const { data: assessmentProjects = [] } = useConfigAssessmentProjects();
-  const { checkDuplicate } = useDuplicateAssessmentCheck(employeeId);
+  const { checkDuplicate, checkDuplicateImportance } = useDuplicateAssessmentCheck(employeeId);
   const createAssessment = useCreateAssessment();
   const updateAssessment = useUpdateAssessment();
 
@@ -245,13 +245,21 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
       return;
     }
 
-    // Check for duplicate
+    // Check for duplicate tool
     const duplicateCheck = checkDuplicate(selectedDomainId, selectedCompetencyId, selectedTechnologyId);
     if (duplicateCheck.isDuplicate && duplicateCheck.existingAssessment) {
       setDuplicateModal({
         show: true,
         assessment: duplicateCheck.existingAssessment,
       });
+      return;
+    }
+
+    // Check for duplicate importance within competency
+    const duplicateImportanceCheck = checkDuplicateImportance(selectedCompetencyId, type, selectedTechnologyId);
+    if (duplicateImportanceCheck.isDuplicate) {
+      const compName = selectedCompetency?.competencyName || 'this competency';
+      setError(`A ${type} tool is already assigned for '${compName}'. Only one ${type} tool is allowed per competency.`);
       return;
     }
 
