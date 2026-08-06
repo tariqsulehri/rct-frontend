@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { Stars } from '@/components/ui/Stars';
-import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, ShieldCheck, Info, Copy, Layers, SaveAll, Send, RefreshCw } from 'lucide-react';
+import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, CheckCheck, ShieldCheck, Info, Copy, Layers, SaveAll, Send, RefreshCw } from 'lucide-react';
 import { CloneColleagueDialog } from './CloneColleagueDialog';
 import { BulkAddDialog, BulkAddTechnologyPayload } from './BulkAddDialog';
 import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
@@ -54,8 +54,18 @@ interface SearchableOption {
   label: string;
 }
 
-type SortKey = 'domain' | 'competency' | 'technology' | 'type' | 'projects';
+type SortKey = 'domain' | 'competency' | 'technology' | 'type' | 'projects' | 'level' | 'score';
 type SortOrder = 'asc' | 'desc';
+
+const LEVEL_RANKS: Record<string, number> = {
+  Expert: 5,
+  Advanced: 4,
+  Proficient: 3,
+  Foundational: 2,
+  Beginner: 1,
+  Awareness: 0.5,
+  Unset: 0,
+};
 
 export const LEVEL_COLORS: Record<AssessmentLevel, string> = {
   Unset:       'rgb(var(--text-3))',
@@ -335,6 +345,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const [rows, setRows] = useState<BulkRow[]>([]);
 
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'draft' | 'approved'>('all');
   // Sort state is purely cosmetic (header indicators). Actual order lives in `rows`.
   const [activeSortKey, setActiveSortKey] = useState<SortKey | null>('domain');
   const [activeSortOrder, setActiveSortOrder] = useState<SortOrder>('asc');
@@ -385,6 +396,7 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
 
   useEffect(() => {
     setRows([]);
+    setStatusFilter('all');
     setEditingRowIds(new Set());
     setApprovingRowIds(new Set());
     setSavingRowIds(new Set());
@@ -752,12 +764,21 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     setRows((prev) => prev.filter((r) => r.id !== rowId));
   }, [rows, deleteAssessment, confirm, setRowError]);
 
-  // displayRows = rows in their stable insertion order, search-filtered only.
+  // displayRows = rows in their stable insertion order, filtered by status tab & search.
   // No reactive sorting — order only changes when the user explicitly clicks a header.
   const displayRows = useMemo(() => {
-    if (!search.trim()) return rows;
+    let result = rows;
+    if (statusFilter === 'pending') {
+      result = result.filter((r) => !r.isNew && r.status === 'pending');
+    } else if (statusFilter === 'draft') {
+      result = result.filter((r) => r.isNew || r.status === 'draft');
+    } else if (statusFilter === 'approved') {
+      result = result.filter((r) => !r.isNew && r.status === 'approved');
+    }
+
+    if (!search.trim()) return result;
     const q = search.toLowerCase();
-    return rows.filter((r) => {
+    return result.filter((r) => {
       const domain = getDomainForRow(r.domainId)?.domainName || '';
       const comp = getCompetenciesForDomain(r.domainId).find((c) => c.competencyId === r.competencyId)?.competencyName || '';
       const tech = getTechnologiesForCompetency(r.domainId, r.competencyId).find((t) => t.id === r.technologyId)?.name || '';
@@ -767,7 +788,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         tech.toLowerCase().includes(q)
       );
     });
-  }, [rows, search, getDomainForRow, getCompetenciesForDomain, getTechnologiesForCompetency]);
+  }, [rows, statusFilter, search, getDomainForRow, getCompetenciesForDomain, getTechnologiesForCompetency]);
 
   const toggleSort = useCallback((key: SortKey) => {
     const nextOrder = activeSortKey === key && activeSortOrder === 'asc' ? 'desc' : 'asc';
@@ -791,6 +812,8 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         }
         case 'type': return row.type;
         case 'projects': return String(row.projects);
+        case 'level': return row.level;
+        case 'score': return String(computeAssessmentScorePreview(row.type, row.projects, row.level, scoringValues, levelWeights, projectCredits));
       }
     };
 
@@ -802,8 +825,18 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         if (!a.isNew && b.isNew) return 1;
 
         // Primary: the clicked column (respects asc/desc)
-        const primaryCmp = getLabel(a, key).localeCompare(getLabel(b, key));
-        if (primaryCmp !== 0) return nextOrder === 'asc' ? primaryCmp : -primaryCmp;
+        if (key === 'level') {
+          const aRank = LEVEL_RANKS[a.level] ?? (levelWeights[a.level] ?? 0);
+          const bRank = LEVEL_RANKS[b.level] ?? (levelWeights[b.level] ?? 0);
+          if (aRank !== bRank) return nextOrder === 'asc' ? aRank - bRank : bRank - aRank;
+        } else if (key === 'score') {
+          const aScore = computeAssessmentScorePreview(a.type, a.projects, a.level, scoringValues, levelWeights, projectCredits);
+          const bScore = computeAssessmentScorePreview(b.type, b.projects, b.level, scoringValues, levelWeights, projectCredits);
+          if (aScore !== bScore) return nextOrder === 'asc' ? aScore - bScore : bScore - aScore;
+        } else {
+          const primaryCmp = getLabel(a, key).localeCompare(getLabel(b, key));
+          if (primaryCmp !== 0) return nextOrder === 'asc' ? primaryCmp : -primaryCmp;
+        }
 
         // Secondary tiebreakers: always domain → competency → technology (ascending)
         // so related items stay grouped together regardless of primary sort
@@ -818,7 +851,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       });
       return newRows;
     });
-  }, [activeSortKey, activeSortOrder, hierarchy]);
+  }, [activeSortKey, activeSortOrder, hierarchy, scoringValues, levelWeights, projectCredits]);
 
 
   const SortIcon = ({ isActive, order }: { isActive: boolean; order: SortOrder }) => {
@@ -867,6 +900,34 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
   const unsavedCount = rows.filter((r) => r.isNew && r.technologyId).length;
   const draftCount = rows.filter((r) => (r.status === 'draft' || r.isNew) && r.technologyId).length;
 
+  const handleApproveAllPending = useCallback(async () => {
+    const pendingRows = rows.filter((r) => !r.isNew && r.status === 'pending' && r.existingAssessmentId);
+    if (pendingRows.length === 0) return;
+    const confirmed = await confirm({
+      title: `Approve All Pending Skills (${pendingRows.length})`,
+      message: `Are you sure you want to approve all ${pendingRows.length} pending skills for this employee?`,
+      confirmLabel: 'Approve All',
+    });
+    if (!confirmed) return;
+
+    setIsSubmittingDrafts(true);
+    try {
+      for (const r of pendingRows) {
+        await updateAssessment.mutateAsync({
+          id: r.existingAssessmentId!,
+          data: { status: 'approved' },
+        });
+      }
+      setRows((prev) => prev.map((r) => r.status === 'pending' ? { ...r, status: 'approved' } : r));
+      toast.success(`Approved ${pendingRows.length} skills successfully!`, 'Approved');
+      onSuccess?.();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to approve all pending skills.'));
+    } finally {
+      setIsSubmittingDrafts(false);
+    }
+  }, [rows, confirm, updateAssessment, onSuccess]);
+
   return (
     <>
     {confirmDialog}
@@ -897,27 +958,112 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2 items-center">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Search by skill area, skill, or tool..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="field w-full h-8 text-xs"
-          />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        {/* Status View Filter Tabs */}
+        <div
+          className="flex items-center gap-1 p-0.5 rounded-lg border"
+          style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}
+        >
           <button
             type="button"
-            onClick={handleRefresh}
-            disabled={existingAssessmentsLoading || existingAssessmentsFetching || isManualRefreshing}
-            className="btn-secondary flex items-center gap-1.5 px-3 h-8 text-xs font-medium shrink-0 rounded-lg"
-            title="Refresh skill rows from server"
+            onClick={() => setStatusFilter('all')}
+            className="px-3 h-7 text-xs font-medium rounded-md transition-all flex items-center gap-1.5"
+            style={{
+              backgroundColor: statusFilter === 'all' ? 'rgb(var(--surface-1))' : 'transparent',
+              color: statusFilter === 'all' ? 'rgb(var(--text-1))' : 'rgb(var(--text-2))',
+              boxShadow: statusFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              fontWeight: statusFilter === 'all' ? 600 : 500,
+            }}
           >
-            <RefreshCw size={13} className={existingAssessmentsFetching || isManualRefreshing ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">Refresh</span>
+            All
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+              style={{ backgroundColor: 'rgb(var(--surface-3))', color: 'rgb(var(--text-2))' }}
+            >
+              {rows.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('pending')}
+            className="px-3 h-7 text-xs font-medium rounded-md transition-all flex items-center gap-1.5"
+            style={{
+              backgroundColor: statusFilter === 'pending' ? 'rgb(var(--surface-1))' : 'transparent',
+              color: statusFilter === 'pending' ? '#f97316' : 'rgb(var(--text-2))',
+              boxShadow: statusFilter === 'pending' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              fontWeight: statusFilter === 'pending' ? 600 : 500,
+            }}
+          >
+            Pending Review
+            {pendingCount > 0 && (
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+                style={{ backgroundColor: 'rgba(251,146,60,0.2)', color: '#f97316' }}
+              >
+                {pendingCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('draft')}
+            className="px-3 h-7 text-xs font-medium rounded-md transition-all flex items-center gap-1.5"
+            style={{
+              backgroundColor: statusFilter === 'draft' ? 'rgb(var(--surface-1))' : 'transparent',
+              color: statusFilter === 'draft' ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))',
+              boxShadow: statusFilter === 'draft' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              fontWeight: statusFilter === 'draft' ? 600 : 500,
+            }}
+          >
+            Drafts
+            {draftCount > 0 && (
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+                style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
+              >
+                {draftCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('approved')}
+            className="px-3 h-7 text-xs font-medium rounded-md transition-all flex items-center gap-1.5"
+            style={{
+              backgroundColor: statusFilter === 'approved' ? 'rgb(var(--surface-1))' : 'transparent',
+              color: statusFilter === 'approved' ? 'rgb(var(--text-1))' : 'rgb(var(--text-2))',
+              boxShadow: statusFilter === 'approved' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              fontWeight: statusFilter === 'approved' ? 600 : 500,
+            }}
+          >
+            Approved
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+              style={{ backgroundColor: 'rgb(var(--surface-3))', color: 'rgb(var(--text-2))' }}
+            >
+              {savedCount}
+            </span>
           </button>
         </div>
+
+        {/* Global Action / Batch Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          {!readOnlyLevel && pendingCount > 0 && (
+            <button
+              type="button"
+              onClick={handleApproveAllPending}
+              disabled={isSubmittingDrafts || isSavingAll}
+              className="btn-primary flex items-center gap-1.5 px-3 h-8 text-xs font-semibold shadow-sm rounded-lg"
+              title="Approve all submitted pending skills for this employee"
+            >
+              <CheckCheck size={13} />
+              {isSubmittingDrafts ? 'Approving...' : `Approve All Pending (${pendingCount})`}
+            </button>
+          )}
+
           {readOnlyLevel ? (
             <>
               {unsavedCount > 0 && (
@@ -959,32 +1105,28 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
               </button>
             )
           )}
+        </div>
+      </div>
 
-          {draftCount > 0 && (
-            <span
-              className="rounded-lg px-2.5 h-8 inline-flex items-center text-xs font-medium whitespace-nowrap"
-              title="Skills saved as drafts. Click 'Submit for Approval' to send to manager."
-              style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
-            >
-              {draftCount} draft
-            </span>
-          )}
-          {pendingCount > 0 && (
-            <span
-              className="rounded-lg px-2.5 h-8 inline-flex items-center text-xs font-medium whitespace-nowrap"
-              title="Waiting for manager approval. Pending rows do not count in final scores yet."
-              style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#f97316' }}
-            >
-              {pendingCount} pending
-            </span>
-          )}
-          <span
-            className="rounded-lg px-2.5 h-8 inline-flex items-center text-xs font-medium whitespace-nowrap"
-            title="Approved rows count in reports and dashboards."
-            style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2 items-center">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Search by skill area, skill, or tool..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="field w-full h-8 text-xs"
+          />
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={existingAssessmentsLoading || existingAssessmentsFetching || isManualRefreshing}
+            className="btn-secondary flex items-center gap-1.5 px-3 h-8 text-xs font-medium shrink-0 rounded-lg"
+            title="Refresh skill rows from server"
           >
-            {savedCount} approved
-          </span>
+            <RefreshCw size={13} className={existingAssessmentsFetching || isManualRefreshing ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
         </div>
       </div>
 
@@ -1043,8 +1185,8 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
               <TableHeader label="Tool" sortKey="technology" help="The tool used for this skill." />
               <TableHeader label="Importance" sortKey="type" help="How important this tool is for the skill." />
               <TableHeader label="Projects" sortKey="projects" help="How many real projects used this tool." />
-              <PlainHeader label="Level" help="How strong the person is in this tool." />
-              <PlainHeader label="Score" help="Auto-calculated from importance, projects, and level." />
+              <TableHeader label="Level" sortKey="level" help="How strong the person is in this tool." />
+              <TableHeader label="Score" sortKey="score" help="Auto-calculated from importance, projects, and level." />
               <PlainHeader label="Actions" />
             </tr>
           </thead>
@@ -1053,18 +1195,30 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
               <tr>
                 <td colSpan={8} className="px-4 py-12 text-center text-xs" style={{ color: 'rgb(var(--text-3))' }}>
                   <p className="font-semibold text-sm mb-1" style={{ color: 'rgb(var(--text-2))' }}>
-                    No skill rows found
+                    {statusFilter === 'pending'
+                      ? 'No pending skills awaiting review'
+                      : statusFilter === 'draft'
+                        ? 'No active drafts in progress'
+                        : statusFilter === 'approved'
+                          ? 'No approved skills recorded yet'
+                          : 'No skill rows found'}
                   </p>
                   <p className="text-xs mb-3">
-                    {search ? 'Try clearing your search query.' : 'Click "+ Add Row" or "Bulk Add" below to add skills.'}
+                    {search
+                      ? 'Try clearing your search query.'
+                      : statusFilter === 'pending'
+                        ? 'All submitted skills have been reviewed and approved.'
+                        : statusFilter === 'draft'
+                          ? 'Click "+ Add Row" or "Bulk Add" below to create drafts.'
+                          : 'Click "+ Add Row" or "Bulk Add" below to add skills.'}
                   </p>
-                  {!search && (
+                  {!search && (statusFilter === 'all' || statusFilter === 'draft') && (
                     <button
                       type="button"
                       onClick={addRow}
                       className="btn-primary text-xs px-3 h-8 inline-flex items-center gap-1.5 mx-auto rounded-lg font-medium"
                     >
-                      <Plus size={14} /> Add First Skill
+                      <Plus size={14} /> Add Skill
                     </button>
                   )}
                 </td>
