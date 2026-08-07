@@ -635,10 +635,8 @@ export const CefrGradeMatrixTab: React.FC = () => {
           href="#grades"
           onClick={(e) => {
             e.preventDefault();
-            const gradesTabBtn = document.querySelector(
-              'button[title*="Career levels"]'
-            ) as HTMLButtonElement;
-            if (gradesTabBtn) gradesTabBtn.click();
+            window.location.hash = 'grades';
+            window.dispatchEvent(new CustomEvent('config-tab-change', { detail: 'grades' }));
           }}
           className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
         >
