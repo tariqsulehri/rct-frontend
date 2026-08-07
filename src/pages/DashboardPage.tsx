@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Bell,
   Search,
 } from 'lucide-react';
 import { useAuthStore, type User } from '@/store/authStore';
 import { TeamRoster } from '@/components/TeamRoster';
 import { PendingApprovalsPanel } from '@/components/PendingApprovalsPanel';
-import { ConfigSection } from '@/components/config/ConfigSection';
+import { ConfigSection, CONFIG_CATEGORIES, type ConfigTab } from '@/components/config/ConfigSection';
 import { ReportsSection } from '@/components/reports/ReportsSection';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { queryClient } from '@/lib/queryClient';
@@ -36,6 +37,8 @@ import {
 export const DashboardPage: React.FC = () => {
   const { user, logout, setUser } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>(() => defaultDashboardTabForRole(user?.role));
+  const [activeConfigTab, setActiveConfigTab] = useState<ConfigTab>('scoring');
+  const [configMenuOpen, setConfigMenuOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
@@ -184,14 +187,132 @@ export const DashboardPage: React.FC = () => {
         <aside
           className="shrink-0 flex flex-col border-r overflow-hidden transition-all duration-200"
           style={{
-            width: sidebarOpen ? '220px' : '60px',
+            width: sidebarOpen ? '250px' : '64px',
             borderColor: 'rgb(var(--border))',
             backgroundColor: 'rgb(var(--surface))',
           }}
         >
-          <nav className="flex-1 p-2 space-y-0.5 pt-3">
+          <nav className="flex-1 p-2 space-y-1 pt-3 overflow-y-auto scrollbar-none">
             {visibleNav.map(({ id, label, icon: Icon }) => {
+              const isConfig = id === 'config';
               const active = activeTab === id;
+
+              if (isConfig) {
+                return (
+                  <div key={id} className="space-y-1">
+                    {/* Setup Parent Toggle */}
+                    <button
+                      onClick={() => {
+                        setActiveTab('config');
+                        if (sidebarOpen) {
+                          setConfigMenuOpen((prev) => !prev);
+                        } else {
+                          setSidebarOpen(true);
+                          setConfigMenuOpen(true);
+                        }
+                      }}
+                      title={!sidebarOpen ? label : undefined}
+                      className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group"
+                      style={{
+                        backgroundColor: active ? 'rgb(var(--accent-soft))' : 'transparent',
+                        color: active ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))',
+                        justifyContent: sidebarOpen ? 'flex-start' : 'center',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!active) e.currentTarget.style.backgroundColor = 'rgb(var(--surface-2))';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!active) e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <Icon
+                        size={17}
+                        style={{ color: active ? 'rgb(var(--accent))' : 'rgb(var(--text-2))', flexShrink: 0 }}
+                      />
+                      {sidebarOpen && (
+                        <>
+                          <span
+                            className="truncate flex-1 text-left font-bold"
+                            style={{ color: active ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))' }}
+                          >
+                            {label}
+                          </span>
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfigMenuOpen((prev) => !prev);
+                            }}
+                            className="p-1 rounded-md hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 text-zinc-400"
+                          >
+                            {configMenuOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          </span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Expandable Category Tree (When Sidebar is Open) */}
+                    {sidebarOpen && configMenuOpen && (
+                      <div className="pl-3 pr-1 py-1 space-y-3 border-l-2 border-indigo-200 dark:border-indigo-900/60 ml-4 animate-fade-in">
+                        {CONFIG_CATEGORIES.map((category) => {
+                          const CatIcon = category.icon;
+                          return (
+                            <div key={category.id} className="space-y-1">
+                              {/* Category Header */}
+                              <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                                <CatIcon size={11} className="text-zinc-400 shrink-0" />
+                                <span className="truncate">{category.title}</span>
+                              </div>
+
+                              {/* Category Items */}
+                              <div className="space-y-0.5">
+                                {category.items.map((subItem) => {
+                                  const SubIcon = subItem.icon;
+                                  const isSubActive = activeTab === 'config' && activeConfigTab === subItem.id;
+
+                                  return (
+                                    <button
+                                      key={subItem.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveTab('config');
+                                        setActiveConfigTab(subItem.id);
+                                        window.location.hash = subItem.id;
+                                      }}
+                                      title={subItem.help}
+                                      className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-all ${
+                                        isSubActive
+                                          ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                                          : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <SubIcon size={12} className="shrink-0" />
+                                        <span className="truncate text-[11.5px]">{subItem.label}</span>
+                                      </div>
+                                      {subItem.badge && (
+                                        <span
+                                          className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                                            isSubActive
+                                              ? 'bg-indigo-800 text-indigo-100'
+                                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+                                          }`}
+                                        >
+                                          {subItem.badge}
+                                        </span>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <button
                   key={id}
@@ -234,7 +355,7 @@ export const DashboardPage: React.FC = () => {
           </nav>
 
           {/* Bottom user profile preview */}
-          <div className="p-2 border-t" style={{ borderColor: 'rgb(var(--border))' }}>
+          <div className="p-2 border-t shrink-0" style={{ borderColor: 'rgb(var(--border))' }}>
             <div
               className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl"
               style={{ backgroundColor: 'rgb(var(--surface-2))' }}
@@ -260,7 +381,15 @@ export const DashboardPage: React.FC = () => {
 
         {/* Content Area */}
         <main className={`flex-1 ${isTeamTab ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-          <div className={isTeamTab ? 'h-full w-full p-6' : 'max-w-6xl mx-auto p-6'}>
+          <div
+            className={
+              isTeamTab
+                ? 'h-full w-full p-6'
+                : activeTab === 'config'
+                ? 'w-full max-w-7xl mx-auto p-4 sm:p-6'
+                : 'max-w-6xl mx-auto p-6'
+            }
+          >
             {activeTab === 'admin' && user?.role === 'ADMIN' && (
               <AdminDashboardTab onNavigate={setActiveTab} />
             )}
@@ -292,8 +421,11 @@ export const DashboardPage: React.FC = () => {
             )}
 
             {activeTab === 'config' && user?.role === 'ADMIN' && (
-              <div className="animate-slide-up">
-                <ConfigSection />
+              <div className="animate-slide-up w-full">
+                <ConfigSection
+                  activeTab={activeConfigTab}
+                  onTabChange={(tab) => setActiveConfigTab(tab)}
+                />
               </div>
             )}
           </div>
