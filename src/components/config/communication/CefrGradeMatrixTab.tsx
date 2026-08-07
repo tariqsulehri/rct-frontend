@@ -349,14 +349,14 @@ export const CefrGradeMatrixTab: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Status Filter Pill Tabs */}
-          <div className="flex items-center p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800/80 text-[11px]">
+          <div className="flex items-center p-0.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-[11px]">
             <button
               type="button"
               onClick={() => setStatusFilter('all')}
-              className={`px-2 py-0.5 rounded font-bold transition-all ${
+              className={`px-2.5 py-1 rounded-md font-bold transition-all ${
                 statusFilter === 'all'
-                  ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-xs'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                  ? 'bg-white dark:bg-zinc-700 text-zinc-950 dark:text-white shadow-xs border border-zinc-200 dark:border-zinc-600'
+                  : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white'
               }`}
             >
               All ({matrixState.length})
@@ -364,26 +364,26 @@ export const CefrGradeMatrixTab: React.FC = () => {
             <button
               type="button"
               onClick={() => setStatusFilter('active')}
-              className={`px-2 py-0.5 rounded font-bold transition-all flex items-center gap-1 ${
+              className={`px-2.5 py-1 rounded-md font-bold transition-all flex items-center gap-1.5 ${
                 statusFilter === 'active'
-                  ? 'bg-white dark:bg-zinc-700 text-emerald-600 dark:text-emerald-400 shadow-xs'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                  ? 'bg-white dark:bg-zinc-700 text-emerald-700 dark:text-emerald-300 shadow-xs border border-zinc-200 dark:border-zinc-600'
+                  : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white'
               }`}
             >
-              <CheckCircle size={10} />
+              <CheckCircle size={11} className="text-emerald-600 dark:text-emerald-400" />
               Active ({activeCount})
             </button>
             {inactiveCount > 0 && (
               <button
                 type="button"
                 onClick={() => setStatusFilter('inactive')}
-                className={`px-2 py-0.5 rounded font-bold transition-all flex items-center gap-1 ${
+                className={`px-2.5 py-1 rounded-md font-bold transition-all flex items-center gap-1.5 ${
                   statusFilter === 'inactive'
-                    ? 'bg-white dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 shadow-xs'
-                    : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                    ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 shadow-xs border border-zinc-200 dark:border-zinc-600'
+                    : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white'
                 }`}
               >
-                <EyeOff size={10} />
+                <EyeOff size={11} />
                 Inactive ({inactiveCount})
               </button>
             )}
@@ -392,7 +392,7 @@ export const CefrGradeMatrixTab: React.FC = () => {
           <button
             type="button"
             onClick={handleOpenResetModal}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 border border-rose-200 dark:border-rose-800/60 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-300 dark:border-rose-700/80 rounded-lg transition-colors shadow-2xs"
           >
             <RefreshCw size={11} />
             Reset Baseline...
@@ -402,7 +402,7 @@ export const CefrGradeMatrixTab: React.FC = () => {
             type="button"
             onClick={handleSave}
             disabled={updateMutation.isPending || !hasUnsavedChanges}
-            className="inline-flex items-center gap-1 px-3.5 py-1 text-[11px] font-black text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-xs transition-all disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[11px] font-black text-white bg-indigo-600 hover:bg-indigo-500 border border-indigo-500 rounded-lg shadow-xs transition-all disabled:opacity-40"
           >
             <Save size={12} />
             {updateMutation.isPending ? 'Saving...' : 'Save Matrix'}
@@ -411,9 +411,9 @@ export const CefrGradeMatrixTab: React.FC = () => {
       </div>
 
       {/* Compact Threshold Reference Banner */}
-      <div className="py-2 px-3 bg-zinc-50/80 dark:bg-zinc-900/80 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-        <div className="font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+      <div className="py-2.5 px-3.5 bg-zinc-50 dark:bg-zinc-900/90 rounded-xl border border-zinc-200 dark:border-zinc-700/80 flex flex-wrap items-center justify-between gap-2 text-[11px] shadow-2xs">
+        <div className="font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
           <span>CEFR Score Bands:</span>
         </div>
         <div className="flex flex-wrap items-center gap-1 text-[10px]">
@@ -423,10 +423,10 @@ export const CefrGradeMatrixTab: React.FC = () => {
             return (
               <span
                 key={lvl}
-                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border font-mono font-bold ${color.bg} ${color.text} ${color.border}`}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-mono font-bold ${color.bg} ${color.text} ${color.border}`}
               >
                 <span>{lvl}</span>
-                <span className="text-[9px] opacity-75">
+                <span className="text-[9px] opacity-80">
                   ({info.weight.toFixed(2)} | {info.range})
                 </span>
               </span>
@@ -436,16 +436,16 @@ export const CefrGradeMatrixTab: React.FC = () => {
       </div>
 
       {/* High-Density Matrix Table */}
-      <div className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs overflow-visible">
+      <div className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-700/80 bg-white dark:bg-zinc-900 shadow-xs overflow-visible">
         <table className="w-full text-left text-xs border-collapse table-fixed">
           <thead>
-            <tr className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold uppercase text-[9.5px] tracking-wider">
-              <th className="py-2 px-3 w-[25%]">Career Grade</th>
-              <th className="py-2 px-2 w-[13%] text-center bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300">
+            <tr className="bg-zinc-50 dark:bg-zinc-800/90 border-b border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 font-bold uppercase text-[9.5px] tracking-wider">
+              <th className="py-2.5 px-3 w-[25%]">Career Grade</th>
+              <th className="py-2.5 px-2 w-[13%] text-center bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-extrabold border-x border-indigo-200/60 dark:border-indigo-800/60">
                 Baseline
               </th>
               {competencies.map((comp) => (
-                <th key={comp.key} className="py-2 px-1 w-[10.3%] text-center">
+                <th key={comp.key} className="py-2.5 px-1 w-[10.3%] text-center">
                   {comp.label}
                 </th>
               ))}

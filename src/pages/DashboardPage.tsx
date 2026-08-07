@@ -258,8 +258,8 @@ export const DashboardPage: React.FC = () => {
                           return (
                             <div key={category.id} className="space-y-1">
                               {/* Category Header */}
-                              <div className="flex items-center gap-2 px-2 py-1 text-[11px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                                <CatIcon size={13} className="text-zinc-400 dark:text-zinc-500 shrink-0" />
+                              <div className="flex items-center gap-2 px-2 py-1 text-[11px] font-black uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+                                <CatIcon size={13} className="text-zinc-500 dark:text-zinc-400 shrink-0" />
                                 <span className="truncate">{category.title}</span>
                               </div>
 
@@ -279,22 +279,22 @@ export const DashboardPage: React.FC = () => {
                                         window.location.hash = subItem.id;
                                       }}
                                       title={subItem.help}
-                                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-[13px] font-medium transition-all ${
+                                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-[13px] font-semibold transition-all ${
                                         isSubActive
                                           ? 'bg-indigo-600 text-white font-bold shadow-xs'
-                                          : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
+                                          : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-950 dark:hover:text-white'
                                       }`}
                                     >
                                       <div className="flex items-center gap-2.5 min-w-0">
-                                        <SubIcon size={14} className="shrink-0" />
+                                        <SubIcon size={14} className={isSubActive ? 'text-white' : 'text-zinc-500 dark:text-zinc-400'} />
                                         <span className="truncate">{subItem.label}</span>
                                       </div>
                                       {subItem.badge && (
                                         <span
-                                          className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                                          className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
                                             isSubActive
-                                              ? 'bg-indigo-800 text-indigo-100'
-                                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+                                              ? 'bg-indigo-700 text-indigo-100 border-indigo-400/40'
+                                              : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700'
                                           }`}
                                         >
                                           {subItem.badge}

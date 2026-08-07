@@ -98,24 +98,24 @@ const CEFR_RUBRICS: LevelRubric[] = [
     label: 'Advanced / Strategic Fluency',
     weight: 0.83,
     scoreRange: '0.75 – 0.91',
-    targetGrades: 'Engineering Manager (G17) / Staff Engineer',
-    summary: 'Can express ideas fluently, negotiate complex stakeholder priorities, and lead strategic engineering reviews.',
+    targetGrades: 'Staff Engineer (G17) / Principal (G18)',
+    summary: 'Can express ideas fluently and spontaneously, formulate complex technical strategies, and persuade executive stakeholders.',
     writtenBehaviors: [
-      'Authors multi-quarter technical roadmaps and business-case proposals.',
-      'Creates company-wide architectural standards and security governance guidelines.',
+      'Authors multi-year cloud architecture visions and engineering governance charters.',
+      'Publishes authoritative engineering blogs, patents, and system whitepapers.',
     ],
     spokenBehaviors: [
-      'Delivers compelling presentations to non-technical executive stakeholders.',
-      'Facilitates high-stakes technical alignment meetings across multiple teams.',
+      'Leads executive architecture review boards (ARBs) and steering committees.',
+      'Represents the technology organization in external vendor negotiations and keynotes.',
     ],
     leadershipBehaviors: [
-      'Translates engineering constraints into business ROI and risk mitigations.',
-      'Resolves deep cross-organizational conflict and drives unified consensus.',
+      'Builds consensus across multi-department engineering leaders on critical initiatives.',
+      'Champions organizational quality, performance, and security culture across all squads.',
     ],
   },
   {
     code: 'C2',
-    label: 'Proficiency / Executive Mastery',
+    label: 'Mastery / Organizational Authority',
     weight: 1.00,
     scoreRange: '0.92 – 1.00',
     targetGrades: 'Director (G19) / VP / C-Level',
@@ -138,12 +138,12 @@ export const CefrRubricsTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+      <div className="bg-white dark:bg-zinc-900 p-4.5 rounded-2xl border border-zinc-200 dark:border-zinc-700/80 shadow-xs">
         <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
           <BookOpen size={16} className="text-indigo-600 dark:text-indigo-400" />
           <span>CEFR Level Rubrics & Engineering Behavioral Indicators</span>
         </h3>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+        <p className="text-xs text-zinc-600 dark:text-zinc-300 font-medium mt-0.5">
           Detailed standards mapping CEFR linguistic criteria into observable DevOps, software engineering, and technical leadership behaviors.
         </p>
       </div>
@@ -153,49 +153,49 @@ export const CefrRubricsTab: React.FC = () => {
         {CEFR_RUBRICS.map((rubric) => (
           <div
             key={rubric.code}
-            className="card p-5 space-y-4 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm"
+            className="p-5 space-y-4 rounded-2xl border border-zinc-200 dark:border-zinc-700/80 bg-white dark:bg-zinc-900 shadow-xs"
           >
             {/* Top Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-3.5">
               <div className="flex items-center gap-3">
                 <CefrLevelBadge level={rubric.code} size="lg" />
                 <div>
                   <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-100">
                     {rubric.label}
                   </h4>
-                  <div className="text-xs text-zinc-500 mt-0.5">
-                    Targeted Career Grades: <strong className="text-zinc-700 dark:text-zinc-300">{rubric.targetGrades}</strong>
+                  <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Targeted Career Grades: <strong className="text-zinc-800 dark:text-zinc-200 font-bold">{rubric.targetGrades}</strong>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 self-start sm:self-auto">
-                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-300 dark:border-zinc-700">
                   Weight: {rubric.weight.toFixed(2)}
                 </span>
-                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300">
+                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/80">
                   Score Range: {rubric.scoreRange}
                 </span>
               </div>
             </div>
 
             {/* Global Summary */}
-            <p className="text-xs text-zinc-700 dark:text-zinc-300 italic bg-zinc-50/70 dark:bg-zinc-800/40 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800/80">
-              "{rubric.summary}"
+            <p className="text-xs text-zinc-800 dark:text-zinc-200 italic bg-zinc-50 dark:bg-zinc-800/60 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-700/70 font-medium">
+              &quot;{rubric.summary}&quot;
             </p>
 
             {/* 3 Pillars Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 text-xs">
               {/* Written */}
-              <div className="p-3 rounded-xl border border-zinc-100 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-900/40 space-y-2">
-                <div className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400">
-                  <Code2 size={13} />
-                  Written & Documentation
+              <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-700/80 bg-zinc-50/70 dark:bg-zinc-800/40 space-y-2.5">
+                <div className="font-bold flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400">
+                  <Code2 size={14} />
+                  <span>Written & Documentation</span>
                 </div>
-                <ul className="space-y-1.5 text-zinc-600 dark:text-zinc-400 text-[11px] leading-relaxed">
+                <ul className="space-y-2 text-zinc-700 dark:text-zinc-300 text-[11px] leading-relaxed">
                   {rubric.writtenBehaviors.map((b, i) => (
-                    <li key={i} className="flex items-start gap-1.5">
-                      <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />
+                    <li key={i} className="flex items-start gap-2">
+                      <CheckCircle2 size={13} className="text-emerald-500 shrink-0 mt-0.5" />
                       <span>{b}</span>
                     </li>
                   ))}
@@ -203,15 +203,15 @@ export const CefrRubricsTab: React.FC = () => {
               </div>
 
               {/* Spoken */}
-              <div className="p-3 rounded-xl border border-zinc-100 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-900/40 space-y-2">
-                <div className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400">
-                  <Users size={13} />
-                  Spoken & Meeting Cadence
+              <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-700/80 bg-zinc-50/70 dark:bg-zinc-800/40 space-y-2.5">
+                <div className="font-bold flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400">
+                  <Users size={14} />
+                  <span>Spoken & Meeting Cadence</span>
                 </div>
-                <ul className="space-y-1.5 text-zinc-600 dark:text-zinc-400 text-[11px] leading-relaxed">
+                <ul className="space-y-2 text-zinc-700 dark:text-zinc-300 text-[11px] leading-relaxed">
                   {rubric.spokenBehaviors.map((b, i) => (
-                    <li key={i} className="flex items-start gap-1.5">
-                      <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />
+                    <li key={i} className="flex items-start gap-2">
+                      <CheckCircle2 size={13} className="text-emerald-500 shrink-0 mt-0.5" />
                       <span>{b}</span>
                     </li>
                   ))}
@@ -219,15 +219,15 @@ export const CefrRubricsTab: React.FC = () => {
               </div>
 
               {/* Leadership & Impact */}
-              <div className="p-3 rounded-xl border border-zinc-100 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-900/40 space-y-2">
-                <div className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400">
-                  <Layers size={13} />
-                  Leadership & Cross-Functional
+              <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-700/80 bg-zinc-50/70 dark:bg-zinc-800/40 space-y-2.5">
+                <div className="font-bold flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400">
+                  <Layers size={14} />
+                  <span>Leadership & Cross-Functional</span>
                 </div>
-                <ul className="space-y-1.5 text-zinc-600 dark:text-zinc-400 text-[11px] leading-relaxed">
+                <ul className="space-y-2 text-zinc-700 dark:text-zinc-300 text-[11px] leading-relaxed">
                   {rubric.leadershipBehaviors.map((b, i) => (
-                    <li key={i} className="flex items-start gap-1.5">
-                      <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />
+                    <li key={i} className="flex items-start gap-2">
+                      <CheckCircle2 size={13} className="text-emerald-500 shrink-0 mt-0.5" />
                       <span>{b}</span>
                     </li>
                   ))}

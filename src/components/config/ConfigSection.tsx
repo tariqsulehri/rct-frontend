@@ -283,11 +283,11 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
 
   return (
     <div className="space-y-4 animate-slide-up w-full">
-      {/* Top Header Bar */}
-      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xs space-y-3">
+      {/* Top Header Card */}
+      <div className="bg-white dark:bg-zinc-900 p-4.5 rounded-2xl border border-zinc-200 dark:border-zinc-700/80 shadow-xs space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/60 shrink-0">
+            <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80 shrink-0">
               <ActiveIcon size={20} />
             </div>
             <div>
@@ -310,7 +310,7 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5 font-medium">
                 {activeMeta.item.help}
               </p>
             </div>
@@ -320,23 +320,23 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
           <div className="relative w-full sm:w-64 shrink-0">
             <Search
               size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none"
             />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search configuration..."
-              className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+              className="w-full pl-8 pr-3 py-2 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500"
             />
           </div>
         </div>
 
         {/* If Search Active: Show Flat Search Results */}
         {searchResults ? (
-          <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap gap-1.5">
+          <div className="pt-2.5 border-t border-zinc-200 dark:border-zinc-800 flex flex-wrap gap-1.5">
             {searchResults.length === 0 ? (
-              <span className="text-xs text-zinc-400 py-1">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400 py-1">
                 No configurations match &quot;{searchQuery}&quot;
               </span>
             ) : (
@@ -351,10 +351,10 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
                       handleSelectTab(item.id);
                       setSearchQuery('');
                     }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                       isSelected
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white'
                     }`}
                   >
                     <Icon size={13} />
@@ -367,9 +367,9 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
           </div>
         ) : (
           /* Normal Category Horizontal Tabs Bar */
-          <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
+          <div className="pt-2.5 border-t border-zinc-200 dark:border-zinc-800 space-y-2.5">
             {/* Category Level 1 Switcher */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
               {CONFIG_CATEGORIES.map((cat) => {
                 const isCurrentCategory = activeCategory.id === cat.id;
                 const CatIcon = cat.icon;
@@ -378,24 +378,23 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
                     key={cat.id}
                     type="button"
                     onClick={() => {
-                      // switch to the first item in this category if switching category
                       if (!isCurrentCategory) {
                         handleSelectTab(cat.items[0].id);
                       }
                     }}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border ${
                       isCurrentCategory
-                        ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-xs'
-                        : 'bg-zinc-100 dark:bg-zinc-800/70 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
+                        ? 'bg-indigo-600 dark:bg-indigo-600 text-white border-indigo-500 shadow-xs'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 border-zinc-300/80 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white'
                     }`}
                   >
                     <CatIcon size={14} />
                     <span>{cat.title}</span>
                     <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-normal ${
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border ${
                         isCurrentCategory
-                          ? 'bg-zinc-700 dark:bg-zinc-300 text-zinc-100 dark:text-zinc-900'
-                          : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400'
+                          ? 'bg-indigo-700/80 text-indigo-100 border-indigo-400/40'
+                          : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-200 border-zinc-300 dark:border-zinc-600'
                       }`}
                     >
                       {cat.items.length}
@@ -406,7 +405,7 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
             </div>
 
             {/* Category Level 2 Sub-Item Switcher */}
-            <div className="flex items-center gap-1 overflow-x-auto pt-1 pb-0.5 scrollbar-none">
+            <div className="flex items-center gap-1.5 overflow-x-auto pt-1 pb-0.5 scrollbar-none">
               {activeCategory.items.map((item) => {
                 const isCurrentItem = currentTab === item.id;
                 const ItemIcon = item.icon;
@@ -416,10 +415,10 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
                     type="button"
                     onClick={() => handleSelectTab(item.id)}
                     title={item.help}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 ${
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs transition-all shrink-0 border ${
                       isCurrentItem
-                        ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-100 font-bold border border-indigo-200 dark:border-indigo-800/80 shadow-2xs'
-                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-100 border border-transparent'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-200 font-bold border-indigo-300 dark:border-indigo-600/80 shadow-2xs'
+                        : 'bg-zinc-100/70 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-200 font-semibold border-zinc-200 dark:border-zinc-700/80 hover:bg-zinc-200/80 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white'
                     }`}
                   >
                     <ItemIcon
@@ -427,7 +426,7 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
                       className={
                         isCurrentItem
                           ? 'text-indigo-600 dark:text-indigo-400'
-                          : 'text-zinc-400 dark:text-zinc-500'
+                          : 'text-zinc-500 dark:text-zinc-400'
                       }
                     />
                     <span>{item.label}</span>
