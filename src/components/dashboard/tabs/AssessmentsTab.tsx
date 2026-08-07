@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, RefreshCw } from 'lucide-react';
+import { Search, RefreshCw, BarChart3, ListChecks, MessageSquareText } from 'lucide-react';
 import {
   ResponsiveContainer,
   RadarChart,
@@ -18,6 +18,7 @@ import { toast } from '@/lib/toast';
 import { hasPermission, isLeaderRole } from '@/types/rbac';
 import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
 import { SkillAreaNameFilterSelect } from '@/components/filters/TaxonomyFilterSelects';
+import { CommunicationAssessmentView } from '@/components/communication/CommunicationAssessmentView';
 import { InfoTip } from '../layout/InfoTip';
 import { TabType } from '../types';
 
@@ -88,6 +89,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   const [competencyDomainFilter, setCompetencyDomainFilter] = useState('all');
   const [competencyStatusFilter, setCompetencyStatusFilter] = useState('all');
   const [competencyCriticalFilter, setCompetencyCriticalFilter] = useState('all');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'competencies' | 'communication'>('overview');
 
   const rows = compData ?? [];
   const [selectedEmpCode, setSelectedEmpCode] = useState<string | null>(null);
@@ -396,26 +398,63 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
         </div>
       </div>
 
-      {/* Engineers: manage their own skill list */}
-      {!isPrivileged && user?.empCode && (
-        <div className="card p-5 flex items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold text-sm" style={{ color: 'rgb(var(--text-1))' }}>
-              My Skills
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-3))' }}>
-              Add or update your skills and tools. Your manager will set skill levels. Your saved rows appear as pending
-              until approved.
-            </p>
-          </div>
-          <button type="button" onClick={() => setShowSkillEditor(true)} className="btn-primary text-xs shrink-0">
-            Manage My Skills
-          </button>
-        </div>
+      {/* Clean Segmented 3-Sub-Tab Switcher */}
+      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 w-fit flex-wrap">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('overview')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeSubTab === 'overview'
+              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-zinc-700/80'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+          }`}
+        >
+          <BarChart3 size={15} />
+          <span>Overview & Radar</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('competencies')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeSubTab === 'competencies'
+              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-zinc-700/80'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+          }`}
+        >
+          <ListChecks size={15} />
+          <span>Technical Competencies ({competencyRows.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('communication')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeSubTab === 'communication'
+              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-zinc-700/80'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+          }`}
+        >
+          <MessageSquareText size={15} />
+          <span>CEFR Communication</span>
+        </button>
+      </div>
+
+      {/* ── Sub-Tab 3: CEFR Communication ─────────────────────────────────── */}
+      {activeSubTab === 'communication' && effectiveEmpCode && (
+        <CommunicationAssessmentView
+          employeeId={effectiveEmpCode}
+          employeeName={myRow?.full_name || user?.employeeName || 'Employee'}
+          currentGradeCode={myRow?.current_grade}
+          currentGradeTitle={myRow?.current_grade_title}
+        />
       )}
 
-      {/* KPI strip — status, meets, stars, required */}
-      {promoRow && (
+      {/* ── Sub-Tab 1: Overview & Radar ────────────────────────────────────── */}
+      {activeSubTab === 'overview' && (
+        <>
+          {/* KPI strip — status, meets, stars, required */}
+          {promoRow && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="card p-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
@@ -654,39 +693,62 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
           </div>
         </div>
       </div>
+      </>
+      )}
 
-      {/* Full competency progress */}
-      {competencyRows.length > 0 && (
-        <div className="card p-5">
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <div>
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-2))' }}>
-                  All Competencies
+      {/* ── Sub-Tab 2: Technical Competencies ──────────────────────────────── */}
+      {activeSubTab === 'competencies' && (
+        <>
+          {/* Engineers: manage their own skill list */}
+          {!isPrivileged && user?.empCode && (
+            <div className="card p-5 flex items-center justify-between gap-4">
+              <div>
+                <p className="font-semibold text-sm" style={{ color: 'rgb(var(--text-1))' }}>
+                  My Skills
                 </p>
-                <InfoTip text="Shows every competency for the selected target grade, including zero scores." />
+                <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-3))' }}>
+                  Add or update your skills and tools. Your manager will set skill levels. Your saved rows appear as pending
+                  until approved.
+                </p>
               </div>
-              <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
-                Full skill view for the selected person.
-              </p>
+              <button type="button" onClick={() => setShowSkillEditor(true)} className="btn-primary text-xs shrink-0">
+                Manage My Skills
+              </button>
             </div>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
-              <span
-                className="text-xs font-bold rounded-full px-2.5 py-1 shrink-0"
-                style={{ color: 'rgb(var(--accent-txt))', backgroundColor: 'rgb(var(--accent-soft))' }}
-              >
-                {filteredCompetencyRows.length} / {competencyRows.length}
-              </span>
-              {promoRow && (
-                <span
-                  className="text-xs font-bold rounded-full px-2.5 py-1 shrink-0"
-                  style={{ color: 'rgb(var(--success))', backgroundColor: 'rgb(var(--success-soft))' }}
-                >
-                  {promoRow.meets_count} / {promoRow.total_competencies} met
-                </span>
-              )}
-            </div>
-          </div>
+          )}
+
+          {/* Full competency progress */}
+          {competencyRows.length > 0 && (
+            <div className="card p-5">
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-2))' }}>
+                      All Competencies
+                    </p>
+                    <InfoTip text="Shows every competency for the selected target grade, including zero scores." />
+                  </div>
+                  <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
+                    Full skill view for the selected person.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  <span
+                    className="text-xs font-bold rounded-full px-2.5 py-1 shrink-0"
+                    style={{ color: 'rgb(var(--accent-txt))', backgroundColor: 'rgb(var(--accent-soft))' }}
+                  >
+                    {filteredCompetencyRows.length} / {competencyRows.length}
+                  </span>
+                  {promoRow && (
+                    <span
+                      className="text-xs font-bold rounded-full px-2.5 py-1 shrink-0"
+                      style={{ color: 'rgb(var(--success))', backgroundColor: 'rgb(var(--success-soft))' }}
+                    >
+                      {promoRow.meets_count} / {promoRow.total_competencies} met
+                    </span>
+                  )}
+                </div>
+              </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
             <div
@@ -951,6 +1013,8 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
             )}
           </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Skill editor modal for engineers */}

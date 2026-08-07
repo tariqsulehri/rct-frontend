@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Award, Building2, Calendar, Cpu, Layers, Network, Settings, ShieldCheck, Tag, User, Users, Zap } from 'lucide-react';
+import { MessageSquareText, Award, Building2, Calendar, Cpu, Layers, Network, Settings, ShieldCheck, Tag, User, Users, Zap } from 'lucide-react';
 import SkillTaxonomyView from './SkillTaxonomyView';
 import { AccessManagementSection } from './access/AccessManagementSection';
 import { DepartmentsSection } from './organization/DepartmentsSection';
@@ -7,17 +7,19 @@ import { EmployeesSection } from './organization/EmployeesSection';
 import { GradesSection } from './organization/GradesSection';
 import { UsersSection } from './organization/UsersSection';
 import { ScoringConfigSection } from './scoring/ScoringConfigSection';
+import { CefrBenchmarksSection } from './communication/CefrBenchmarksSection';
 import { CategoriesSection } from './taxonomy/CategoriesSection';
 import { CompetenciesSection } from './taxonomy/CompetenciesSection';
 import { SkillDomainsSection } from './taxonomy/SkillDomainsSection';
 import { TechnologiesSection } from './taxonomy/TechnologiesSection';
 import { EvaluationPeriodsSection } from './periods/EvaluationPeriodsSection';
 
-type ConfigTab = 'scoring' | 'periods' | 'access' | 'departments' | 'employees' | 'users' | 'grades' | 'skill-domains' | 'competencies' | 'technologies' | 'categories' | 'skill-map';
+type ConfigTab = 'scoring' | 'cefr-benchmarks' | 'periods' | 'access' | 'departments' | 'employees' | 'users' | 'grades' | 'skill-domains' | 'competencies' | 'technologies' | 'categories' | 'skill-map';
 
 const CONFIG_TABS: Array<{ id: ConfigTab; label: string; help: string; icon: React.ElementType }> = [
-  { id: 'scoring',      label: 'Scoring',            help: 'Rules used to count skill scores.', icon: Settings },
-  { id: 'periods',      label: 'Evaluation Periods', help: 'Set up review cycles and years (e.g. 2024, 2025, 2026).', icon: Calendar },
+  { id: 'scoring',          label: 'Scoring',            help: 'Rules used to count skill scores.', icon: Settings },
+  { id: 'cefr-benchmarks',  label: 'CEFR Benchmarks',    help: 'Set up grade-wise communication benchmarks and promotion rules.', icon: MessageSquareText },
+  { id: 'periods',          label: 'Evaluation Periods', help: 'Set up review cycles and years (e.g. 2024, 2025, 2026).', icon: Calendar },
   { id: 'access',       label: 'Access',             help: 'Who can open each part of the app.', icon: ShieldCheck },
   { id: 'departments',   label: 'Departments',         help: 'Company groups for employees.', icon: Building2 },
   { id: 'employees',     label: 'Employees',           help: 'People whose skills and readiness are tracked.', icon: Users },
@@ -66,8 +68,9 @@ export const ConfigSection: React.FC = () => {
 
       {/* Content */}
       <div>
-        {activeTab === 'scoring'       && <ScoringConfigSection />}
-        {activeTab === 'periods'       && <EvaluationPeriodsSection />}
+        {activeTab === 'scoring'          && <ScoringConfigSection />}
+        {activeTab === 'cefr-benchmarks'  && <CefrBenchmarksSection />}
+        {activeTab === 'periods'          && <EvaluationPeriodsSection />}
         {activeTab === 'access'        && <AccessManagementSection />}
         {activeTab === 'departments'   && <DepartmentsSection />}
         {activeTab === 'employees'     && <EmployeesSection />}
