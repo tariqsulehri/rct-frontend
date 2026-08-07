@@ -187,19 +187,19 @@ export const DashboardPage: React.FC = () => {
         <aside
           className="shrink-0 flex flex-col border-r overflow-hidden transition-all duration-200"
           style={{
-            width: sidebarOpen ? '250px' : '64px',
+            width: sidebarOpen ? '285px' : '68px',
             borderColor: 'rgb(var(--border))',
             backgroundColor: 'rgb(var(--surface))',
           }}
         >
-          <nav className="flex-1 p-2 space-y-1 pt-3 overflow-y-auto scrollbar-none">
+          <nav className="flex-1 p-2.5 space-y-1 pt-3.5 overflow-y-auto scrollbar-none">
             {visibleNav.map(({ id, label, icon: Icon }) => {
               const isConfig = id === 'config';
               const active = activeTab === id;
 
               if (isConfig) {
                 return (
-                  <div key={id} className="space-y-1">
+                  <div key={id} className="space-y-1.5">
                     {/* Setup Parent Toggle */}
                     <button
                       onClick={() => {
@@ -212,7 +212,7 @@ export const DashboardPage: React.FC = () => {
                         }
                       }}
                       title={!sidebarOpen ? label : undefined}
-                      className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group"
+                      className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all duration-150 group"
                       style={{
                         backgroundColor: active ? 'rgb(var(--accent-soft))' : 'transparent',
                         color: active ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))',
@@ -226,13 +226,13 @@ export const DashboardPage: React.FC = () => {
                       }}
                     >
                       <Icon
-                        size={17}
+                        size={19}
                         style={{ color: active ? 'rgb(var(--accent))' : 'rgb(var(--text-2))', flexShrink: 0 }}
                       />
                       {sidebarOpen && (
                         <>
                           <span
-                            className="truncate flex-1 text-left font-bold"
+                            className="truncate flex-1 text-left font-bold text-[14px]"
                             style={{ color: active ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))' }}
                           >
                             {label}
@@ -244,7 +244,7 @@ export const DashboardPage: React.FC = () => {
                             }}
                             className="p-1 rounded-md hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 text-zinc-400"
                           >
-                            {configMenuOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            {configMenuOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                           </span>
                         </>
                       )}
@@ -252,19 +252,19 @@ export const DashboardPage: React.FC = () => {
 
                     {/* Expandable Category Tree (When Sidebar is Open) */}
                     {sidebarOpen && configMenuOpen && (
-                      <div className="pl-3 pr-1 py-1 space-y-3 border-l-2 border-indigo-200 dark:border-indigo-900/60 ml-4 animate-fade-in">
+                      <div className="pl-3.5 pr-1 py-1 space-y-3.5 border-l-2 border-indigo-300 dark:border-indigo-800 ml-4 animate-fade-in">
                         {CONFIG_CATEGORIES.map((category) => {
                           const CatIcon = category.icon;
                           return (
                             <div key={category.id} className="space-y-1">
                               {/* Category Header */}
-                              <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                                <CatIcon size={11} className="text-zinc-400 shrink-0" />
+                              <div className="flex items-center gap-2 px-2 py-1 text-[11px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                                <CatIcon size={13} className="text-zinc-400 dark:text-zinc-500 shrink-0" />
                                 <span className="truncate">{category.title}</span>
                               </div>
 
                               {/* Category Items */}
-                              <div className="space-y-0.5">
+                              <div className="space-y-1">
                                 {category.items.map((subItem) => {
                                   const SubIcon = subItem.icon;
                                   const isSubActive = activeTab === 'config' && activeConfigTab === subItem.id;
@@ -279,19 +279,19 @@ export const DashboardPage: React.FC = () => {
                                         window.location.hash = subItem.id;
                                       }}
                                       title={subItem.help}
-                                      className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-all ${
+                                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-[13px] font-medium transition-all ${
                                         isSubActive
                                           ? 'bg-indigo-600 text-white font-bold shadow-xs'
                                           : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
                                       }`}
                                     >
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <SubIcon size={12} className="shrink-0" />
-                                        <span className="truncate text-[11.5px]">{subItem.label}</span>
+                                      <div className="flex items-center gap-2.5 min-w-0">
+                                        <SubIcon size={14} className="shrink-0" />
+                                        <span className="truncate">{subItem.label}</span>
                                       </div>
                                       {subItem.badge && (
                                         <span
-                                          className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                                          className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
                                             isSubActive
                                               ? 'bg-indigo-800 text-indigo-100'
                                               : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
@@ -318,7 +318,7 @@ export const DashboardPage: React.FC = () => {
                   key={id}
                   onClick={() => setActiveTab(id)}
                   title={!sidebarOpen ? label : undefined}
-                  className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group"
+                  className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all duration-150 group"
                   style={{
                     backgroundColor: active ? 'rgb(var(--accent-soft))' : 'transparent',
                     color: active ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))',
@@ -332,12 +332,12 @@ export const DashboardPage: React.FC = () => {
                   }}
                 >
                   <Icon
-                    size={17}
+                    size={19}
                     style={{ color: active ? 'rgb(var(--accent))' : 'rgb(var(--text-2))', flexShrink: 0 }}
                   />
                   {sidebarOpen && (
                     <span
-                      className="truncate"
+                      className="truncate text-[14px]"
                       style={{ color: active ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))' }}
                     >
                       {label}
@@ -345,7 +345,7 @@ export const DashboardPage: React.FC = () => {
                   )}
                   {active && sidebarOpen && (
                     <div
-                      className="ml-auto w-1.5 h-1.5 rounded-full"
+                      className="ml-auto w-2 h-2 rounded-full"
                       style={{ backgroundColor: 'rgb(var(--accent))' }}
                     />
                   )}
@@ -355,19 +355,19 @@ export const DashboardPage: React.FC = () => {
           </nav>
 
           {/* Bottom user profile preview */}
-          <div className="p-2 border-t shrink-0" style={{ borderColor: 'rgb(var(--border))' }}>
+          <div className="p-3 border-t shrink-0" style={{ borderColor: 'rgb(var(--border))' }}>
             <div
-              className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl"
+              className="flex items-center gap-3 px-3 py-2 rounded-xl"
               style={{ backgroundColor: 'rgb(var(--surface-2))' }}
             >
               <div
-                className={`w-7 h-7 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-xs font-bold shrink-0`}
+                className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-2xs`}
               >
                 {initials}
               </div>
               {sidebarOpen && (
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold truncate" style={{ color: 'rgb(var(--text-1))' }}>
+                  <p className="text-sm font-bold truncate" style={{ color: 'rgb(var(--text-1))' }}>
                     {displayName}
                   </p>
                   <p className="text-xs truncate" style={{ color: 'rgb(var(--text-3))' }}>
