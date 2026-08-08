@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList, Legend, ReferenceLine } from 'recharts';
 import { useGapAnalysis, usePromotionReadiness, useCompetencyScores } from '@/hooks/useReports';
-import { useChartColors, tooltipStyle } from '@/lib/chartColors';
+import { useChartColors } from '@/lib/chartColors';
 import { Empty, GapResult, InfoTip, Loading } from '../shared';
 import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 
@@ -100,11 +99,7 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
     ? Math.round(promoRow.avg_threshold * 100)
     : null;
 
-  const summaryChartData = [
-    { label: 'Overall Score', value: overallScorePct, fill: c.accent },
-    { label: 'Meets Checked', value: meetsCheckedPct, fill: c.success },
-    { label: 'Needed Score', value: thresholdPct ?? 0, fill: c.warning },
-  ];
+
 
   const domainChartData = domainRows.slice(0, 10).map((d) => ({
     domain: d.domain.length > 14 ? `${d.domain.slice(0, 14)}…` : d.domain,
@@ -417,116 +412,159 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="rounded-lg border p-3" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
-              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'rgb(var(--text-2))' }}>
-                Result Snapshot
-              </p>
-              <p className="text-xs mb-2" style={{ color: 'rgb(var(--text-3))' }}>
-                Overall score and skills completed against the required score
-              </p>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={summaryChartData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: c.text }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: c.text }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={tooltipStyle(c)} formatter={(value: number) => [`${value}%`, 'Value']} />
-                  <Bar dataKey="value" radius={[5, 5, 0, 0]} maxBarSize={48}>
-                    {summaryChartData.map((entry, idx) => <Cell key={idx} fill={entry.fill} />)}
-                    <LabelList dataKey="value" position="top" formatter={(v: number) => `${v}%`} style={{ fontSize: 10, fill: c.text }} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            {/* 1. Result Snapshot */}
+            <div className="rounded-xl border p-4 space-y-4" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Result Snapshot & Score Gauge
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                  Overall score and competencies passed against the target requirement
+                </p>
+              </div>
+
+              {/* Achieved Score Progress Bar */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-slate-700 dark:text-slate-200">Overall Achieved Score</span>
+                  <span className="font-bold text-indigo-600 dark:text-indigo-400">{overallScorePct}%</span>
+                </div>
+                <div className="relative w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, overallScorePct)}%` }}
+                  />
+                  {thresholdPct !== null && (
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-amber-500 z-10"
+                      style={{ left: `${Math.min(100, thresholdPct)}%` }}
+                      title={`Target Required Score: ${thresholdPct}%`}
+                    />
+                  )}
+                </div>
+                {thresholdPct !== null && (
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>0%</span>
+                    <span className="font-semibold text-amber-600 dark:text-amber-400">
+                      Target Threshold: {thresholdPct}%
+                    </span>
+                    <span>100%</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Skills Met Ratio Progress Bar */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-slate-700 dark:text-slate-200">Competencies Passed</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    {gapResult.meets_count} / {gapResult.total_competencies} ({meetsCheckedPct}%)
+                  </span>
+                </div>
+                <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, meetsCheckedPct)}%` }}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="rounded-lg border p-3" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
-              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'rgb(var(--text-2))' }}>
-                Skill Area Scores
-              </p>
-              <p className="text-xs mb-2" style={{ color: 'rgb(var(--text-3))' }}>
-                Top skill areas ranked by current score
-              </p>
+            {/* 2. Skill Area Scores */}
+            <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Skill Area Scores (Ranked)
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                  Technology domains ordered by current mastery
+                </p>
+              </div>
+
               {domainChartData.length === 0 ? (
-                <p className="text-xs py-6 text-center" style={{ color: 'rgb(var(--text-3))' }}>No domain score data available.</p>
+                <p className="text-xs py-8 text-center text-slate-400">No domain score data available.</p>
               ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={domainChartData} layout="vertical" margin={{ top: 4, right: 28, bottom: 4, left: 8 }}>
-                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: c.text }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
-                    <YAxis type="category" dataKey="domain" width={120} tick={{ fontSize: 9, fill: c.text }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        const d = payload[0].payload;
-                        const thr = thresholdPct ?? 0;
-                        const meets = thresholdPct !== null && d.score >= thresholdPct;
-                        return (
-                          <div style={tooltipStyle(c)}>
-                            <p className="font-semibold text-xs mb-1" style={{ color: c.accent }}>{d.fullDomain}</p>
-                            <p style={{ color: c.text }}>Score: {d.score}%</p>
-                            {thresholdPct !== null && <p style={{ color: meets ? c.success : c.danger }}>Needed: {thr}% ({meets ? '✓ Meets' : '✗ Below'})</p>}
-                          </div>
-                        );
-                      }}
-                    />
-                    <Bar dataKey="score" radius={[0, 6, 6, 0]} maxBarSize={18}>
-                      {domainChartData.map((d, i) => {
-                        const meets = thresholdPct !== null && d.score >= thresholdPct;
-                        return <Cell key={`domain-bar-${i}`} fill={meets ? c.success : c.accent} />;
-                      })}
-                    </Bar>
-                    {thresholdPct !== null && (
-                      <ReferenceLine
-                        x={thresholdPct}
-                        stroke={c.warning}
-                        strokeDasharray="4 3"
-                        strokeWidth={1.5}
-                        label={{
-                          value: `${thresholdPct}%`,
-                          position: 'insideTopRight',
-                          fill: c.warning,
-                          fontSize: 9,
-                          fontWeight: 600,
-                        }}
-                      />
-                    )}
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
+                  {domainChartData.map((d) => {
+                    const meets = thresholdPct !== null && d.score >= thresholdPct;
+
+                    return (
+                      <div key={d.fullDomain} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 truncate pr-2">
+                            {d.fullDomain}
+                          </span>
+                          <span className={`font-bold shrink-0 ${meets ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                            {d.score}%
+                          </span>
+                        </div>
+                        <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              meets
+                                ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                                : 'bg-gradient-to-r from-indigo-500 to-sky-400'
+                            }`}
+                            style={{ width: `${Math.min(100, d.score)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
 
-          <div className="rounded-lg border p-3" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
-              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'rgb(var(--text-2))' }}>
-              Top Skill Gaps (Current vs Required)
-            </p>
-            <p className="text-xs mb-2" style={{ color: 'rgb(var(--text-3))' }}>
-              Where development effort is most needed
-            </p>
+          {/* 3. Top Skill Gaps (Current vs Required) */}
+          <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Top Skill Gaps (Current vs Target Requirement)
+              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                Priority development areas ranked by required growth
+              </p>
+            </div>
+
             {gapChartData.length === 0 ? (
-              <p className="text-xs py-6 text-center" style={{ color: 'rgb(var(--success))' }}>No open gaps. This person meets the target skills.</p>
+              <p className="text-xs py-6 text-center text-emerald-600 font-medium">
+                ✓ No open gaps. This person meets all target skill requirements!
+              </p>
             ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={gapChartData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }} barCategoryGap="18%">
-                  <XAxis dataKey="skill" tick={{ fontSize: 9, fill: c.text }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: c.text }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    cursor={{ fill: c.grid, opacity: 0.2 }}
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null;
-                      const d = payload[0].payload;
-                      return (
-                        <div style={tooltipStyle(c)}>
-                          <p className="font-semibold text-xs mb-1" style={{ color: c.warning }}>{d.fullSkill}</p>
-                          <p style={{ color: c.text }}>Current: {d.score}%</p>
-                          <p style={{ color: c.text }}>Needed: {d.target}%</p>
-                          <p style={{ color: c.danger }}>Gap: {d.gap}%</p>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: c.text, fontSize: 11 }}>{v}</span>} />
-                  <Bar dataKey="score" name="Current Score %" fill={c.warning} radius={[4, 4, 0, 0]} maxBarSize={26} />
-                  <Bar dataKey="target" name="Target Score %" fill={c.success} radius={[4, 4, 0, 0]} maxBarSize={26} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="space-y-3">
+                {gapChartData.map((g) => (
+                  <div key={g.fullSkill} className="p-2.5 bg-slate-50/60 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-900 dark:text-white truncate">
+                        {g.fullSkill}
+                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-slate-500 text-[11px]">
+                          Current: <strong className="text-amber-600">{g.score}%</strong> / Target: <strong className="text-indigo-600">{g.target}%</strong>
+                        </span>
+                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200">
+                          Gap: -{g.gap}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Dual Track Bar */}
+                    <div className="relative w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      {/* Target Indicator Fill */}
+                      <div
+                        className="absolute top-0 bottom-0 left-0 bg-indigo-200 dark:bg-indigo-900/60 rounded-full"
+                        style={{ width: `${Math.min(100, g.target)}%` }}
+                      />
+                      {/* Current Score Fill */}
+                      <div
+                        className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-amber-500 to-orange-400 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, g.score)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
