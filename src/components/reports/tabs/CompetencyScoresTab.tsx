@@ -167,7 +167,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
     : null;
 
   const radarData = visibleComps.map((comp) => ({
-    comp: comp.name,   // full name — rendered by custom tick
+    comp: comp.name,
     fullName: comp.name,
     team: Math.round((compAvgs.find((c) => c.name === comp.name)?.avg ?? 0) * 100),
     selected: selectedEmpData
@@ -176,6 +176,24 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
     required: avgSkillThresholdPct(comp.name),
     color: domainGroups.find((d) => d.domain === comp.domain)?.color ?? c.accent,
   }));
+
+  const activeRadarData = (activeDomainFilter === 'All' || activeDomainFilter === 'all')
+    ? domainRadarData.map((d) => ({
+        comp: d.domain,
+        fullName: d.domain,
+        team: d.score,
+        selected: selectedEmpData
+          ? Math.round(
+              ((domainGroups.find((dg) => dg.domain === d.domain)?.comps.reduce((sum, cItem) => {
+                return sum + (selectedEmpData.competency_scores[cItem.name]?.score ?? 0);
+              }, 0) ?? 0) /
+              Math.max(1, domainGroups.find((dg) => dg.domain === d.domain)?.comps.length ?? 1)) * 100
+            )
+          : undefined,
+        required: d.required,
+        color: d.color,
+      }))
+    : radarData;
 
   return (
     <div className="space-y-5">
@@ -468,60 +486,47 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                   ))}
                 </select>
               </div>
-              <ResponsiveContainer width="100%" height={900}>
-                <RadarChart data={radarData} outerRadius="59%"
-                  margin={{ top: 24, right: 190, bottom: 40, left: 190 }}>
+              <ResponsiveContainer width="100%" height={420}>
+                <RadarChart
+                  data={activeRadarData}
+                  outerRadius="62%"
+                  margin={{ top: 28, right: 100, bottom: 28, left: 100 }}
+                >
                   <PolarGrid stroke={c.radarGrid} />
-                  <PolarAngleAxis dataKey="comp"
+                  <PolarAngleAxis
+                    dataKey="comp"
                     tick={(props: RadarTickProps) => {
-                      const { payload, x = 0, y = 0, cx = 0, cy = 0, index = 0 } = props;
+                      const { payload, x = 0, y = 0, cx = 0 } = props;
                       const dx = x - cx;
-                      const dy = y - cy;
-                      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                      const ux = dx / dist;
-                      const uy = dy / dist;
+                      const anchor = dx > 15 ? 'start' : dx < -15 ? 'end' : 'middle';
+                      const label = payload?.value ?? '';
+                      const textValue = label.length > 20 ? `${label.slice(0, 18)}…` : label;
+                      const itemColor = activeRadarData.find((d) => d.comp === label)?.color ?? c.accent;
 
-                      // Domain colour for this skill
-                      const labelColor = radarData[index]?.color ?? '#d1d5db';
-
-                      // 3-tier stagger keeps dense labels readable around the radar.
-                      // Every 3 adjacent labels spread across 3 distinct radial rings
-                      const RINGS = [20, 65, 110];
-                      const textOffset = RINGS[index % 3];
-                      const lx = cx + ux * (dist + textOffset);
-                      const ly = cy + uy * (dist + textOffset);
-
-                      // Hairline in matching domain colour
-                      const lineX1 = cx + ux * (dist + 3);
-                      const lineY1 = cy + uy * (dist + 3);
-                      const lineX2 = cx + ux * (dist + textOffset - 6);
-                      const lineY2 = cy + uy * (dist + textOffset - 6);
-
-                      const anchor = dx > 10 ? 'start' : dx < -10 ? 'end' : 'middle';
                       return (
-                        <g>
-                          <line x1={lineX1} y1={lineY1} x2={lineX2} y2={lineY2}
-                            stroke={labelColor} strokeWidth={0.9} strokeOpacity={0.7} />
-                          <text x={lx} y={ly} textAnchor={anchor} dominantBaseline="middle"
-                            fontFamily={`"Arial Narrow", "Roboto Condensed", "Inter Tight", Arial, sans-serif`}
-                            fontSize={12} fontWeight={700} letterSpacing={0}
-                            paintOrder="stroke" stroke="rgba(2, 6, 23, 0.72)" strokeWidth={2.5}
-                            fill={labelColor}>
-                            {payload?.value ?? ''}
-                          </text>
-                        </g>
+                        <text
+                          x={x}
+                          y={y}
+                          textAnchor={anchor}
+                          dominantBaseline="middle"
+                          fontSize={11}
+                          fontWeight={600}
+                          fill={itemColor}
+                        >
+                          {textValue}
+                        </text>
                       );
                     }}
                   />
-                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 11, fill: c.radarTick }}
-                    tickFormatter={(v) => `${v}%`} angle={30} />
+                  <PolarRadiusAxis
+                    domain={[0, 100]}
+                    tick={{ fontSize: 10, fill: c.radarTick }}
+                    tickFormatter={(v) => `${v}%`}
+                    angle={30}
+                  />
                   <Radar name="Team Avg" dataKey="team" stroke={c.accent} fill={c.accent} fillOpacity={0.25} strokeWidth={2.5} />
-                  {radarData.some((d) => d.required > 0) && (
-                    <Radar name="Required" dataKey="required" stroke={c.warning} fill="none" strokeWidth={1.5} strokeDasharray="5 3" />
-                  )}
                   {selectedEmpData && (
-                    <Radar name={selectedEmpData.full_name.split(' ')[0]} dataKey="selected"
-                      stroke={c.success} fill={c.success} fillOpacity={0.18} strokeWidth={2} strokeDasharray="4 2" />
+                    <Radar name={selectedEmpData.full_name.split(' ')[0]} dataKey="selected" stroke={c.success} fill={c.success} fillOpacity={0.18} strokeWidth={2} strokeDasharray="4 2" />
                   )}
                   <Tooltip formatter={(v: number, name: string) => [`${v}%`, name]} contentStyle={tooltipStyle(c)} />
                   {(selectedEmpData || radarData.some((d) => d.required > 0)) && (
