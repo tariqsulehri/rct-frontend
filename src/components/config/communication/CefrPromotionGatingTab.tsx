@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Save, AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
+import { ShieldCheck, Save, CheckCircle2, Lock } from 'lucide-react';
 import { useCommConfig, useUpdateCommConfig } from '@/hooks/useCommunication';
 import { toast } from '@/lib/toast';
+import { ContextualHelpCallout } from '../../common/ContextualHelpCallout';
 
 export const CefrPromotionGatingTab: React.FC = () => {
   const { data: config, isLoading } = useCommConfig();
@@ -175,13 +176,12 @@ export const CefrPromotionGatingTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Alert */}
-      <div className="flex items-start gap-2.5 p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/5 text-xs text-zinc-700 dark:text-zinc-200 shadow-2xs">
-        <AlertTriangle size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-        <div>
-          <strong className="text-zinc-900 dark:text-zinc-100 font-bold">Governance Impact:</strong> These policies directly govern the promotion readiness flags on individual scorecards and manager talent review dashboards. When an employee is in a gated grade, failing to meet the CEFR target flags the assessment with a <span className="text-rose-600 dark:text-rose-400 font-black">GATED</span> status.
-        </div>
-      </div>
+      {/* Governance Impact Contextual Help */}
+      <ContextualHelpCallout
+        title="Promotion Governance & Assessment Impact"
+        description="These promotion policies directly govern readiness status flags across individual scorecards and manager talent review dashboards. When an employee is in a gated grade, failing to meet the CEFR target flags the assessment with a GATED status."
+        icon="lightbulb"
+      />
     </div>
   );
 };

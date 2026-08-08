@@ -1,7 +1,8 @@
 import React from 'react';
-import { Layers, Sliders, CheckCircle2, Shield, Info } from 'lucide-react';
+import { Layers, Sliders, CheckCircle2, Shield } from 'lucide-react';
 import { CefrLevelCode } from '@/types/communication';
 import { CefrLevelBadge } from '../../communication/CefrLevelBadge';
+import { ContextualHelpCallout } from '../../common/ContextualHelpCallout';
 
 interface CefrLevelDef {
   code: CefrLevelCode;
@@ -305,12 +306,11 @@ export const CefrLevelsBandsTab: React.FC = () => {
           </table>
         </div>
 
-        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 text-xs text-zinc-700 dark:text-zinc-300">
-          <Info size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-          <div>
-            <strong className="text-zinc-900 dark:text-zinc-100 font-bold">Deterministic Band Assignment Rule (R5):</strong> The overall weighted score <code className="font-mono text-indigo-700 dark:text-indigo-300 bg-white dark:bg-zinc-800 px-1 py-0.5 rounded border border-indigo-200 dark:border-indigo-700">overallWeight</code> is evaluated against the ordered thresholds. The assigned letter grade is the first band where <code className="font-mono text-indigo-700 dark:text-indigo-300 bg-white dark:bg-zinc-800 px-1 py-0.5 rounded border border-indigo-200 dark:border-indigo-700">overallWeight &lt; ltWeight</code>.
-          </div>
-        </div>
+        <ContextualHelpCallout
+          title="Deterministic Band Assignment Rule (Rule R5)"
+          description="The overall weighted score overallWeight is evaluated against ordered midpoint thresholds. The assigned letter grade is the first band where overallWeight < ltWeight."
+          icon="info"
+        />
       </div>
 
       {/* Section 3: 6 Assessed Communication Competencies */}

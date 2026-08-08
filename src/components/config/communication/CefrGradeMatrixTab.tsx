@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Save,
   RefreshCw,
-  AlertCircle,
   ShieldCheck,
   Plus,
   CheckCircle,
@@ -15,6 +14,7 @@ import { useCommConfig, useUpdateCommConfig } from '@/hooks/useCommunication';
 import { useConfigGrades } from '@/hooks/useConfig';
 import { toast } from '@/lib/toast';
 import { CEFR_COLORS } from '../../communication/CefrLevelBadge';
+import { ContextualHelpCallout } from '../../common/ContextualHelpCallout';
 
 const CEFR_LEVELS: CefrLevelCode[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
@@ -622,28 +622,30 @@ export const CefrGradeMatrixTab: React.FC = () => {
         </table>
       </div>
 
-      {/* Footer Info & Link */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 text-[11px] text-zinc-600 dark:text-zinc-400">
-        <div className="flex items-start gap-2">
-          <AlertCircle size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-          <div>
-            <strong className="text-zinc-900 dark:text-zinc-200">Dynamic Grade Sync:</strong> New grades created in <strong>Setup &gt; Grades</strong> will automatically synchronize into this matrix.
-          </div>
+      {/* Footer Guidance Callout */}
+      <ContextualHelpCallout
+        title="Dynamic Grade Synchronization"
+        description="New career grades created in Setup > Grades will automatically synchronize into this matrix with calculated baseline targets."
+        icon="lightbulb"
+      >
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-[11px] text-sky-800 dark:text-sky-300 font-medium">
+            Manage titles, levels, and career ladders in the Grades configuration module.
+          </span>
+          <a
+            href="#grades"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.hash = 'grades';
+              window.dispatchEvent(new CustomEvent('config-tab-change', { detail: 'grades' }));
+            }}
+            className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 dark:text-sky-300 hover:underline shrink-0"
+          >
+            <Plus size={11} />
+            Add / Manage Grades
+          </a>
         </div>
-
-        <a
-          href="#grades"
-          onClick={(e) => {
-            e.preventDefault();
-            window.location.hash = 'grades';
-            window.dispatchEvent(new CustomEvent('config-tab-change', { detail: 'grades' }));
-          }}
-          className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
-        >
-          <Plus size={11} />
-          Add / Manage Grades
-        </a>
-      </div>
+      </ContextualHelpCallout>
 
       {/* AWS-Style Type-to-Confirm Reset Modal */}
       {showResetModal && (
