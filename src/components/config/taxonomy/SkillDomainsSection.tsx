@@ -4,6 +4,8 @@ import { Modal } from '@/components/ui/Modal';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 import {
   ConfigSkillDomain,
   useConfigCompetencyCategories,
@@ -111,9 +113,18 @@ export const SkillDomainsSection: React.FC = () => {
       category_id: Number(form.category_id),
       is_active: form.is_active,
     };
-    if (modal === 'create') await createDomain.mutateAsync(payload);
-    else if (editing) await updateDomain.mutateAsync({ id: editing.id, data: payload });
-    setModal(null);
+    try {
+      if (modal === 'create') {
+        await createDomain.mutateAsync(payload);
+        toast.success(`Skill Area "${payload.name}" created successfully.`, 'Skill Area Created');
+      } else if (editing) {
+        await updateDomain.mutateAsync({ id: editing.id, data: payload });
+        toast.success(`Skill Area "${payload.name}" updated successfully.`, 'Skill Area Updated');
+      }
+      setModal(null);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to save skill area.'), 'Error');
+    }
   };
 
   const ts = useTableState(filteredDomainsByCategory, (d, q) =>
@@ -195,7 +206,16 @@ export const SkillDomainsSection: React.FC = () => {
             <TD>
               <StatusBadge active={d.is_active} />
             </TD>
-            <ActionBtns onEdit={() => openEdit(d)} onDelete={async () => { if (await confirm({ title: 'Delete Skill Area', message: `"${d.name}" and all its skill mappings will be permanently deleted.`, confirmLabel: 'Delete' })) deleteDomain.mutate(d.id); }} />
+            <ActionBtns onEdit={() => openEdit(d)} onDelete={async () => {
+              if (await confirm({ title: 'Delete Skill Area', message: `"${d.name}" and all its skill mappings will be permanently deleted.`, confirmLabel: 'Delete' })) {
+                try {
+                  await deleteDomain.mutateAsync(d.id);
+                  toast.success(`Skill Area "${d.name}" deleted.`, 'Skill Area Deleted');
+                } catch (err: unknown) {
+                  toast.error(getApiErrorMessage(err, 'Failed to delete skill area.'), 'Delete Error');
+                }
+              }
+            }} />
           </TR>
           );
         })}

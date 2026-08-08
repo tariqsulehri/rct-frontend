@@ -2,11 +2,12 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { Stars } from '@/components/ui/Stars';
-import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, ShieldCheck, Info, Copy, Layers, SaveAll } from 'lucide-react';
+import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, CheckCheck, ShieldCheck, Info, Copy, Layers, SaveAll, Send, RefreshCw } from 'lucide-react';
 import { CloneColleagueDialog } from './CloneColleagueDialog';
-import { BulkAddDialog } from './BulkAddDialog';
+import { BulkAddDialog, BulkAddTechnologyPayload } from './BulkAddDialog';
 import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
 import { getApiErrorMessage } from '@/lib/apiError';
+import { toast } from '@/lib/toast';
 import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes } from '@/hooks/useConfig';
 import {
   useSkillsHierarchy,
@@ -16,6 +17,7 @@ import {
   useUpdateAssessment,
   useDeleteAssessment,
   useApproveAssessment,
+  useSubmitDraftsForApproval,
   SkillHierarchy,
   SkillAssessment,
 } from '@/hooks/useAssessment';
@@ -35,7 +37,7 @@ export interface BulkRow {
   id: string;
   existingAssessmentId?: number;
   isNew?: boolean;
-  status: 'approved' | 'pending';
+  status: 'draft' | 'pending' | 'approved';
   domainId: number | null;
   competencyId: number | null;
   technologyId: number | null;
@@ -52,8 +54,18 @@ interface SearchableOption {
   label: string;
 }
 
-type SortKey = 'domain' | 'competency' | 'technology' | 'type' | 'projects';
+type SortKey = 'domain' | 'competency' | 'technology' | 'type' | 'projects' | 'level' | 'score';
 type SortOrder = 'asc' | 'desc';
+
+const LEVEL_RANKS: Record<string, number> = {
+  Expert: 5,
+  Advanced: 4,
+  Proficient: 3,
+  Foundational: 2,
+  Beginner: 1,
+  Awareness: 0.5,
+  Unset: 0,
+};
 
 export const LEVEL_COLORS: Record<AssessmentLevel, string> = {
   Unset:       'rgb(var(--text-3))',
@@ -163,17 +175,22 @@ const SearchableSelect: React.FC<{
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  // Close on any scroll or resize to avoid stale positioning
+  // Update position on scroll or resize; ignore scrolls originating from within the dropdown itself
   useEffect(() => {
     if (!open) return;
-    const handler = () => setOpen(false);
-    window.addEventListener('scroll', handler, true);
-    window.addEventListener('resize', handler);
-    return () => {
-      window.removeEventListener('scroll', handler, true);
-      window.removeEventListener('resize', handler);
+    const updatePosition = (e: Event) => {
+      if (dropdownRef.current && dropdownRef.current.contains(e.target as Node)) {
+        return;
+      }
+      calcPosition();
     };
-  }, [open]);
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [open, calcPosition]);
 
   // Clear search when closed
   useEffect(() => {
@@ -266,7 +283,7 @@ function createEmptyRow(): BulkRow {
   return {
     id: createRowId(),
     isNew: true,
-    status: 'pending',      // new rows start pending until saved by manager
+    status: 'draft',
     domainId: null,
     competencyId: null,
     technologyId: null,
@@ -279,6 +296,11 @@ function createEmptyRow(): BulkRow {
 function getDuplicateKey(employeeId: string, row: BulkRow) {
   if (!row.domainId || !row.competencyId || !row.technologyId) return null;
   return `${employeeId}:${row.domainId}:${row.competencyId}:${row.technologyId}`;
+}
+
+function getCompetencyImportanceKey(employeeId: string, row: BulkRow) {
+  if (!row.competencyId || !row.type) return null;
+  return `${employeeId}:${row.competencyId}:${row.type}`;
 }
 
 function buildTechnologyLocationMap(hierarchy: SkillHierarchy[]) {
@@ -309,24 +331,26 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const {
     data: existingAssessments = [],
     isLoading: existingAssessmentsLoading,
+    isFetching: existingAssessmentsFetching,
     isError: existingAssessmentsIsError,
     error: existingAssessmentsError,
     refetch: refetchExistingAssessments,
   } = useEmployeeAssessments(employeeId);
-  const { checkDuplicate } = useDuplicateAssessmentCheck(employeeId);
+  const { checkDuplicate, checkDuplicateImportance } = useDuplicateAssessmentCheck(employeeId);
   const createAssessment = useCreateAssessment();
   const updateAssessment = useUpdateAssessment();
   const deleteAssessment = useDeleteAssessment();
   const approveAssessment = useApproveAssessment();
+  const submitDrafts = useSubmitDraftsForApproval();
   const { data: assessmentTypes = [] } = useConfigAssessmentTypes();
   const { data: assessmentLevels = [] } = useConfigAssessmentLevels();
   const { data: assessmentProjects = [] } = useConfigAssessmentProjects();
-  const loadedEmployeeRef = useRef<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
-  const [rows, setRows] = useState<BulkRow[]>([createEmptyRow()]);
+  const [rows, setRows] = useState<BulkRow[]>([]);
 
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'draft' | 'approved'>('all');
   // Sort state is purely cosmetic (header indicators). Actual order lives in `rows`.
   const [activeSortKey, setActiveSortKey] = useState<SortKey | null>('domain');
   const [activeSortOrder, setActiveSortOrder] = useState<SortOrder>('asc');
@@ -336,6 +360,8 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [isBulkAddModalOpen, setIsBulkAddModalOpen] = useState(false);
   const [isSavingAll, setIsSavingAll] = useState(false);
+  const [isSubmittingDrafts, setIsSubmittingDrafts] = useState(false);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const techLocationMap = useMemo(() => buildTechnologyLocationMap(hierarchy), [hierarchy]);
   const scoringValues = useMemo(() => ({
@@ -374,8 +400,8 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   }, [assessmentProjects]);
 
   useEffect(() => {
-    loadedEmployeeRef.current = null;
-    setRows([createEmptyRow()]);
+    setRows([]);
+    setStatusFilter('all');
     setEditingRowIds(new Set());
     setApprovingRowIds(new Set());
     setSavingRowIds(new Set());
@@ -385,23 +411,15 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
 
   useEffect(() => {
     if (hierarchyLoading || existingAssessmentsLoading) return;
-    if (loadedEmployeeRef.current === employeeId) return;
-
-    loadedEmployeeRef.current = employeeId;
-
-    if (!existingAssessments.length) {
-      setRows([createEmptyRow()]);
-      return;
-    }
 
     const populatedRows: BulkRow[] = existingAssessments.map((assessment) => {
       const mapped = techLocationMap.get(assessment.technology_id);
 
       return {
-        id: createRowId(),
+        id: `existing-${assessment.id}`,
         existingAssessmentId: assessment.id,
         isNew: false,
-        status: (assessment.status as 'approved' | 'pending') ?? 'approved',
+        status: (assessment.status as 'draft' | 'pending' | 'approved') ?? 'approved',
         domainId: mapped?.domainId ?? null,
         competencyId: mapped?.competencyId ?? null,
         technologyId: assessment.technology_id,
@@ -432,8 +450,10 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
       );
     });
 
-    // New empty row at top, existing assessments below
-    setRows([createEmptyRow(), ...populatedRows]);
+    setRows((currentRows) => {
+      const unsavedDrafts = currentRows.filter((r) => r.isNew);
+      return [...unsavedDrafts, ...populatedRows];
+    });
   }, [
     hierarchyLoading,
     existingAssessmentsLoading,
@@ -531,17 +551,38 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         errors.push('Duplicate: this person already has the same skill area, skill, and tool.');
       }
 
+      // Check importance uniqueness within the competency
+      const compImpKey = getCompetencyImportanceKey(employeeId, row);
+      const duplicateImportanceRow = rows.find((candidate) =>
+        candidate.id !== row.id &&
+        getCompetencyImportanceKey(employeeId, candidate) === compImpKey
+      );
+      const duplicateImportance = checkDuplicateImportance(
+        row.competencyId!,
+        row.type,
+        row.technologyId ?? undefined,
+        row.existingAssessmentId ?? undefined,
+      );
+
+      if (isRowEditable(row) && duplicateImportanceRow) {
+        errors.push(`Duplicate Importance: Only one ${row.type} tool is allowed for this skill.`);
+      } else if (isRowEditable(row) && duplicateImportance.isDuplicate) {
+        errors.push(`Duplicate Importance: A ${row.type} tool is already assigned for this skill.`);
+      }
+
       enriched.scorePreview = computeAssessmentScorePreview(row.type, row.projects, row.level, scoringValues, levelWeights, projectCredits);
     }
 
     if (errors.length > 0) {
       enriched.error = errors.some((error) => error.startsWith('Duplicate:'))
         ? errors.find((error) => error.startsWith('Duplicate:'))
+        : errors.some((error) => error.startsWith('Duplicate Importance:'))
+        ? errors.find((error) => error.startsWith('Duplicate Importance:'))
         : 'Missing: ' + errors.join(', ');
     }
 
     return enriched;
-  }, [checkDuplicate, employeeId, isRowEditable, rows, scoringValues, levelWeights, projectCredits]);
+  }, [checkDuplicate, checkDuplicateImportance, employeeId, isRowEditable, rows, scoringValues, levelWeights, projectCredits]);
 
   const addRow = useCallback(() => {
     // Prepend so new row stays at the top, never jumps
@@ -580,6 +621,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           r.id === rowId ? { ...r, status: 'approved', level: saved.level as AssessmentLevel } : r
         ));
         setApprovingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
+        toast.success('Skill assessment approved successfully!', 'Approved');
       } else if (row.existingAssessmentId) {
         // Regular update
         await updateAssessment.mutateAsync({
@@ -587,28 +629,34 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           data: { type: row.type, projects: row.projects, level: row.level },
         });
         setEditingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
+        toast.success('Skill assessment updated successfully!', 'Saved');
       } else {
         // Create new assessment
+        const initialStatus = readOnlyLevel ? 'draft' : 'approved';
         const saved = await createAssessment.mutateAsync({
           employee_id: employeeId,
           technology_id: row.technologyId!,
           type: row.type,
           projects: row.projects,
           level: row.level,
+          status: initialStatus,
         });
         setRows((prev) => prev.map((r) =>
           r.id === rowId
-            ? { ...r, isNew: false, status: saved.status as 'approved' | 'pending', existingAssessmentId: saved.id, error: undefined }
+            ? { ...r, isNew: false, status: saved.status as 'draft' | 'pending' | 'approved', existingAssessmentId: saved.id, error: undefined }
             : r
         ));
+        toast.success(readOnlyLevel ? 'Skill saved as draft.' : 'Skill assessment added successfully!', 'Saved');
       }
       onSuccess?.();
     } catch (err: unknown) {
-      setRowError(rowId, getApiErrorMessage(err, 'Save failed. Try again.'));
+      const errMsg = getApiErrorMessage(err, 'Save failed. Try again.');
+      setRowError(rowId, errMsg);
+      toast.error(errMsg, 'Save Failed');
     } finally {
       setSavingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
     }
-  }, [rows, approvingRowIds, validateAndEnrichRow, approveAssessment, updateAssessment, createAssessment, employeeId, onSuccess, setRowError]);
+  }, [rows, approvingRowIds, validateAndEnrichRow, approveAssessment, updateAssessment, createAssessment, readOnlyLevel, employeeId, onSuccess, setRowError]);
 
   const handleCloneColleague = useCallback((clonedAssessments: SkillAssessment[]) => {
     const existingTechIds = new Set(rows.map(r => r.technologyId).filter(Boolean));
@@ -620,7 +668,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           newRows.push({
             id: createRowId(),
             isNew: true,
-            status: 'pending',
+            status: 'draft',
             domainId: loc.domainId,
             competencyId: loc.competencyId,
             technologyId: a.technology_id,
@@ -633,34 +681,83 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     });
     if (newRows.length > 0) {
       setRows(prev => [...newRows, ...prev]);
+      toast.success(`Cloned ${newRows.length} skills as drafts. Click Save Draft to persist.`, 'Skills Cloned');
+    } else {
+      toast.info('All skills from this colleague are already present in your table.', 'No New Skills');
     }
   }, [rows, techLocationMap]);
 
-  const handleBulkAdd = useCallback((technologies: { domainId: number; competencyId: number; technologyId: number }[]) => {
+  const handleBulkAdd = useCallback((technologies: BulkAddTechnologyPayload[]) => {
     const newRows: BulkRow[] = technologies.map(t => ({
       id: createRowId(),
       isNew: true,
-      status: 'pending',
+      status: 'draft',
       domainId: t.domainId,
       competencyId: t.competencyId,
       technologyId: t.technologyId,
-      type: 'Primary',
-      projects: 0,
+      type: t.type ?? 'Primary',
+      projects: t.projects ?? 2,
       level: 'Unset',
     }));
     if (newRows.length > 0) {
       setRows(prev => [...newRows, ...prev]);
+      toast.success(`Added ${newRows.length} skills as drafts. Click "Save Draft" or "Submit for Approval".`, 'Skills Added');
     }
   }, []);
 
-  const handleSaveAllUnsaved = useCallback(async () => {
+  const handleSaveAllDrafts = useCallback(async () => {
     setIsSavingAll(true);
-    const unsavedRows = rows.filter(r => r.isNew);
+    const unsavedRows = rows.filter(r => r.isNew && r.technologyId);
+    let successCount = 0;
     for (const row of unsavedRows) {
       await handleSaveRow(row.id);
+      successCount++;
     }
     setIsSavingAll(false);
-  }, [rows, handleSaveRow]);
+    if (successCount > 0) {
+      toast.success(readOnlyLevel ? `Saved ${successCount} draft skills.` : `Saved ${successCount} skills.`, 'Saved');
+    }
+  }, [rows, handleSaveRow, readOnlyLevel]);
+
+  const handleSubmitAllDrafts = useCallback(async () => {
+    setIsSubmittingDrafts(true);
+    try {
+      // 1. Save any unpersisted rows first
+      const unsavedRows = rows.filter(r => r.isNew && r.technologyId);
+      for (const row of unsavedRows) {
+        await handleSaveRow(row.id);
+      }
+
+      // 2. Submit all drafts for this employee
+      const result = await submitDrafts.mutateAsync({ empCode: employeeId });
+      toast.success(
+        result.count > 0
+          ? `Submitted ${result.count} skill${result.count === 1 ? '' : 's'} for manager approval!`
+          : 'All skills are already submitted or approved.',
+        'Submitted for Approval',
+      );
+      await refetchExistingAssessments();
+      onSuccess?.();
+    } catch (err: unknown) {
+      const errMsg = getApiErrorMessage(err, 'Failed to submit drafts for approval.');
+      toast.error(errMsg, 'Submission Failed');
+    } finally {
+      setIsSubmittingDrafts(false);
+    }
+  }, [rows, handleSaveRow, submitDrafts, employeeId, refetchExistingAssessments, onSuccess]);
+
+  const handleRefresh = useCallback(async () => {
+    setIsManualRefreshing(true);
+    try {
+      await refetchExistingAssessments();
+      toast.success('Skill rows refreshed from server.', 'Refreshed');
+      onSuccess?.();
+    } catch {
+      toast.error('Failed to refresh skill rows. Please try again.', 'Refresh Failed');
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  }, [refetchExistingAssessments, onSuccess]);
 
   const deleteRow = useCallback(async (rowId: string) => {
     const row = rows.find((r) => r.id === rowId);
@@ -676,10 +773,15 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       if (!confirmed) return;
       try {
         await deleteAssessment.mutateAsync(row.existingAssessmentId);
+        toast.success('Skill assessment deleted.', 'Removed');
       } catch {
-        setRowError(rowId, 'Delete failed. Try again.');
+        const errMsg = 'Delete failed. Please try again.';
+        setRowError(rowId, errMsg);
+        toast.error(errMsg, 'Delete Failed');
         return;
       }
+    } else {
+      toast.info('Row removed from table.', 'Removed');
     }
 
     setEditingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
@@ -688,12 +790,21 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     setRows((prev) => prev.filter((r) => r.id !== rowId));
   }, [rows, deleteAssessment, confirm, setRowError]);
 
-  // displayRows = rows in their stable insertion order, search-filtered only.
+  // displayRows = rows in their stable insertion order, filtered by status tab & search.
   // No reactive sorting — order only changes when the user explicitly clicks a header.
   const displayRows = useMemo(() => {
-    if (!search.trim()) return rows;
+    let result = rows;
+    if (statusFilter === 'pending') {
+      result = result.filter((r) => !r.isNew && r.status === 'pending');
+    } else if (statusFilter === 'draft') {
+      result = result.filter((r) => r.isNew || r.status === 'draft');
+    } else if (statusFilter === 'approved') {
+      result = result.filter((r) => !r.isNew && r.status === 'approved');
+    }
+
+    if (!search.trim()) return result;
     const q = search.toLowerCase();
-    return rows.filter((r) => {
+    return result.filter((r) => {
       const domain = getDomainForRow(r.domainId)?.domainName || '';
       const comp = getCompetenciesForDomain(r.domainId).find((c) => c.competencyId === r.competencyId)?.competencyName || '';
       const tech = getTechnologiesForCompetency(r.domainId, r.competencyId).find((t) => t.id === r.technologyId)?.name || '';
@@ -703,7 +814,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         tech.toLowerCase().includes(q)
       );
     });
-  }, [rows, search, getDomainForRow, getCompetenciesForDomain, getTechnologiesForCompetency]);
+  }, [rows, statusFilter, search, getDomainForRow, getCompetenciesForDomain, getTechnologiesForCompetency]);
 
   const toggleSort = useCallback((key: SortKey) => {
     const nextOrder = activeSortKey === key && activeSortOrder === 'asc' ? 'desc' : 'asc';
@@ -727,6 +838,8 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         }
         case 'type': return row.type;
         case 'projects': return String(row.projects);
+        case 'level': return row.level;
+        case 'score': return String(computeAssessmentScorePreview(row.type, row.projects, row.level, scoringValues, levelWeights, projectCredits));
       }
     };
 
@@ -738,8 +851,18 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         if (!a.isNew && b.isNew) return 1;
 
         // Primary: the clicked column (respects asc/desc)
-        const primaryCmp = getLabel(a, key).localeCompare(getLabel(b, key));
-        if (primaryCmp !== 0) return nextOrder === 'asc' ? primaryCmp : -primaryCmp;
+        if (key === 'level') {
+          const aRank = LEVEL_RANKS[a.level] ?? (levelWeights[a.level] ?? 0);
+          const bRank = LEVEL_RANKS[b.level] ?? (levelWeights[b.level] ?? 0);
+          if (aRank !== bRank) return nextOrder === 'asc' ? aRank - bRank : bRank - aRank;
+        } else if (key === 'score') {
+          const aScore = computeAssessmentScorePreview(a.type, a.projects, a.level, scoringValues, levelWeights, projectCredits);
+          const bScore = computeAssessmentScorePreview(b.type, b.projects, b.level, scoringValues, levelWeights, projectCredits);
+          if (aScore !== bScore) return nextOrder === 'asc' ? aScore - bScore : bScore - aScore;
+        } else {
+          const primaryCmp = getLabel(a, key).localeCompare(getLabel(b, key));
+          if (primaryCmp !== 0) return nextOrder === 'asc' ? primaryCmp : -primaryCmp;
+        }
 
         // Secondary tiebreakers: always domain → competency → technology (ascending)
         // so related items stay grouped together regardless of primary sort
@@ -754,7 +877,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       });
       return newRows;
     });
-  }, [activeSortKey, activeSortOrder, hierarchy]);
+  }, [activeSortKey, activeSortOrder, hierarchy, scoringValues, levelWeights, projectCredits]);
 
 
   const SortIcon = ({ isActive, order }: { isActive: boolean; order: SortOrder }) => {
@@ -800,7 +923,36 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
   ].filter(Boolean);
   const savedCount = rows.filter((r) => !r.isNew && r.status === 'approved').length;
   const pendingCount = rows.filter((r) => !r.isNew && r.status === 'pending').length;
-  const unsavedCount = rows.filter((r) => r.isNew).length;
+  const unsavedCount = rows.filter((r) => r.isNew && r.technologyId).length;
+  const draftCount = rows.filter((r) => (r.status === 'draft' || r.isNew) && r.technologyId).length;
+
+  const handleApproveAllPending = useCallback(async () => {
+    const pendingRows = rows.filter((r) => !r.isNew && r.status === 'pending' && r.existingAssessmentId);
+    if (pendingRows.length === 0) return;
+    const confirmed = await confirm({
+      title: `Approve All Pending Skills (${pendingRows.length})`,
+      message: `Are you sure you want to approve all ${pendingRows.length} pending skills for this employee?`,
+      confirmLabel: 'Approve All',
+    });
+    if (!confirmed) return;
+
+    setIsSubmittingDrafts(true);
+    try {
+      for (const r of pendingRows) {
+        await updateAssessment.mutateAsync({
+          id: r.existingAssessmentId!,
+          data: { status: 'approved' },
+        });
+      }
+      setRows((prev) => prev.map((r) => r.status === 'pending' ? { ...r, status: 'approved' } : r));
+      toast.success(`Approved ${pendingRows.length} skills successfully!`, 'Approved');
+      onSuccess?.();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to approve all pending skills.'));
+    } finally {
+      setIsSubmittingDrafts(false);
+    }
+  }, [rows, confirm, updateAssessment, onSuccess]);
 
   return (
     <>
@@ -813,7 +965,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           </h3>
           <p className="text-xs mt-1 max-w-2xl" style={{ color: 'rgb(var(--text-3))' }}>
             {readOnlyLevel
-              ? 'Add skills and tools you have used. Saved rows wait for manager approval.'
+              ? 'Add skills and tools you have used. Save as drafts or submit for manager approval.'
               : 'Add skills used by this person. Managers approve rows and set the final level.'}
           </p>
           {employeeName && (
@@ -832,50 +984,175 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2 items-center">
-        <input
-          type="text"
-          placeholder="Search by skill area, skill, or tool..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="field w-full h-10"
-        />
-        <div className="flex items-center gap-2">
-          {unsavedCount > 0 && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleSaveAllUnsaved}
-                disabled={isSavingAll}
-                className="btn-primary flex items-center gap-1.5 px-3 py-1.5 h-auto text-xs"
-              >
-                <SaveAll size={14} />
-                {isSavingAll ? 'Saving...' : 'Save All'}
-              </button>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        {/* Status View Filter Tabs */}
+        <div
+          className="flex items-center gap-1 p-0.5 rounded-lg border"
+          style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}
+        >
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className="px-3 h-7 text-xs font-medium rounded-md transition-all flex items-center gap-1.5"
+            style={{
+              backgroundColor: statusFilter === 'all' ? 'rgb(var(--surface-1))' : 'transparent',
+              color: statusFilter === 'all' ? 'rgb(var(--text-1))' : 'rgb(var(--text-2))',
+              boxShadow: statusFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              fontWeight: statusFilter === 'all' ? 600 : 500,
+            }}
+          >
+            All
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+              style={{ backgroundColor: 'rgb(var(--surface-3))', color: 'rgb(var(--text-2))' }}
+            >
+              {rows.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('pending')}
+            className="px-3 h-7 text-xs font-medium rounded-md transition-all flex items-center gap-1.5"
+            style={{
+              backgroundColor: statusFilter === 'pending' ? 'rgb(var(--surface-1))' : 'transparent',
+              color: statusFilter === 'pending' ? '#f97316' : 'rgb(var(--text-2))',
+              boxShadow: statusFilter === 'pending' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              fontWeight: statusFilter === 'pending' ? 600 : 500,
+            }}
+          >
+            Pending Review
+            {pendingCount > 0 && (
               <span
-                className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
-                title="Rows added on screen but not saved yet."
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+                style={{ backgroundColor: 'rgba(251,146,60,0.2)', color: '#f97316' }}
+              >
+                {pendingCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('draft')}
+            className="px-3 h-7 text-xs font-medium rounded-md transition-all flex items-center gap-1.5"
+            style={{
+              backgroundColor: statusFilter === 'draft' ? 'rgb(var(--surface-1))' : 'transparent',
+              color: statusFilter === 'draft' ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))',
+              boxShadow: statusFilter === 'draft' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              fontWeight: statusFilter === 'draft' ? 600 : 500,
+            }}
+          >
+            Drafts
+            {draftCount > 0 && (
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
                 style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
               >
-                {unsavedCount} unsaved
+                {draftCount}
               </span>
-            </div>
-          )}
-          {pendingCount > 0 && (
-            <span
-              className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
-              title="Waiting for manager approval. Pending rows do not count in final scores yet."
-              style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#f97316' }}
-            >
-              {pendingCount} pending
-            </span>
-          )}
-          <span
-            className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
-            title="Approved rows count in reports and dashboards."
-            style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('approved')}
+            className="px-3 h-7 text-xs font-medium rounded-md transition-all flex items-center gap-1.5"
+            style={{
+              backgroundColor: statusFilter === 'approved' ? 'rgb(var(--surface-1))' : 'transparent',
+              color: statusFilter === 'approved' ? 'rgb(var(--text-1))' : 'rgb(var(--text-2))',
+              boxShadow: statusFilter === 'approved' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              fontWeight: statusFilter === 'approved' ? 600 : 500,
+            }}
           >
-            {savedCount} approved
-          </span>
+            Approved
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+              style={{ backgroundColor: 'rgb(var(--surface-3))', color: 'rgb(var(--text-2))' }}
+            >
+              {savedCount}
+            </span>
+          </button>
+        </div>
+
+        {/* Global Action / Batch Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {!readOnlyLevel && pendingCount > 0 && (
+            <button
+              type="button"
+              onClick={handleApproveAllPending}
+              disabled={isSubmittingDrafts || isSavingAll}
+              className="btn-primary flex items-center gap-1.5 px-3 h-8 text-xs font-semibold shadow-sm rounded-lg"
+              title="Approve all submitted pending skills for this employee"
+            >
+              <CheckCheck size={13} />
+              {isSubmittingDrafts ? 'Approving...' : `Approve All Pending (${pendingCount})`}
+            </button>
+          )}
+
+          {readOnlyLevel ? (
+            <>
+              {unsavedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleSaveAllDrafts}
+                  disabled={isSavingAll || isSubmittingDrafts}
+                  className="btn-secondary flex items-center gap-1.5 px-3 h-8 text-xs font-semibold shadow-sm rounded-lg"
+                  title="Save all unpersisted rows as drafts without submitting"
+                >
+                  <SaveAll size={13} />
+                  {isSavingAll ? 'Saving...' : `Save Draft (${unsavedCount})`}
+                </button>
+              )}
+              {draftCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleSubmitAllDrafts}
+                  disabled={isSubmittingDrafts || isSavingAll}
+                  className="btn-primary flex items-center gap-1.5 px-3 h-8 text-xs font-semibold shadow-sm rounded-lg"
+                  title="Submit all draft skills to manager for review and approval"
+                >
+                  <Send size={13} />
+                  {isSubmittingDrafts ? 'Submitting...' : `Submit for Approval (${draftCount})`}
+                </button>
+              )}
+            </>
+          ) : (
+            unsavedCount > 0 && (
+              <button
+                type="button"
+                onClick={handleSaveAllDrafts}
+                disabled={isSavingAll}
+                className="btn-primary flex items-center gap-1.5 px-3 h-8 text-xs font-semibold shadow-sm rounded-lg"
+                title="Save and approve all unsaved rows"
+              >
+                <SaveAll size={13} />
+                {isSavingAll ? 'Saving...' : `Save All (${unsavedCount})`}
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2 items-center">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Search by skill area, skill, or tool..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="field w-full h-8 text-xs"
+          />
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={existingAssessmentsLoading || existingAssessmentsFetching || isManualRefreshing}
+            className="btn-secondary flex items-center gap-1.5 px-3 h-8 text-xs font-medium shrink-0 rounded-lg"
+            title="Refresh skill rows from server"
+          >
+            <RefreshCw size={13} className={existingAssessmentsFetching || isManualRefreshing ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
         </div>
       </div>
 
@@ -934,13 +1211,46 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
               <TableHeader label="Tool" sortKey="technology" help="The tool used for this skill." />
               <TableHeader label="Importance" sortKey="type" help="How important this tool is for the skill." />
               <TableHeader label="Projects" sortKey="projects" help="How many real projects used this tool." />
-              <PlainHeader label="Level" help="How strong the person is in this tool." />
-              <PlainHeader label="Score" help="Auto-calculated from importance, projects, and level." />
+              <TableHeader label="Level" sortKey="level" help="How strong the person is in this tool." />
+              <TableHeader label="Score" sortKey="score" help="Auto-calculated from importance, projects, and level." />
               <PlainHeader label="Actions" />
             </tr>
           </thead>
           <tbody>
-            {displayRows.map((row) => {
+            {displayRows.length === 0 && !isInitializing ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-12 text-center text-xs" style={{ color: 'rgb(var(--text-3))' }}>
+                  <p className="font-semibold text-sm mb-1" style={{ color: 'rgb(var(--text-2))' }}>
+                    {statusFilter === 'pending'
+                      ? 'No pending skills awaiting review'
+                      : statusFilter === 'draft'
+                        ? 'No active drafts in progress'
+                        : statusFilter === 'approved'
+                          ? 'No approved skills recorded yet'
+                          : 'No skill rows found'}
+                  </p>
+                  <p className="text-xs mb-3">
+                    {search
+                      ? 'Try clearing your search query.'
+                      : statusFilter === 'pending'
+                        ? 'All submitted skills have been reviewed and approved.'
+                        : statusFilter === 'draft'
+                          ? 'Click "+ Add Row" or "Bulk Add" below to create drafts.'
+                          : 'Click "+ Add Row" or "Bulk Add" below to add skills.'}
+                  </p>
+                  {!search && (statusFilter === 'all' || statusFilter === 'draft') && (
+                    <button
+                      type="button"
+                      onClick={addRow}
+                      className="btn-primary text-xs px-3 h-8 inline-flex items-center gap-1.5 mx-auto rounded-lg font-medium"
+                    >
+                      <Plus size={14} /> Add Skill
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ) : (
+              displayRows.map((row) => {
               const enriched = validateAndEnrichRow(row);
               const competencies = getCompetenciesForDomain(row.domainId);
               const technologies = getTechnologiesForCompetency(row.domainId, row.competencyId);
@@ -951,6 +1261,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
               const rowEditable = isRowEditable(row);
 
               const isApproving = approvingRowIds.has(row.id);
+              const isDraft = row.status === 'draft' || row.isNew;
               const isPending = row.status === 'pending' && !row.isNew;
               const rowBg = enriched.error
                 ? 'rgba(var(--danger-soft), 0.12)'
@@ -960,7 +1271,9 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                     ? 'rgba(var(--accent-soft), 0.15)'
                     : isPending
                       ? 'rgba(251,146,60,0.06)' // subtle orange for pending
-                      : 'transparent';
+                      : isDraft
+                        ? 'rgba(var(--accent-soft), 0.05)'
+                        : 'transparent';
 
               return (
                 <tr
@@ -974,7 +1287,9 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                         ? '3px solid rgb(var(--accent))'
                         : isPending
                           ? '3px solid #f97316'
-                          : '3px solid transparent',
+                          : isDraft
+                            ? '3px solid rgb(var(--accent-soft))'
+                            : '3px solid transparent',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(var(--surface-2))')}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = rowBg)}
@@ -1060,7 +1375,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                           onClick={() => handleSaveRow(row.id)}
                           disabled={savingRowIds.has(row.id)}
                           className="btn-ghost w-7 h-7 p-0 rounded-md flex items-center justify-center"
-                          title={isApproving ? 'Approve and save' : 'Save this row'}
+                          title={isApproving ? 'Approve and save' : isDraft ? 'Save draft' : 'Save this row'}
                         >
                           {savingRowIds.has(row.id)
                             ? <span className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: isApproving ? '#f97316' : 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
@@ -1101,7 +1416,16 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                         <Trash2 size={14} />
                       </button>
 
-                      {/* Pending Approval badge — shown after delete for pending rows */}
+                      {/* Status badges */}
+                      {isDraft && (
+                        <span
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
+                          style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
+                          title={row.isNew ? 'Unsaved local row' : 'Draft saved in database'}
+                        >
+                          {row.isNew ? 'Unsaved' : 'Draft'}
+                        </span>
+                      )}
                       {isPending && (
                         <span
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
@@ -1121,7 +1445,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                   </td>
                 </tr>
               );
-            })}
+            }))}
           </tbody>
         </table>
       </div>
@@ -1131,30 +1455,30 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           <button
             onClick={addRow}
             disabled={isInitializing}
-            className="btn-secondary flex items-center gap-2 px-4 text-xs"
+            className="btn-secondary flex items-center gap-1.5 px-3 h-8 text-xs font-medium rounded-lg"
           >
-            <Plus size={15} /> Add Row
+            <Plus size={14} /> Add Row
           </button>
           
           <button 
             onClick={() => setIsCloneModalOpen(true)}
             disabled={isInitializing}
-            className="btn-secondary flex items-center gap-2 px-4 text-xs"
+            className="btn-secondary flex items-center gap-1.5 px-3 h-8 text-xs font-medium rounded-lg"
           >
-            <Copy size={15} /> Clone Colleague
+            <Copy size={14} /> Clone Colleague
           </button>
 
           <button 
             onClick={() => setIsBulkAddModalOpen(true)}
             disabled={isInitializing}
-            className="btn-secondary flex items-center gap-2 px-4 text-xs"
+            className="btn-secondary flex items-center gap-1.5 px-3 h-8 text-xs font-medium rounded-lg"
           >
-            <Layers size={15} /> Bulk Add
+            <Layers size={14} /> Bulk Add
           </button>
         </div>
 
         {onClose && (
-          <button onClick={onClose} className="btn-ghost px-5 text-xs">
+          <button onClick={onClose} className="btn-ghost px-4 h-8 text-xs font-medium rounded-lg">
             Close
           </button>
         )}
@@ -1172,6 +1496,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         onClose={() => setIsBulkAddModalOpen(false)}
         onBulkAdd={handleBulkAdd}
         existingTechnologyIds={new Set(rows.map(r => r.technologyId as number).filter(Boolean))}
+        existingRows={rows}
       />
     </div>
     </>

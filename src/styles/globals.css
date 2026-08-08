@@ -40,6 +40,13 @@
     --sidebar-w-sm: 64px;
     --radius:       0.75rem;
 
+    /* Theme Aliases */
+    --bg-1:              255 255 255;
+    --bg-2:              243 244 246;
+    --bg-3:              229 231 235;
+    --bg-card:           255 255 255;
+    --bg-card-hover:     243 244 246;
+
     /* Legacy compat (used by old hsl()-based classes) */
     --background:        0 0% 98%;
     --foreground:        220 14% 10%;
@@ -80,6 +87,12 @@
     --danger:       248 113 113;   /* red-400 */
     --danger-soft:  69 10 10;
 
+    --bg-1:              24 24 27;
+    --bg-2:              39 39 42;
+    --bg-3:              63 63 70;
+    --bg-card:           24 24 27;
+    --bg-card-hover:     39 39 42;
+
     --background:        240 10% 4%;
     --foreground:        0 0% 98%;
     --card:              240 10% 7%;
@@ -118,6 +131,12 @@
     --warning-soft: 78 45 3;
     --danger:       239 68 68;     /* red-500 */
     --danger-soft:  69 10 10;
+
+    --bg-1:              9 14 26;
+    --bg-2:              15 23 42;
+    --bg-3:              30 41 59;
+    --bg-card:           9 14 26;
+    --bg-card-hover:     15 23 42;
 
     --background:        222 47% 5%;
     --foreground:        210 40% 90%;
@@ -234,6 +253,13 @@ body {
   }
   .field::placeholder { color: rgb(var(--text-3)); }
   .field:focus { border-color: rgb(var(--accent)); }
+
+  .input {
+    @apply field;
+  }
+  .input-sm {
+    @apply py-1 px-2.5 text-xs;
+  }
 
   .field-label {
     @apply block text-xs font-bold uppercase mb-1.5;

@@ -8,6 +8,8 @@ import {
 } from '@/hooks/useConfig';
 import { calcHeader, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 const F = 'field';
 const L = 'field-label';
@@ -33,18 +35,23 @@ export const AssessmentLevelsSection: React.FC = () => {
 
   const handleSave = async () => {
     if (!editing) return;
-    await updateLevel.mutateAsync({
-      id: editing.id,
-      data: {
-        label: form.label,
-        weight: Number(form.weight),
-        threshold: form.threshold === '' ? null : Number(form.threshold),
-        description: form.description || null,
-        sort_order: Number(form.sort_order),
-        is_active: form.is_active,
-      },
-    });
-    setEditing(null);
+    try {
+      await updateLevel.mutateAsync({
+        id: editing.id,
+        data: {
+          label: form.label,
+          weight: Number(form.weight),
+          threshold: form.threshold === '' ? null : Number(form.threshold),
+          description: form.description || null,
+          sort_order: Number(form.sort_order),
+          is_active: form.is_active,
+        },
+      });
+      toast.success(`Assessment level "${form.label}" updated successfully.`, 'Level Updated');
+      setEditing(null);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to update level.'), 'Update Error');
+    }
   };
 
   const filteredLevels = useMemo(() => {

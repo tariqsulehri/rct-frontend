@@ -8,6 +8,8 @@ import {
 } from '@/hooks/useConfig';
 import { calcHeader, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 const F = 'field';
 const L = 'field-label';
@@ -35,20 +37,25 @@ export const AssessmentProjectsSection: React.FC = () => {
 
   const handleSave = async () => {
     if (!editing) return;
-    await updateProject.mutateAsync({
-      id: editing.id,
-      data: {
-        label: form.label,
-        description: form.description || null,
-        duration_months_min: form.duration_months_min === '' ? null : Number(form.duration_months_min),
-        duration_months_max: form.duration_months_max === '' ? null : Number(form.duration_months_max),
-        credit: Number(form.credit),
-        threshold: form.threshold === '' ? null : Number(form.threshold),
-        sort_order: Number(form.sort_order),
-        is_active: form.is_active,
-      },
-    });
-    setEditing(null);
+    try {
+      await updateProject.mutateAsync({
+        id: editing.id,
+        data: {
+          label: form.label,
+          description: form.description || null,
+          duration_months_min: form.duration_months_min === '' ? null : Number(form.duration_months_min),
+          duration_months_max: form.duration_months_max === '' ? null : Number(form.duration_months_max),
+          credit: Number(form.credit),
+          threshold: form.threshold === '' ? null : Number(form.threshold),
+          sort_order: Number(form.sort_order),
+          is_active: form.is_active,
+        },
+      });
+      toast.success(`Project config "${form.label}" updated successfully.`, 'Project Updated');
+      setEditing(null);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to update project config.'), 'Update Error');
+    }
   };
 
   const filteredProjects = useMemo(() => {

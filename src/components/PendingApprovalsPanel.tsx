@@ -1,8 +1,10 @@
 import React from 'react';
-import { AlertCircle, Check, RefreshCw, Search, ShieldCheck } from 'lucide-react';
-import { useApproveAssessment, usePendingApprovals, PendingApproval } from '@/hooks/useAssessment';
+import { AlertCircle, Check, RefreshCw, Search, ShieldCheck, X } from 'lucide-react';
+import { useApproveAssessment, useDeleteAssessment, usePendingApprovals, PendingApproval } from '@/hooks/useAssessment';
 import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes } from '@/hooks/useConfig';
+import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { getApiErrorMessage } from '@/lib/apiError';
+import { toast } from '@/lib/toast';
 
 type ApprovalDraft = {
   type: PendingApproval['type'];
@@ -47,6 +49,8 @@ function buildDraft(row: PendingApproval): ApprovalDraft {
 export const PendingApprovalsPanel: React.FC = () => {
   const { data: approvals = [], isLoading, isError, refetch, isFetching } = usePendingApprovals();
   const approveAssessment = useApproveAssessment();
+  const deleteAssessment = useDeleteAssessment();
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const { data: typeConfigs = [] } = useConfigAssessmentTypes();
   const { data: levelConfigs = [] } = useConfigAssessmentLevels();
   const { data: projectConfigs = [] } = useConfigAssessmentProjects();
@@ -54,6 +58,7 @@ export const PendingApprovalsPanel: React.FC = () => {
   const [drafts, setDrafts] = React.useState<Record<number, ApprovalDraft>>({});
   const [rowErrors, setRowErrors] = React.useState<Record<number, string>>({});
   const [savingIds, setSavingIds] = React.useState<Set<number>>(new Set());
+  const [rejectingIds, setRejectingIds] = React.useState<Set<number>>(new Set());
 
   React.useEffect(() => {
     setDrafts((current) => {
@@ -111,11 +116,14 @@ export const PendingApprovalsPanel: React.FC = () => {
         id: row.id,
         data: draft,
       });
+      toast.success(`Approved assessment for "${row.employee_name}" - ${row.competency_name}.`, 'Assessment Approved');
     } catch (error) {
+      const msg = getApiErrorMessage(error, 'Approval failed. Try again.');
       setRowErrors((current) => ({
         ...current,
-        [row.id]: getApiErrorMessage(error, 'Approval failed. Try again.'),
+        [row.id]: msg,
       }));
+      toast.error(msg, 'Approval Error');
     } finally {
       setSavingIds((current) => {
         const next = new Set(current);
@@ -125,167 +133,224 @@ export const PendingApprovalsPanel: React.FC = () => {
     }
   };
 
+  const rejectRow = async (row: PendingApproval) => {
+    const confirmed = await confirm({
+      title: 'Reject Skill Submission',
+      message: `Are you sure you want to reject the skill submission for "${row.employee_name}" (${row.technology_name} - ${row.competency_name})? This will remove it from pending approvals.`,
+      confirmLabel: 'Reject Submission',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    setRejectingIds((current) => new Set(current).add(row.id));
+    setRowErrors((current) => ({ ...current, [row.id]: '' }));
+
+    try {
+      await deleteAssessment.mutateAsync(row.id);
+      toast.info(`Rejected skill submission for "${row.employee_name}" - ${row.technology_name}.`, 'Submission Rejected');
+    } catch (error) {
+      const msg = getApiErrorMessage(error, 'Rejection failed. Try again.');
+      setRowErrors((current) => ({
+        ...current,
+        [row.id]: msg,
+      }));
+      toast.error(msg, 'Rejection Error');
+    } finally {
+      setRejectingIds((current) => {
+        const next = new Set(current);
+        next.delete(row.id);
+        return next;
+      });
+    }
+  };
+
   return (
-    <section className="card p-5 space-y-4">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={18} style={{ color: 'rgb(var(--accent))' }} />
-            <h3 className="text-lg font-bold leading-tight" style={{ color: 'rgb(var(--text-1))' }}>
-              Pending Approvals
-            </h3>
-          </div>
-          <p className="text-xs mt-1 max-w-3xl" style={{ color: 'rgb(var(--text-3))' }}>
-            Review skill rows submitted by engineers. Approved rows count in reports and readiness scores.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="btn-secondary text-xs inline-flex items-center gap-2"
-          disabled={isFetching}
-        >
-          <RefreshCw size={13} className={isFetching ? 'animate-spin' : ''} />
-          Refresh
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 items-center">
-        <label className="relative block">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgb(var(--text-3))' }} />
-          <input
-            type="text"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search person, department, skill, or tool..."
-            className="field w-full h-10 pl-9"
-          />
-        </label>
-        <span
-          className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
-          style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#f97316' }}
-        >
-          {approvals.length} waiting
-        </span>
-      </div>
-
-      {isLoading && (
-        <div className="py-8 text-center text-sm" style={{ color: 'rgb(var(--text-2))' }}>
-          Loading pending approvals...
-        </div>
-      )}
-
-      {isError && (
-        <div className="rounded-lg px-3 py-2 text-sm inline-flex items-center gap-2" style={{ backgroundColor: 'rgb(var(--danger-soft))', color: 'rgb(var(--danger))' }}>
-          <AlertCircle size={15} />
-          Could not load pending approvals.
-        </div>
-      )}
-
-      {!isLoading && !isError && approvals.length === 0 && (
-        <div className="rounded-lg px-4 py-6 text-center text-sm" style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}>
-          No pending approvals right now.
-        </div>
-      )}
-
-      {!isLoading && !isError && approvals.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'rgb(var(--border))' }}>
-          <table className="w-full text-xs" style={{ minWidth: '1050px' }}>
-            <thead>
-              <tr style={{ backgroundColor: 'rgb(var(--surface-2))', borderBottom: '1px solid rgb(var(--border))' }}>
-                {['Person', 'Skill Area', 'Skill', 'Tool', 'Importance', 'Projects', 'Level', 'Score', 'Submitted', 'Action'].map((header) => (
-                  <th key={header} className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-2))' }}>
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredApprovals.map((row) => {
-                const draft = drafts[row.id] ?? buildDraft(row);
-                const isSaving = savingIds.has(row.id);
-                const error = rowErrors[row.id];
-
-                return (
-                  <tr key={row.id} style={{ borderBottom: '1px solid rgb(var(--border))' }}>
-                    <td className="px-3 py-3 align-top">
-                      <p className="font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{row.employee_name}</p>
-                      <p className="mt-0.5" style={{ color: 'rgb(var(--text-3))' }}>ID {row.employee_id} | {row.department}</p>
-                      <p className="mt-0.5" style={{ color: 'rgb(var(--text-3))' }}>{row.current_grade} to {row.target_grade}</p>
-                    </td>
-                    <td className="px-3 py-3 align-top" style={{ color: 'rgb(var(--text-2))' }}>{row.domain_name}</td>
-                    <td className="px-3 py-3 align-top" style={{ color: 'rgb(var(--text-1))' }}>{row.competency_name}</td>
-                    <td className="px-3 py-3 align-top" style={{ color: 'rgb(var(--text-1))' }}>{row.technology_name}</td>
-                    <td className="px-3 py-3 align-top">
-                      <select
-                        className="field h-9 w-full min-w-[130px]"
-                        value={draft.type}
-                        onChange={(event) => updateDraft(row.id, { type: event.target.value as PendingApproval['type'] })}
-                      >
-                        {typeOptions.map((type) => (
-                          <option key={type.code} value={type.code}>{type.label}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-3 align-top">
-                      <select
-                        className="field h-9 w-full min-w-[82px]"
-                        value={draft.projects}
-                        onChange={(event) => updateDraft(row.id, { projects: Number(event.target.value) })}
-                      >
-                        {projectOptions.map((projects) => (
-                          <option key={projects} value={projects}>{projects === 3 ? '3+' : projects}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-3 align-top">
-                      <select
-                        className="field h-9 w-full min-w-[130px]"
-                        value={draft.level}
-                        onChange={(event) => updateDraft(row.id, { level: event.target.value as PendingApproval['level'] })}
-                      >
-                        {levelOptions.map((level) => (
-                          <option key={level} value={level}>{level}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-3 align-top font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{percent(row.score)}</td>
-                    <td className="px-3 py-3 align-top" style={{ color: 'rgb(var(--text-2))' }}>
-                      <p>{dateText(row.submitted_at)}</p>
-                      <p className="mt-0.5" style={{ color: 'rgb(var(--text-3))' }}>{row.submitted_by}</p>
-                    </td>
-                    <td className="px-3 py-3 align-top">
-                      <button
-                        type="button"
-                        className="btn-primary text-xs inline-flex items-center gap-2 whitespace-nowrap"
-                        onClick={() => approveRow(row)}
-                        disabled={isSaving}
-                      >
-                        {isSaving ? (
-                          <span className="w-3 h-3 border-2 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Check size={13} />
-                        )}
-                        Approve
-                      </button>
-                      {error && (
-                        <p className="mt-2 text-[11px] leading-snug" style={{ color: 'rgb(var(--danger))' }}>
-                          {error}
-                        </p>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {filteredApprovals.length === 0 && (
-            <div className="py-8 text-center text-sm" style={{ color: 'rgb(var(--text-3))' }}>
-              No pending approvals match your search.
+    <>
+      {confirmDialog}
+      <section className="card p-5 space-y-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={18} style={{ color: 'rgb(var(--accent))' }} />
+              <h3 className="text-lg font-bold leading-tight" style={{ color: 'rgb(var(--text-1))' }}>
+                Pending Approvals
+              </h3>
             </div>
-          )}
+            <p className="text-xs mt-1 max-w-3xl" style={{ color: 'rgb(var(--text-3))' }}>
+              Review skill rows submitted by engineers. Approved rows count in reports and readiness scores.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="btn-secondary text-xs inline-flex items-center gap-2"
+            disabled={isFetching}
+          >
+            <RefreshCw size={13} className={isFetching ? 'animate-spin' : ''} />
+            Refresh
+          </button>
         </div>
-      )}
-    </section>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 items-center">
+          <label className="relative block">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgb(var(--text-3))' }} />
+            <input
+              type="text"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search person, department, skill, or tool..."
+              className="field w-full h-10 pl-9"
+            />
+          </label>
+          <span
+            className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
+            style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#f97316' }}
+          >
+            {approvals.length} waiting
+          </span>
+        </div>
+
+        {isLoading && (
+          <div className="py-8 text-center text-sm" style={{ color: 'rgb(var(--text-2))' }}>
+            Loading pending approvals...
+          </div>
+        )}
+
+        {isError && (
+          <div className="rounded-lg px-3 py-2 text-sm inline-flex items-center gap-2" style={{ backgroundColor: 'rgb(var(--danger-soft))', color: 'rgb(var(--danger))' }}>
+            <AlertCircle size={15} />
+            Could not load pending approvals.
+          </div>
+        )}
+
+        {!isLoading && !isError && approvals.length === 0 && (
+          <div className="rounded-lg px-4 py-6 text-center text-sm" style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}>
+            No pending approvals right now.
+          </div>
+        )}
+
+        {!isLoading && !isError && approvals.length > 0 && (
+          <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'rgb(var(--border))' }}>
+            <table className="w-full text-xs" style={{ minWidth: '1050px' }}>
+              <thead>
+                <tr style={{ backgroundColor: 'rgb(var(--surface-2))', borderBottom: '1px solid rgb(var(--border))' }}>
+                  {['Person', 'Skill Area', 'Skill', 'Tool', 'Importance', 'Projects', 'Level', 'Score', 'Submitted', 'Action'].map((header) => (
+                    <th key={header} className="px-3 py-2.5 text-left font-semibold uppercase tracking-wider" style={{ color: 'rgb(var(--text-2))' }}>
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ borderColor: 'rgb(var(--border))' }}>
+                {filteredApprovals.map((row) => {
+                  const draft = drafts[row.id] ?? buildDraft(row);
+                  const isSaving = savingIds.has(row.id);
+                  const isRejecting = rejectingIds.has(row.id);
+                  const isProcessing = isSaving || isRejecting;
+                  const error = rowErrors[row.id];
+
+                  return (
+                    <tr key={row.id} className="hover:bg-[rgb(var(--surface-2))] transition-colors">
+                      <td className="px-3 py-3 align-top font-semibold" style={{ color: 'rgb(var(--text-1))' }}>
+                        <div>{row.employee_name}</div>
+                        <div className="text-[11px] font-normal" style={{ color: 'rgb(var(--text-3))' }}>
+                          {row.employee_id} {row.department ? `· ${row.department}` : ''}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 align-top" style={{ color: 'rgb(var(--text-1))' }}>{row.domain_name}</td>
+                      <td className="px-3 py-3 align-top" style={{ color: 'rgb(var(--text-1))' }}>{row.competency_name}</td>
+                      <td className="px-3 py-3 align-top font-medium" style={{ color: 'rgb(var(--text-1))' }}>{row.technology_name}</td>
+                      <td className="px-3 py-3 align-top">
+                        <select
+                          className="field h-9 w-full min-w-[110px]"
+                          value={draft.type}
+                          onChange={(event) => updateDraft(row.id, { type: event.target.value as PendingApproval['type'] })}
+                          disabled={isProcessing}
+                        >
+                          {typeOptions.map((type) => (
+                            <option key={type.code} value={type.code}>{type.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        <select
+                          className="field h-9 w-full min-w-[90px]"
+                          value={draft.projects}
+                          onChange={(event) => updateDraft(row.id, { projects: Number(event.target.value) })}
+                          disabled={isProcessing}
+                        >
+                          {projectOptions.map((projects) => (
+                            <option key={projects} value={projects}>{projects === 3 ? '3+' : projects}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        <select
+                          className="field h-9 w-full min-w-[130px]"
+                          value={draft.level}
+                          onChange={(event) => updateDraft(row.id, { level: event.target.value as PendingApproval['level'] })}
+                          disabled={isProcessing}
+                        >
+                          {levelOptions.map((level) => (
+                            <option key={level} value={level}>{level}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-3 align-top font-semibold" style={{ color: 'rgb(var(--text-1))' }}>{percent(row.score)}</td>
+                      <td className="px-3 py-3 align-top" style={{ color: 'rgb(var(--text-2))' }}>
+                        <p>{dateText(row.submitted_at)}</p>
+                        <p className="mt-0.5" style={{ color: 'rgb(var(--text-3))' }}>{row.submitted_by}</p>
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="btn-primary text-xs inline-flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5"
+                            onClick={() => approveRow(row)}
+                            disabled={isProcessing}
+                            title="Approve this skill assessment"
+                          >
+                            {isSaving ? (
+                              <span className="w-3 h-3 border-2 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Check size={13} />
+                            )}
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs inline-flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 hover:text-[rgb(var(--danger))] hover:border-[rgb(var(--danger))]"
+                            onClick={() => rejectRow(row)}
+                            disabled={isProcessing}
+                            title="Reject and remove this skill submission"
+                          >
+                            {isRejecting ? (
+                              <span className="w-3 h-3 border-2 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <X size={13} />
+                            )}
+                            Reject
+                          </button>
+                        </div>
+                        {error && (
+                          <p className="mt-2 text-[11px] leading-snug" style={{ color: 'rgb(var(--danger))' }}>
+                            {error}
+                          </p>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {filteredApprovals.length === 0 && (
+              <div className="py-8 text-center text-sm" style={{ color: 'rgb(var(--text-3))' }}>
+                No pending approvals match your search.
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    </>
   );
 };

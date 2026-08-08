@@ -10,6 +10,7 @@ import {
 } from '@/hooks/useAssessment';
 import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes } from '@/hooks/useConfig';
 import { getApiErrorMessage } from '@/lib/apiError';
+import { toast } from '@/lib/toast';
 
 interface Props {
   employeeId: string;   // emp_code e.g. "1818"
@@ -68,7 +69,7 @@ const DuplicateModal: React.FC<{
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
-      style={{ backgroundColor: 'rgb(0 0 0 / 0.6)', backdropFilter: 'blur(4px)' }}
+      style={{ backgroundColor: 'rgb(0 0 0 / 0.7)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
     >
       <div
         className="w-full max-w-md rounded-2xl shadow-elevated animate-scale-in overflow-hidden"
@@ -151,7 +152,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
   const { data: assessmentTypes = [] } = useConfigAssessmentTypes();
   const { data: assessmentLevels = [] } = useConfigAssessmentLevels();
   const { data: assessmentProjects = [] } = useConfigAssessmentProjects();
-  const { checkDuplicate } = useDuplicateAssessmentCheck(employeeId);
+  const { checkDuplicate, checkDuplicateImportance } = useDuplicateAssessmentCheck(employeeId);
   const createAssessment = useCreateAssessment();
   const updateAssessment = useUpdateAssessment();
 
@@ -244,13 +245,21 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
       return;
     }
 
-    // Check for duplicate
+    // Check for duplicate tool
     const duplicateCheck = checkDuplicate(selectedDomainId, selectedCompetencyId, selectedTechnologyId);
     if (duplicateCheck.isDuplicate && duplicateCheck.existingAssessment) {
       setDuplicateModal({
         show: true,
         assessment: duplicateCheck.existingAssessment,
       });
+      return;
+    }
+
+    // Check for duplicate importance within competency
+    const duplicateImportanceCheck = checkDuplicateImportance(selectedCompetencyId, type, selectedTechnologyId);
+    if (duplicateImportanceCheck.isDuplicate) {
+      const compName = selectedCompetency?.competencyName || 'this competency';
+      setError(`A ${type} tool is already assigned for '${compName}'. Only one ${type} tool is allowed per competency.`);
       return;
     }
 
@@ -278,13 +287,15 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
       setSelectedTechnologyId(null);
       setProjects(1);
       setType('Primary');
-      setLevel('Unset');
+      toast.success('Skill assessment created successfully!', 'Skill Added');
       onSuccess?.();
 
       // Close modal after 2 seconds
       setTimeout(() => onClose?.(), 2000);
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, 'Could not save this skill check.'));
+      const errMsg = getApiErrorMessage(err, 'Could not save this skill check.');
+      setError(errMsg);
+      toast.error(errMsg, 'Save Failed');
     }
   };
 
@@ -306,12 +317,15 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
       }
 
       setDuplicateModal({ show: false, assessment: null });
+      toast.success('Skill assessment updated successfully!', 'Skill Updated');
       onSuccess?.();
 
       // Close modal after 2 seconds
       setTimeout(() => onClose?.(), 2000);
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, 'Could not update this skill check.'));
+      const errMsg = getApiErrorMessage(err, 'Could not update this skill check.');
+      setError(errMsg);
+      toast.error(errMsg, 'Update Failed');
       setDuplicateModal({ show: false, assessment: null });
     }
   };

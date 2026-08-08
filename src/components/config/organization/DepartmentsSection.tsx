@@ -4,6 +4,8 @@ import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { PanelHeader } from '@/components/ui/PanelHeader';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { HEADER_GRADIENTS, useTableState } from '../ConfigTableState';
 import {
@@ -38,9 +40,18 @@ export const DepartmentsSection: React.FC = () => {
 
   const handleSave = async () => {
     const payload = { name: form.name, description: form.description || undefined, is_active: form.is_active };
-    if (modal === 'create') await createDept.mutateAsync(payload);
-    else if (editing) await updateDept.mutateAsync({ id: editing.id, data: payload });
-    setModal(null);
+    try {
+      if (modal === 'create') {
+        await createDept.mutateAsync(payload);
+        toast.success(`Department "${payload.name}" created successfully.`, 'Department Created');
+      } else if (editing) {
+        await updateDept.mutateAsync({ id: editing.id, data: payload });
+        toast.success(`Department "${payload.name}" updated successfully.`, 'Department Updated');
+      }
+      setModal(null);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to save department.'), 'Error');
+    }
   };
 
   const filteredDepts = useMemo(
@@ -98,7 +109,16 @@ export const DepartmentsSection: React.FC = () => {
                 <TD>
                   <StatusBadge active={d.is_active} />
                 </TD>
-                <ActionBtns onEdit={() => openEdit(d)} onDelete={async () => { if (await confirm({ title: 'Delete Department', message: `"${d.name}" will be permanently deleted.`, confirmLabel: 'Delete' })) deleteDept.mutate(d.id); }} />
+                <ActionBtns onEdit={() => openEdit(d)} onDelete={async () => {
+                  if (await confirm({ title: 'Delete Department', message: `"${d.name}" will be permanently deleted.`, confirmLabel: 'Delete' })) {
+                    try {
+                      await deleteDept.mutateAsync(d.id);
+                      toast.success(`Department "${d.name}" deleted.`, 'Department Deleted');
+                    } catch (err: unknown) {
+                      toast.error(getApiErrorMessage(err, 'Failed to delete department.'), 'Delete Error');
+                    }
+                  }
+                }} />
               </TR>
             ))}
           </TableShell>

@@ -11,6 +11,8 @@ import {
 } from '@/hooks/useConfig';
 import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 const F = 'field';
 const L = 'field-label';
@@ -58,9 +60,18 @@ export const CategoriesSection: React.FC = () => {
       sort_order: Number(form.sort_order),
       is_active: form.is_active,
     };
-    if (modal === 'create') await createCategory.mutateAsync(payload);
-    else if (editing) await updateCategory.mutateAsync({ id: editing.id, data: payload });
-    setModal(null);
+    try {
+      if (modal === 'create') {
+        await createCategory.mutateAsync(payload);
+        toast.success(`Category "${payload.name}" created successfully.`, 'Category Created');
+      } else if (editing) {
+        await updateCategory.mutateAsync({ id: editing.id, data: payload });
+        toast.success(`Category "${payload.name}" updated successfully.`, 'Category Updated');
+      }
+      setModal(null);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to save category.'), 'Error');
+    }
   };
 
   const filteredCategories = useMemo(() => {
@@ -130,7 +141,16 @@ export const CategoriesSection: React.FC = () => {
                 {c.competencies?.length ?? 0}
               </span>
             </TD>
-            <ActionBtns onEdit={() => openEdit(c)} onDelete={async () => { if (await confirm({ title: 'Delete Category', message: `"${c.name}" will be permanently deleted. Skills using this category must be reassigned.`, confirmLabel: 'Delete' })) deleteCategory.mutate(c.id); }} />
+            <ActionBtns onEdit={() => openEdit(c)} onDelete={async () => {
+              if (await confirm({ title: 'Delete Category', message: `"${c.name}" will be permanently deleted. Skills using this category must be reassigned.`, confirmLabel: 'Delete' })) {
+                try {
+                  await deleteCategory.mutateAsync(c.id);
+                  toast.success(`Category "${c.name}" deleted.`, 'Category Deleted');
+                } catch (err: unknown) {
+                  toast.error(getApiErrorMessage(err, 'Failed to delete category.'), 'Delete Error');
+                }
+              }
+            }} />
           </TR>
         ))}
       </TableShell>

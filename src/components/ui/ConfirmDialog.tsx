@@ -54,7 +54,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       className="animate-fade-in"
       style={{
         position: 'fixed', inset: 0, zIndex: 10000,
-        backgroundColor: 'rgb(0 0 0 / 0.65)',
+        backgroundColor: 'rgb(0 0 0 / 0.7)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '16px',
       }}

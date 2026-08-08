@@ -4,6 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { router } from '@/routes';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/store/authStore';
+import { ToastContainer } from '@/components/ui/ToastContainer';
 
 const API_BASE_URL = import.meta.env.PROD
   ? (import.meta.env.VITE_API_BASE_URL || '/api/v1')
@@ -32,13 +33,7 @@ function HydrationGate({ children }: { children: React.ReactNode }) {
         const { accessToken, isAuthenticated, setTokens, setUser, logout } = useAuthStore.getState();
         let token = accessToken;
 
-        if (isAuthenticated && !token) {
-          logout();
-          queryClient.clear();
-          return;
-        }
-
-        if (token && isTokenExpired(token)) {
+        if (isAuthenticated && (!token || isTokenExpired(token))) {
           try {
             const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
               method: 'POST',
@@ -110,6 +105,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <HydrationGate>
         <RouterProvider router={router} />
+        <ToastContainer />
       </HydrationGate>
     </QueryClientProvider>
   );

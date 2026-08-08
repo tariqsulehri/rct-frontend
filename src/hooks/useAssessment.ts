@@ -10,7 +10,7 @@ export interface SkillAssessment {
   type: 'Primary' | 'Secondary' | 'Tertiary';
   projects: number;
   level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
-  status: 'approved' | 'pending';
+  status: 'draft' | 'pending' | 'approved';
   assessed_by: string;   // emp_code of assessor e.g. "1139"
   assessed_at: string;
   updated_at: string;
@@ -139,6 +139,7 @@ export const useCreateAssessment = () => {
       type: 'Primary' | 'Secondary' | 'Tertiary';
       projects: number;
       level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
+      status?: 'draft' | 'pending' | 'approved';
     }) => {
       const response = await apiClient.post<{ success: boolean; data: SkillAssessment }>(
         '/assessments/skill-assessments',
@@ -149,6 +150,9 @@ export const useCreateAssessment = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
       queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-dashboard'] });
     },
   });
 };
@@ -162,6 +166,9 @@ export const useDeleteAssessment = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
       queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-dashboard'] });
     },
   });
 };
@@ -183,6 +190,9 @@ export const useApproveAssessment = () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
       queryClient.invalidateQueries({ queryKey: ['assessments', 'pending-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-dashboard'] });
     },
   });
 };
@@ -197,6 +207,7 @@ export const useUpdateAssessment = () => {
         type: 'Primary' | 'Secondary' | 'Tertiary';
         projects: number;
         level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
+        status: 'draft' | 'pending' | 'approved';
       }>;
     }) => {
       const response = await apiClient.patch<{ success: boolean; data: SkillAssessment }>(
@@ -208,6 +219,31 @@ export const useUpdateAssessment = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
       queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-dashboard'] });
+    },
+  });
+};
+
+export const useSubmitDraftsForApproval = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ empCode, assessmentIds }: { empCode: string; assessmentIds?: number[] }) => {
+      const response = await apiClient.post<{ success: boolean; data: { count: number; data: SkillAssessment[] } }>(
+        `/assessments/employees/${empCode}/submit-drafts`,
+        { assessment_ids: assessmentIds },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assessments'] });
+      queryClient.invalidateQueries({ queryKey: ['assessments', 'pending-approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['teamRoster'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-dashboard'] });
     },
   });
 };
@@ -392,11 +428,43 @@ export const useDuplicateAssessmentCheck = (
     return { isDuplicate: false };
   }, [assessments, techLocationMap]);
 
+  const checkDuplicateImportance = React.useCallback((
+    compId: number,
+    type: 'Primary' | 'Secondary' | 'Tertiary',
+    excludeTechId?: number,
+    excludeAssessmentId?: number,
+  ): DuplicateCheckResult => {
+    if (!assessments) {
+      return { isDuplicate: false };
+    }
+
+    const existing = assessments.find((assessment) => {
+      if (excludeAssessmentId && assessment.id === excludeAssessmentId) return false;
+      if (excludeTechId && assessment.technology_id === excludeTechId) return false;
+      if (assessment.type !== type) return false;
+
+      const location = techLocationMap.get(assessment.technology_id);
+      if (!location) return false;
+
+      return location.competencyId === compId;
+    });
+
+    if (existing) {
+      return {
+        isDuplicate: true,
+        existingAssessmentId: existing.id,
+        existingAssessment: existing,
+      };
+    }
+
+    return { isDuplicate: false };
+  }, [assessments, techLocationMap]);
+
   // Optional: pre-check if specific IDs provided
   const isDuplicate = React.useMemo(() => {
     if (!domainId || !competencyId || !technologyId) return false;
     return checkDuplicate(domainId, competencyId, technologyId).isDuplicate;
   }, [domainId, competencyId, technologyId, checkDuplicate]);
 
-  return { checkDuplicate, isDuplicate };
+  return { checkDuplicate, checkDuplicateImportance, isDuplicate };
 };

@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { Info, Search } from "lucide-react";
+import { Info, Search, RefreshCw } from "lucide-react";
 import { useTeamRoster } from "@/hooks/useAssessment";
 import { useAuthStore } from "@/store/authStore";
 import { BulkAssessmentTable } from "@/components/BulkAssessmentTable";
 import { usePromotionReadiness, PromotionRow } from "@/hooks/useReports";
+import { toast } from "@/lib/toast";
+import { CefrAssessmentModal } from "@/components/communication/CefrAssessmentModal";
 
 interface AssessmentModalState {
   isOpen: boolean;
@@ -35,11 +37,30 @@ const percentText = (value: number | null) => value === null ? "N/A" : `${value}
 
 export const TeamRoster: React.FC = () => {
   const [modal, setModal] = useState<AssessmentModalState>({ isOpen: false, employeeId: null, employeeName: null });
+  const [commModal, setCommModal] = useState<{ isOpen: boolean; employeeId: string | null; employeeName: string | null; gradeLevel: number }>({
+    isOpen: false,
+    employeeId: null,
+    employeeName: null,
+    gradeLevel: 3,
+  });
   const [teamSearch, setTeamSearch] = useState("");
   const [selectedGrade, setSelectedGrade] = useState<string>("all");
   const { user } = useAuthStore();
-  const { data: roster, isLoading, error } = useTeamRoster();
-  const { data: promotionRows } = usePromotionReadiness();
+  const { data: roster, isLoading, isFetching: isFetchingRoster, error, refetch: refetchRoster } = useTeamRoster();
+  const { data: promotionRows, isFetching: isFetchingPromo, refetch: refetchPromo } = usePromotionReadiness();
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsManualRefreshing(true);
+    try {
+      await Promise.all([refetchRoster(), refetchPromo()]);
+      toast.success('Team roster refreshed from server.', 'Refreshed');
+    } catch {
+      toast.error('Failed to refresh roster. Please try again.', 'Refresh Failed');
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  };
 
   const rosterRows = roster ?? [];
   const gradeOptions = Array.from(new Set(rosterRows.map((member) => member.current_grade.code)))
@@ -242,6 +263,19 @@ export const TeamRoster: React.FC = () => {
               <option key={gradeCode} value={gradeCode}>{gradeCode}</option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isLoading || isFetchingRoster || isFetchingPromo || isManualRefreshing}
+            className="btn-secondary flex items-center gap-1.5 px-3 py-2 text-xs rounded-lg shrink-0"
+            title="Refresh team roster from server"
+          >
+            <RefreshCw
+              size={14}
+              className={isFetchingRoster || isFetchingPromo || isManualRefreshing ? 'animate-spin' : ''}
+            />
+            <span>Refresh</span>
+          </button>
         </div>
       )}
 
@@ -373,12 +407,21 @@ export const TeamRoster: React.FC = () => {
                       <span className="badge badge-success">{member.skill_assessments_count}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => setModal({ isOpen: true, employeeId: member.emp_code, employeeName: member.full_name })}
-                        className="btn-secondary text-xs py-1.5 px-3 whitespace-nowrap"
-                      >
-                        Check Skills
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setModal({ isOpen: true, employeeId: member.emp_code, employeeName: member.full_name })}
+                          className="btn-secondary text-xs py-1.5 px-2.5 whitespace-nowrap"
+                        >
+                          Skills
+                        </button>
+                        <button
+                          onClick={() => setCommModal({ isOpen: true, employeeId: member.emp_code, employeeName: member.full_name, gradeLevel: member.current_grade.level })}
+                          className="text-xs py-1.5 px-2.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 font-bold whitespace-nowrap"
+                          title="Evaluate CEFR Communication"
+                        >
+                          CEFR
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -410,13 +453,27 @@ export const TeamRoster: React.FC = () => {
                   employeeId={modal.employeeId}
                   employeeName={modal.employeeName ?? undefined}
                   canApprove
-                  onSuccess={() => {}}
+                  onSuccess={() => {
+                    refetchRoster();
+                    refetchPromo();
+                  }}
                   onClose={() => setModal({ isOpen: false, employeeId: null, employeeName: null })}
                 />
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* CEFR Communication Modal */}
+      {commModal.isOpen && commModal.employeeId && (
+        <CefrAssessmentModal
+          isOpen={commModal.isOpen}
+          onClose={() => setCommModal({ isOpen: false, employeeId: null, employeeName: null, gradeLevel: 3 })}
+          employeeId={commModal.employeeId}
+          employeeName={commModal.employeeName || 'Employee'}
+          currentGradeLevel={commModal.gradeLevel}
+        />
       )}
     </div>
   );

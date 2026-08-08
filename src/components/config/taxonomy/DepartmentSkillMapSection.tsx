@@ -13,6 +13,8 @@ import {
   useConfigSkillDomains,
   useSyncDepartmentSkillMap,
 } from '@/hooks/useConfig';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 export const DepartmentSkillMapSection: React.FC = () => {
   const { data: departments } = useConfigDepartments();
@@ -112,10 +114,19 @@ export const DepartmentSkillMapSection: React.FC = () => {
 
   const syncOneSkill = async (competency: ConfigCompetency, domainIds: number[]) => {
     if (!selectedDepartmentId) return;
-    await syncDepartmentSkillMap.mutateAsync({
-      department_id: selectedDepartmentId,
-      mappings: [{ competency_id: competency.id, domain_ids: domainIds }],
-    });
+    try {
+      await syncDepartmentSkillMap.mutateAsync({
+        department_id: selectedDepartmentId,
+        mappings: [{ competency_id: competency.id, domain_ids: domainIds }],
+      });
+      if (domainIds.length > 0) {
+        toast.success(`Skill "${competency.name}" added to department map.`, 'Skill Mapped');
+      } else {
+        toast.success(`Skill "${competency.name}" removed from department map.`, 'Skill Removed');
+      }
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to update department skill map.'), 'Error');
+    }
   };
 
   const handleAddSkill = (competency: ConfigCompetency) => {
@@ -423,7 +434,12 @@ export const CompetencyThresholdMatrix: React.FC = () => {
       })
     );
     if (payload.length === 0) return;
-    await saveThresholds.mutateAsync({ department_id: selectedDepartmentId, thresholds: payload });
+    try {
+      await saveThresholds.mutateAsync({ department_id: selectedDepartmentId, thresholds: payload });
+      toast.success('Department skill target scores updated successfully.', 'Targets Saved');
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to save skill targets.'), 'Save Error');
+    }
   };
 
   return (

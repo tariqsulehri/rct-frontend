@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { getApiErrorMessage } from '@/lib/apiError';
+import { toast } from '@/lib/toast';
 import apiClient from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useTableState } from '../ConfigTableState';
@@ -212,9 +213,12 @@ export const AccessManagementSection: React.FC = () => {
         const { data } = await apiClient.get<{ user: typeof currentUser }>('/auth/me');
         setCurrentUser({ ...data.user, permissions: data.user.permissions ?? [] });
       }
+      toast.success(`Permissions for role "${roleForm.name}" updated successfully.`, 'Role Permissions Updated');
       setRoleModal(null);
     } catch (err) {
-      setSaveError(getApiErrorMessage(err, 'Failed to save role.'));
+      const msg = getApiErrorMessage(err, 'Failed to save role.');
+      setSaveError(msg);
+      toast.error(msg, 'Save Error');
     }
   };
 
@@ -261,12 +265,16 @@ export const AccessManagementSection: React.FC = () => {
       }
       if (deptModal === 'create') {
         await Promise.all(departmentIds.map(department_id => createDeptAssignment.mutateAsync({ ...payload, department_id })));
+        toast.success('Department access assignment created successfully.', 'Access Assigned');
       } else if (editingDept) {
         await updateDeptAssignment.mutateAsync({ id: editingDept.id, data: { ...payload, department_id: departmentIds[0] } });
+        toast.success('Department access assignment updated successfully.', 'Access Updated');
       }
       setDeptModal(null);
     } catch (err) {
-      setSaveError(getApiErrorMessage(err, 'Failed to save department access.'));
+      const msg = getApiErrorMessage(err, 'Failed to save department access.');
+      setSaveError(msg);
+      toast.error(msg, 'Save Error');
     }
   };
 
@@ -310,10 +318,15 @@ export const AccessManagementSection: React.FC = () => {
         is_primary: lineForm.is_primary,
         is_active: lineForm.is_active,
       };
-      if (editingLine) await updateLineAssignment.mutateAsync({ id: editingLine.id, data: basePayload });
+      if (editingLine) {
+        await updateLineAssignment.mutateAsync({ id: editingLine.id, data: basePayload });
+        toast.success('Line manager access updated successfully.', 'Access Updated');
+      }
       setLineModal(null);
     } catch (err) {
-      setSaveError(getApiErrorMessage(err, 'Failed to save line-manager access.'));
+      const msg = getApiErrorMessage(err, 'Failed to save line-manager access.');
+      setSaveError(msg);
+      toast.error(msg, 'Save Error');
     }
   };
   const saveLineBulkAssignments = async () => {
@@ -336,8 +349,11 @@ export const AccessManagementSection: React.FC = () => {
         is_primary: lineBulkForm.is_primary,
         is_active: lineBulkForm.is_active,
       });
+      toast.success('Line manager direct reports synced successfully.', 'Assignments Saved');
     } catch (err) {
-      setSaveError(getApiErrorMessage(err, 'Failed to update line-manager employees.'));
+      const msg = getApiErrorMessage(err, 'Failed to update line-manager employees.');
+      setSaveError(msg);
+      toast.error(msg, 'Sync Error');
     }
   };
 
@@ -393,8 +409,15 @@ export const AccessManagementSection: React.FC = () => {
             statusBadge={statusBadge}
             onAdd={openDeptCreate}
             onEdit={openDeptEdit}
-            onDelete={async (assignment) => {
-              if (await confirm({ title: 'Deactivate Department Access', message: 'This access assignment will be marked inactive.', confirmLabel: 'Deactivate', variant: 'warning' })) deleteDeptAssignment.mutate(assignment.id);
+            onDelete={async (assignment: ConfigDepartmentAssignment) => {
+              if (await confirm({ title: 'Deactivate Department Access', message: 'This access assignment will be marked inactive.', confirmLabel: 'Deactivate', variant: 'warning' })) {
+                try {
+                  await deleteDeptAssignment.mutateAsync(assignment.id);
+                  toast.success('Department access deactivated.', 'Access Deactivated');
+                } catch (err) {
+                  toast.error(getApiErrorMessage(err, 'Failed to deactivate department access.'), 'Error');
+                }
+              }
             }}
           />
         )}
@@ -436,12 +459,24 @@ export const AccessManagementSection: React.FC = () => {
             saveLineBulkAssignments={saveLineBulkAssignments}
             toggleLineBulkEmployee={toggleLineBulkEmployee}
             onEditLine={openLineEdit}
-            onDeactivateLine={async (assignment) => {
-              if (await confirm({ title: 'Unassign Line Manager Access', message: 'This employee resource will be removed from the line manager.', confirmLabel: 'Unassign', variant: 'warning' })) deleteLineAssignment.mutate(assignment.id);
+            onDeactivateLine={async (assignment: ConfigLineManagerAssignment) => {
+              if (await confirm({ title: 'Unassign Line Manager Access', message: 'This employee resource will be removed from the line manager.', confirmLabel: 'Unassign', variant: 'warning' })) {
+                try {
+                  await deleteLineAssignment.mutateAsync(assignment.id);
+                  toast.success('Line manager access unassigned.', 'Access Unassigned');
+                } catch (err) {
+                  toast.error(getApiErrorMessage(err, 'Failed to unassign line manager access.'), 'Error');
+                }
+              }
             }}
-            onReactivateLine={async (assignment) => {
+            onReactivateLine={async (assignment: ConfigLineManagerAssignment) => {
               if (await confirm({ title: 'Reactivate Line Manager Access', message: 'This employee resource will be assigned back to this line manager if no other active line manager owns it.', confirmLabel: 'Reactivate', variant: 'warning' })) {
-                updateLineAssignment.mutate({ id: assignment.id, data: { is_active: true, ends_at: null } });
+                try {
+                  await updateLineAssignment.mutateAsync({ id: assignment.id, data: { is_active: true, ends_at: null } });
+                  toast.success('Line manager access reactivated.', 'Access Reactivated');
+                } catch (err) {
+                  toast.error(getApiErrorMessage(err, 'Failed to reactivate line manager access.'), 'Error');
+                }
               }
             }}
           />

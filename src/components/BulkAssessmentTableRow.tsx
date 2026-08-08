@@ -13,7 +13,6 @@ interface BulkAssessmentTableRowProps {
   isEditable: boolean;
   isApproving: boolean;
   isSaving: boolean;
-  isPending: boolean;
   isDeleting: boolean;
   enriched: BulkRow;
   competencies: any[];
@@ -38,7 +37,6 @@ export const BulkAssessmentTableRow: React.FC<BulkAssessmentTableRowProps> = ({
   isEditable,
   isApproving,
   isSaving,
-  isPending,
   isDeleting,
   enriched,
   competencies,
@@ -54,6 +52,8 @@ export const BulkAssessmentTableRow: React.FC<BulkAssessmentTableRowProps> = ({
   onSetApproving,
   onSetEditing,
 }) => {
+  const isDraft = row.status === 'draft' || row.isNew;
+  const isPending = row.status === 'pending' && !row.isNew;
   const projectLabel = row.projects === 3 ? '3+' : String(row.projects);
   
   const rowBg = enriched.error
@@ -64,7 +64,9 @@ export const BulkAssessmentTableRow: React.FC<BulkAssessmentTableRowProps> = ({
         ? 'rgba(var(--accent-soft), 0.15)'
         : isPending
           ? 'rgba(251,146,60,0.06)'
-          : 'transparent';
+          : isDraft
+            ? 'rgba(var(--accent-soft), 0.05)'
+            : 'transparent';
 
   return (
     <tr
@@ -77,7 +79,9 @@ export const BulkAssessmentTableRow: React.FC<BulkAssessmentTableRowProps> = ({
             ? '3px solid rgb(var(--accent))'
             : isPending
               ? '3px solid #f97316'
-              : '3px solid transparent',
+              : isDraft
+                ? '3px solid rgb(var(--accent-soft))'
+                : '3px solid transparent',
       }}
       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(var(--surface-2))')}
       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = rowBg)}
@@ -161,7 +165,7 @@ export const BulkAssessmentTableRow: React.FC<BulkAssessmentTableRowProps> = ({
               onClick={() => onSaveRow(row.id)}
               disabled={isSaving}
               className="btn-ghost w-7 h-7 p-0 rounded-md flex items-center justify-center"
-              title={isApproving ? 'Approve and save' : 'Save this row'}
+              title={isApproving ? 'Approve and save' : isDraft ? 'Save draft' : 'Save this row'}
             >
               {isSaving
                 ? <span className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: isApproving ? '#f97316' : 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
@@ -199,7 +203,16 @@ export const BulkAssessmentTableRow: React.FC<BulkAssessmentTableRowProps> = ({
             <Trash2 size={14} />
           </button>
 
-          {/* Pending Approval badge */}
+          {/* Status badges */}
+          {isDraft && (
+            <span
+              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
+              style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
+              title={row.isNew ? 'Unsaved local row' : 'Draft saved in database'}
+            >
+              {row.isNew ? 'Unsaved' : 'Draft'}
+            </span>
+          )}
           {isPending && (
             <span
               className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"

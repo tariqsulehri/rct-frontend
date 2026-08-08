@@ -14,6 +14,8 @@ import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { FormFooter } from '@/components/ui/FormFooter';
 import { Modal } from '@/components/ui/Modal';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 import { ActionBtns, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
 import {
@@ -192,12 +194,18 @@ export const EvaluationPeriodsSection: React.FC = () => {
       auto_rollover_skills: form.auto_rollover_skills,
     };
 
-    if (modal === 'create') {
-      await createPeriod.mutateAsync(payload);
-    } else if (editing) {
-      await updatePeriod.mutateAsync({ id: editing.id, data: payload });
+    try {
+      if (modal === 'create') {
+        await createPeriod.mutateAsync(payload);
+        toast.success(`Evaluation period "${payload.name}" created successfully.`, 'Period Created');
+      } else if (editing) {
+        await updatePeriod.mutateAsync({ id: editing.id, data: payload });
+        toast.success(`Evaluation period "${payload.name}" updated successfully.`, 'Period Updated');
+      }
+      setModal(null);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to save appraisal period.'), 'Save Error');
     }
-    setModal(null);
   };
 
   const handleSetActive = async (period: ConfigAppraisalPeriod) => {
@@ -207,7 +215,12 @@ export const EvaluationPeriodsSection: React.FC = () => {
       confirmLabel: 'Set as Active',
     });
     if (ok) {
-      await updatePeriod.mutateAsync({ id: period.id, data: { is_active: true } });
+      try {
+        await updatePeriod.mutateAsync({ id: period.id, data: { is_active: true } });
+        toast.success(`"${period.name}" is now the active appraisal cycle.`, 'Active Period Set');
+      } catch (err: unknown) {
+        toast.error(getApiErrorMessage(err, 'Failed to update active period.'), 'Error');
+      }
     }
   };
 
@@ -332,7 +345,7 @@ export const EvaluationPeriodsSection: React.FC = () => {
             {/* Code */}
             <TD>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-white px-2 py-1 rounded bg-[rgb(var(--bg-card-hover))] border border-[rgb(var(--border))]">
+                <span className="font-mono text-xs font-bold text-[rgb(var(--text-1))] px-2 py-1 rounded bg-[rgb(var(--surface-2))] border border-[rgb(var(--border))]">
                   {p.code}
                 </span>
                 {p.is_active && (
@@ -413,7 +426,12 @@ export const EvaluationPeriodsSection: React.FC = () => {
                   confirmLabel: 'Delete Period',
                 });
                 if (ok) {
-                  await deletePeriod.mutateAsync(p.id);
+                  try {
+                    await deletePeriod.mutateAsync(p.id);
+                    toast.success(`Evaluation period "${p.name}" deleted.`, 'Period Deleted');
+                  } catch (err: unknown) {
+                    toast.error(getApiErrorMessage(err, 'Failed to delete period.'), 'Delete Error');
+                  }
                 }
               }}
             />
@@ -547,7 +565,7 @@ export const EvaluationPeriodsSection: React.FC = () => {
             </div>
 
             {/* Checkboxes & Switches */}
-            <div className="p-3.5 rounded-lg bg-[rgb(var(--bg-card-hover))] border border-[rgb(var(--border))] space-y-3">
+            <div className="p-3.5 rounded-lg bg-[rgb(var(--surface-2))] border border-[rgb(var(--border))] space-y-3">
               <label className="flex items-center gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -556,7 +574,7 @@ export const EvaluationPeriodsSection: React.FC = () => {
                   className="rounded border-[rgb(var(--border))] text-emerald-500 focus:ring-emerald-500 w-4 h-4"
                 />
                 <div>
-                  <span className="text-sm font-semibold text-white">Set as Active Appraisal Cycle</span>
+                  <span className="text-sm font-semibold text-[rgb(var(--text-1))]">Set as Active Appraisal Cycle</span>
                   <p className="text-xs text-[rgb(var(--text-3))]">
                     Makes this period the active target for engineer score submissions. (Deactivates other periods)
                   </p>

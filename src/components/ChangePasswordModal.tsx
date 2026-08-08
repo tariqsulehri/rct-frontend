@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { KeyRound, Eye, EyeOff, Lock, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { toast } from '@/lib/toast';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -101,7 +102,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
         newPassword,
       });
 
-      setSuccess(response.data?.message || 'Password changed successfully!');
+      const msg = response.data?.message || 'Password changed successfully!';
+      setSuccess(msg);
+      toast.success(msg, 'Password Changed');
       setTimeout(() => {
         handleClose();
       }, 1500);
@@ -111,6 +114,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
         err.response?.data?.message ||
         'Failed to change password. Please try again.';
       setError(apiMessage);
+      toast.error(apiMessage, 'Password Update Failed');
     } finally {
       setLoading(false);
     }
@@ -123,9 +127,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
         position: 'fixed',
         inset: 0,
         zIndex: 10000,
-        backgroundColor: 'rgba(0, 0, 0, 0.65)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

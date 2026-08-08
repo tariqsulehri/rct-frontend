@@ -13,6 +13,8 @@ import {
 } from '@/hooks/useConfig';
 import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 const F = 'field';
 const L = 'field-label';
@@ -35,9 +37,18 @@ export const TechnologiesSection: React.FC = () => {
 
   const handleSave = async () => {
     const payload = { name: form.name, competency_id: Number(form.competency_id), is_active: form.is_active };
-    if (modal === 'create') await createTechnology.mutateAsync(payload);
-    else if (editing) await updateTechnology.mutateAsync({ id: editing.id, data: payload });
-    setModal(null);
+    try {
+      if (modal === 'create') {
+        await createTechnology.mutateAsync(payload);
+        toast.success(`Tool "${payload.name}" created successfully.`, 'Tool Created');
+      } else if (editing) {
+        await updateTechnology.mutateAsync({ id: editing.id, data: payload });
+        toast.success(`Tool "${payload.name}" updated successfully.`, 'Tool Updated');
+      }
+      setModal(null);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to save tool.'), 'Error');
+    }
   };
 
   const filteredTechnologies = useMemo(() => {
@@ -81,7 +92,16 @@ export const TechnologiesSection: React.FC = () => {
             <TD muted>{t.competency?.name ?? `#${t.competency_id}`}</TD>
             <TD muted small>{t.competency?.competency_domains?.find(d => d.is_primary)?.domain.name ?? '—'}</TD>
             <TD><StatusBadge active={t.is_active} /></TD>
-            <ActionBtns onEdit={() => openEdit(t)} onDelete={async () => { if (await confirm({ title: 'Delete Tool', message: `"${t.name}" will be deleted.`, confirmLabel: 'Delete' })) deleteTechnology.mutate(t.id); }} />
+            <ActionBtns onEdit={() => openEdit(t)} onDelete={async () => {
+              if (await confirm({ title: 'Delete Tool', message: `"${t.name}" will be deleted.`, confirmLabel: 'Delete' })) {
+                try {
+                  await deleteTechnology.mutateAsync(t.id);
+                  toast.success(`Tool "${t.name}" deleted.`, 'Tool Deleted');
+                } catch (err: unknown) {
+                  toast.error(getApiErrorMessage(err, 'Failed to delete tool.'), 'Delete Error');
+                }
+              }
+            }} />
           </TR>
         ))}
       </TableShell>

@@ -1,4 +1,12 @@
-export const ROLE_CODES = ['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER', 'ENGINEER'] as const;
+export const ROLE_CODES = [
+  'ADMIN',
+  'TOP_MANAGEMENT',
+  'MANAGER',
+  'LINE_MANAGER',
+  'ENGINEER',
+  'COMMUNICATION_EXPERT',
+  'LANGUAGE_EXPERT',
+] as const;
 
 export type RoleCode = (typeof ROLE_CODES)[number];
 

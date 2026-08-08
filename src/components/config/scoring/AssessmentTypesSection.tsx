@@ -8,6 +8,8 @@ import {
 } from '@/hooks/useConfig';
 import { calcHeader, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from '../ConfigTable';
 import { useTableState } from '../ConfigTableState';
+import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 const F = 'field';
 const L = 'field-label';
@@ -33,17 +35,22 @@ export const AssessmentTypesSection: React.FC = () => {
 
   const handleSave = async () => {
     if (!editing) return;
-    await updateType.mutateAsync({
-      id: editing.id,
-      data: {
-        label: form.label,
-        weight: Number(form.weight),
-        description: form.description || null,
-        sort_order: Number(form.sort_order),
-        is_active: form.is_active,
-      },
-    });
-    setEditing(null);
+    try {
+      await updateType.mutateAsync({
+        id: editing.id,
+        data: {
+          label: form.label,
+          weight: Number(form.weight),
+          description: form.description || null,
+          sort_order: Number(form.sort_order),
+          is_active: form.is_active,
+        },
+      });
+      toast.success(`Assessment type "${form.label}" updated successfully.`, 'Type Updated');
+      setEditing(null);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to update assessment type.'), 'Update Error');
+    }
   };
 
   const filteredTypes = useMemo(() => {
