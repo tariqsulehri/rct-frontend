@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { PromotionReadinessTab } from './tabs/PromotionReadinessTab';
 import { EmployeeResultSheetTab } from './tabs/EmployeeResultSheetTab';
 import { CompetencyScoresTab } from './tabs/CompetencyScoresTab';
@@ -6,13 +6,16 @@ import { GapAnalysisTab } from './tabs/GapAnalysisTab';
 import { ExecutiveSummaryTab } from './tabs/ExecutiveSummaryTab';
 import { CefrAnalyticsTab } from './tabs/CefrAnalyticsTab';
 import { YoYGrowthTab } from './tabs/YoYGrowthTab';
-import { ReportSidebar, ReportTabId } from './ReportSidebar';
+import type { ReportTabId } from './ReportSidebar';
 
-export const ReportsSection: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ReportTabId>('executive_summary');
+interface ReportsSectionProps {
+  activeTab: ReportTabId;
+  onSelectTab?: (tabId: ReportTabId) => void;
+}
 
+export const ReportsSection: React.FC<ReportsSectionProps> = ({ activeTab }) => {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full">
       {/* Top Header Card */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -34,24 +37,18 @@ export const ReportsSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Workspace Layout with Segmented Executive Sidebar */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
-        {/* Left Executive Sidebar */}
-        <ReportSidebar activeTab={activeTab} onSelectTab={setActiveTab} />
-
-        {/* Right Active Report Canvas */}
-        <main className="flex-1 w-full min-w-0">
-          {activeTab === 'executive_summary' && <ExecutiveSummaryTab />}
-          {activeTab === 'cefr_analytics' && <CefrAnalyticsTab />}
-          {activeTab === 'promotion_readiness' && <PromotionReadinessTab />}
-          {activeTab === 'competency_scores' && <CompetencyScoresTab />}
-          {activeTab === 'competency_matrix' && <CompetencyScoresTab />}
-          {activeTab === 'gap_analysis' && <GapAnalysisTab />}
-          {activeTab === 'skills_summary' && <CompetencyScoresTab />}
-          {activeTab === 'employee_result_sheet' && <EmployeeResultSheetTab />}
-          {activeTab === 'yoy_growth' && <YoYGrowthTab />}
-        </main>
-      </div>
+      {/* Main Full-Width Visualization Canvas */}
+      <main className="w-full min-w-0">
+        {activeTab === 'executive_summary' && <ExecutiveSummaryTab />}
+        {activeTab === 'cefr_analytics' && <CefrAnalyticsTab />}
+        {activeTab === 'promotion_readiness' && <PromotionReadinessTab />}
+        {activeTab === 'competency_scores' && <CompetencyScoresTab />}
+        {activeTab === 'competency_matrix' && <CompetencyScoresTab />}
+        {activeTab === 'gap_analysis' && <GapAnalysisTab />}
+        {activeTab === 'skills_summary' && <CompetencyScoresTab />}
+        {activeTab === 'employee_result_sheet' && <EmployeeResultSheetTab />}
+        {activeTab === 'yoy_growth' && <YoYGrowthTab />}
+      </main>
     </div>
   );
 };
