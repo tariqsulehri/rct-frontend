@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import { useGapAnalysis, usePromotionReadiness, useCompetencyScores } from '@/hooks/useReports';
-import { useChartColors } from '@/lib/chartColors';
 import { Empty, GapResult, InfoTip, Loading } from '../shared';
 import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 
@@ -13,7 +12,6 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
   const { data: gapData, isLoading: gapLoading, isError: gapError } = useGapAnalysis(selectedId);
   const { data: promoData, isLoading: promoLoading } = usePromotionReadiness();
   const { data: compData, isLoading: compLoading } = useCompetencyScores();
-  const c = useChartColors();
 
   const personOptions = useMemo(() => {
     const people = new Map<string, { emp_code: string; full_name: string; department?: string; current_grade?: string; target_grade?: string }>();
@@ -556,7 +554,6 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
                         className="absolute top-0 bottom-0 left-0 bg-indigo-200 dark:bg-indigo-900/60 rounded-full"
                         style={{ width: `${Math.min(100, g.target)}%` }}
                       />
-                      {/* Current Score Fill */}
                       <div
                         className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-amber-500 to-orange-400 rounded-full transition-all duration-500"
                         style={{ width: `${Math.min(100, g.score)}%` }}
@@ -566,73 +563,6 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="rounded-lg border p-3" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
-              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'rgb(var(--text-2))' }}>Skill Area Scores</p>
-              {domainRows.length === 0 ? (
-                <p className="text-xs py-2" style={{ color: 'rgb(var(--text-3))' }}>No skill area score data available.</p>
-              ) : (
-                <div className="space-y-2">
-                  {domainRows.map(row => {
-                    const domThreshold = thresholdPct ?? 0;
-                    const meetsThreshold = thresholdPct !== null && row.score >= thresholdPct;
-                    return (
-                      <div key={row.domain}>
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span style={{ color: 'rgb(var(--text-1))' }}>{row.domain}</span>
-                          <span style={{ color: meetsThreshold ? 'rgb(var(--success))' : domThreshold > 0 ? 'rgb(var(--danger))' : 'rgb(var(--text-2))' }}>
-                            {row.score}%
-                          </span>
-                        </div>
-                        <div className="h-2 rounded-full relative" style={{ backgroundColor: 'rgb(var(--surface-3))' }}>
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${Math.min(row.score, 100)}%`,
-                              backgroundColor: meetsThreshold ? 'rgb(var(--success))' : 'rgb(var(--accent))',
-                            }}
-                          />
-                          {thresholdPct !== null && (
-                            <div
-                              className="absolute top-0 bottom-0 w-0.5 rounded-full"
-                              style={{
-                                left: `${domThreshold}%`,
-                                backgroundColor: c.warning,
-                                transform: 'translateX(-50%)',
-                              }}
-                              title={`Needed: ${domThreshold}%`}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-lg border p-3" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--surface))' }}>
-              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'rgb(var(--text-2))' }}>Top Skill Gaps</p>
-              {topGaps.length === 0 ? (
-                <p className="text-xs py-2" style={{ color: 'rgb(var(--success))' }}>No open gaps. This person meets the target skills.</p>
-              ) : (
-                <div className="space-y-2">
-                  {topGaps.slice(0, 8).map(g => (
-                    <div key={g.competency_id} className="rounded-md px-2 py-1.5" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
-                      <p className="text-xs font-medium" style={{ color: 'rgb(var(--text-1))' }}>
-                        {g.competency_name}
-                        {g.is_critical && <span className="ml-1" style={{ color: 'rgb(var(--danger))' }}>(Critical)</span>}
-                      </p>
-                      <p className="text-[11px]" style={{ color: 'rgb(var(--text-3))' }}>
-                        {g.domain_name} • Gap {Math.round(g.gap * 100)}% ({Math.round(g.score * 100)}% vs {Math.round(g.threshold * 100)}%)
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}
