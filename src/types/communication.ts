@@ -91,6 +91,7 @@ export interface RatingInput {
 
 export interface FormattedCommAssessment {
   id: string;
+  employee_id: number;
   subject_id: number;
   emp_code: string;
   employee_name: string;
