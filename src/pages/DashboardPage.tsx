@@ -512,7 +512,9 @@ export const DashboardPage: React.FC = () => {
             className={
               isTeamTab
                 ? 'h-full w-full p-6'
-                : activeTab === 'config' || activeTab === 'reports'
+                : activeTab === 'reports'
+                ? 'w-full px-4 sm:px-6 py-4'
+                : activeTab === 'config'
                 ? 'w-full max-w-7xl mx-auto p-4 sm:p-6'
                 : 'max-w-6xl mx-auto p-6'
             }
