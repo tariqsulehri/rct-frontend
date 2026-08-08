@@ -330,21 +330,18 @@ export const CefrGradeMatrixTab: React.FC = () => {
   const inactiveCount = matrixState.length - activeCount;
 
   return (
-    <div className="space-y-3">
-      {/* Header Info & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white dark:bg-zinc-900 p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xs">
-        <div>
-          <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-            <span>Grade-Wise CEFR Benchmark Matrix</span>
-            {hasUnsavedChanges && (
-              <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full border border-amber-500/20 animate-pulse">
-                Unsaved Edits
-              </span>
-            )}
+    <div className="space-y-2.5">
+      {/* Matrix Controls & Actions Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white dark:bg-zinc-900 p-2.5 sm:p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xs">
+        <div className="flex items-center gap-2">
+          <h3 className="text-xs font-black text-zinc-900 dark:text-zinc-100">
+            Grade-Wise CEFR Benchmark Matrix
           </h3>
-          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Configure baseline expectations and competency overrides per career grade.
-          </p>
+          {hasUnsavedChanges && (
+            <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 animate-pulse">
+              Unsaved Edits
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

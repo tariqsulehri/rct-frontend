@@ -282,9 +282,9 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
   const ActiveIcon = activeMeta.item.icon;
 
   return (
-    <div className="space-y-4 animate-slide-up w-full">
+    <div className="space-y-3 animate-slide-up w-full">
       {/* Top Header Card */}
-      <div className="bg-white dark:bg-zinc-900 p-4.5 rounded-2xl border border-zinc-200 dark:border-zinc-700/80 shadow-xs space-y-3.5">
+      <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-700/80 shadow-2xs space-y-2.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80 shrink-0">
