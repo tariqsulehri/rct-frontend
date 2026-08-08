@@ -30,6 +30,8 @@ import {
   defaultDashboardTabForRole,
 } from '@/components/dashboard/types';
 
+import { REPORT_CATEGORIES, type ReportTabId } from '@/components/reports/ReportSidebar';
+
 /**
  * Main dashboard container component orchestrating sub-tabs, navigation,
  * real-time user auth synchronization, and role-based views.
@@ -38,7 +40,9 @@ export const DashboardPage: React.FC = () => {
   const { user, logout, setUser } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>(() => defaultDashboardTabForRole(user?.role));
   const [activeConfigTab, setActiveConfigTab] = useState<ConfigTab>('scoring');
+  const [activeReportTab, setActiveReportTab] = useState<ReportTabId>('executive_summary');
   const [configMenuOpen, setConfigMenuOpen] = useState(true);
+  const [reportsMenuOpen, setReportsMenuOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
@@ -195,7 +199,130 @@ export const DashboardPage: React.FC = () => {
           <nav className="flex-1 p-2.5 space-y-1 pt-3.5 overflow-y-auto scrollbar-none">
             {visibleNav.map(({ id, label, icon: Icon }) => {
               const isConfig = id === 'config';
+              const isReports = id === 'reports';
               const active = activeTab === id;
+
+              if (isReports) {
+                return (
+                  <div key={id} className="space-y-1.5">
+                    {/* Reports Parent Toggle */}
+                    <button
+                      onClick={() => {
+                        setActiveTab('reports');
+                        if (sidebarOpen) {
+                          setReportsMenuOpen((prev) => !prev);
+                        } else {
+                          setSidebarOpen(true);
+                          setReportsMenuOpen(true);
+                        }
+                      }}
+                      title={!sidebarOpen ? label : undefined}
+                      className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all duration-150 group"
+                      style={{
+                        backgroundColor: active ? 'rgb(var(--accent-soft))' : 'transparent',
+                        color: active ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))',
+                        justifyContent: sidebarOpen ? 'flex-start' : 'center',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!active) e.currentTarget.style.backgroundColor = 'rgb(var(--surface-2))';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!active) e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <Icon
+                        size={19}
+                        style={{ color: active ? 'rgb(var(--accent))' : 'rgb(var(--text-2))', flexShrink: 0 }}
+                      />
+                      {sidebarOpen && (
+                        <>
+                          <span
+                            className="truncate flex-1 text-left font-bold text-[14px]"
+                            style={{ color: active ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))' }}
+                          >
+                            {label}
+                          </span>
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReportsMenuOpen((prev) => !prev);
+                            }}
+                            className="p-1 rounded-md hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 text-zinc-400"
+                          >
+                            {reportsMenuOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                          </span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Expandable Report Category Tree (When Sidebar is Open) */}
+                    {sidebarOpen && reportsMenuOpen && (
+                      <div className="pl-3.5 pr-1 py-1 space-y-3 border-l-2 border-indigo-300 dark:border-indigo-800 ml-4 animate-fade-in">
+                        {REPORT_CATEGORIES.map((category) => {
+                          const CatIcon = category.icon;
+                          return (
+                            <div key={category.id} className="space-y-1">
+                              {/* Category Header */}
+                              <div className="flex items-center justify-between px-2 py-1 text-[10px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  <CatIcon size={12} className="text-zinc-400 shrink-0" />
+                                  <span className="truncate">{category.title}</span>
+                                </div>
+                                {category.isUpcoming && (
+                                  <span className="text-[8px] bg-amber-50 dark:bg-amber-950/60 text-amber-600 px-1 py-0.2 rounded font-bold">
+                                    Soon
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Category Items */}
+                              <div className="space-y-1">
+                                {category.items.map((subItem) => {
+                                  const SubIcon = subItem.icon;
+                                  const isSubActive = activeTab === 'reports' && activeReportTab === subItem.id;
+
+                                  return (
+                                    <button
+                                      key={subItem.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveTab('reports');
+                                        setActiveReportTab(subItem.id);
+                                      }}
+                                      title={subItem.description}
+                                      className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${
+                                        isSubActive
+                                          ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                                          : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-950 dark:hover:text-white'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <SubIcon size={13} className={isSubActive ? 'text-white' : 'text-zinc-400'} />
+                                        <span className="truncate">{subItem.label}</span>
+                                      </div>
+                                      {subItem.badge && (
+                                        <span
+                                          className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                                            isSubActive
+                                              ? 'bg-indigo-700 text-indigo-100'
+                                              : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                                          }`}
+                                        >
+                                          {subItem.badge}
+                                        </span>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
 
               if (isConfig) {
                 return (
@@ -385,7 +512,7 @@ export const DashboardPage: React.FC = () => {
             className={
               isTeamTab
                 ? 'h-full w-full p-6'
-                : activeTab === 'config'
+                : activeTab === 'config' || activeTab === 'reports'
                 ? 'w-full max-w-7xl mx-auto p-4 sm:p-6'
                 : 'max-w-6xl mx-auto p-6'
             }
@@ -415,8 +542,11 @@ export const DashboardPage: React.FC = () => {
             )}
 
             {activeTab === 'reports' && canViewReports && (
-              <div className="animate-slide-up">
-                <ReportsSection />
+              <div className="animate-slide-up w-full">
+                <ReportsSection
+                  activeTab={activeReportTab}
+                  onSelectTab={(tab) => setActiveReportTab(tab)}
+                />
               </div>
             )}
 
