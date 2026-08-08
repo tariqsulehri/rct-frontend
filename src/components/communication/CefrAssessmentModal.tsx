@@ -350,8 +350,8 @@ export const CefrAssessmentModal: React.FC<CefrAssessmentModalProps> = ({
   ];
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex flex-col w-screen h-screen bg-slate-50 dark:bg-zinc-950 overflow-hidden animate-in fade-in duration-200">
-      <div className="relative w-full h-full flex flex-col bg-slate-50 dark:bg-zinc-950 overflow-hidden">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 md:p-6 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="relative w-full max-w-6xl 2xl:max-w-7xl max-h-[92vh] h-[92vh] flex flex-col bg-slate-50 dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in scale-in duration-200">
         {/* Modal Header */}
         <div className="px-6 py-3.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900/90 flex-wrap gap-3 shrink-0 shadow-2xs">
           <div className="flex items-center gap-3">
