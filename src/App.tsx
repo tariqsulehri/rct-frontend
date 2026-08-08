@@ -33,13 +33,7 @@ function HydrationGate({ children }: { children: React.ReactNode }) {
         const { accessToken, isAuthenticated, setTokens, setUser, logout } = useAuthStore.getState();
         let token = accessToken;
 
-        if (isAuthenticated && !token) {
-          logout();
-          queryClient.clear();
-          return;
-        }
-
-        if (token && isTokenExpired(token)) {
+        if (isAuthenticated && (!token || isTokenExpired(token))) {
           try {
             const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
               method: 'POST',
