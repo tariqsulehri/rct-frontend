@@ -537,11 +537,27 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
           </div>
         </>
       ) : (
-        <DataTable headers={['Name', 'Code', 'Grade', 'Achieved', 'Required', 'Gap', 'Meets', 'Rating', 'Status']}>
+        <DataTable headers={['Name', 'Code', 'Grade', 'Achieved', 'Required', 'Gap', 'Meets', 'Rating', 'CEFR Level', 'Status']}>
           {sortedRows.map(r => {
             const achieved = Math.round(r.overall_score * 100);
             const required = r.avg_threshold > 0 ? Math.round(r.avg_threshold * 100) : null;
             const gap = required !== null ? achieved - required : null;
+
+            const isTechReady = r.promotion_ready;
+            const isCefrGated = r.is_cefr_gated ?? false;
+            const isFullyReady = isTechReady && !isCefrGated;
+
+            let badgeText = '⚠ Not Ready';
+            let badgeStyle = { backgroundColor: 'rgb(var(--warning-soft))', color: 'rgb(var(--warning))' };
+
+            if (isFullyReady) {
+              badgeText = '✓ Ready';
+              badgeStyle = { backgroundColor: 'rgb(var(--success-soft))', color: 'rgb(var(--success))' };
+            } else if (isTechReady && isCefrGated) {
+              badgeText = '🔒 CEFR Gated';
+              badgeStyle = { backgroundColor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' };
+            }
+
             return (
               <TR key={r.employee_id}>
                 <td className="px-4 py-3 font-medium text-sm" style={{ color: 'rgb(var(--text-1))' }}>{r.full_name}</td>
@@ -566,17 +582,20 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
                   {r.total_competencies === 0 ? 'N/A' : `${r.meets_count}/${r.total_competencies}`}
                 </td>
                 <td className="px-4 py-3"><Stars n={r.star_rating} /></td>
+                <td className="px-4 py-3 text-xs font-bold" style={{ color: 'rgb(var(--text-1))' }}>
+                  {r.cefr_level ?? 'B2'}
+                </td>
                 <td className="px-4 py-3">
                   <span
                     className="badge"
-                    title={r.promotion_ready
-                      ? 'Ready because every needed target-grade skill is met.'
-                      : `Not ready because ${Math.max(0, r.total_competencies - r.meets_count)} needed goal-grade skills are still below threshold.`}
-                    style={r.promotion_ready
-                      ? { backgroundColor: 'rgb(var(--success-soft))', color: 'rgb(var(--success))' }
-                      : { backgroundColor: 'rgb(var(--warning-soft))', color: 'rgb(var(--warning))' }}
+                    title={isFullyReady
+                      ? 'Ready because technical target and CEFR communication benchmark are met.'
+                      : isTechReady && isCefrGated
+                        ? 'Technical target met, but blocked by CEFR communication benchmark gating.'
+                        : 'Technical skills are still below threshold.'}
+                    style={badgeStyle}
                   >
-                    {r.promotion_ready ? '✓ Ready' : '⚠ Not Ready'}
+                    {badgeText}
                   </span>
                 </td>
               </TR>

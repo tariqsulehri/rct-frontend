@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { BarChart2, Table2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell, LabelList, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend } from 'recharts';
 import { useCompetencyMatrix, useGapMatrix, type CompetencyMatrixEmployee, type CompetencyMatrixResult } from '@/hooks/useReports';
@@ -67,9 +67,30 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
 
   // Filtered lists
   const activeDomainFilter = reportFilters.skillArea !== 'all' ? reportFilters.skillArea : domainFilter;
-  const visibleComps = activeDomainFilter === 'All' || activeDomainFilter === 'all'
+  const filteredComps = activeDomainFilter === 'All' || activeDomainFilter === 'all'
     ? allComps
     : allComps.filter((c) => c.domain === activeDomainFilter);
+
+  const visibleComps = useMemo(() => {
+    const getCanonicalKey = (name: string) => {
+      const n = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (n.includes('automation') && n.includes('scripting')) return 'automation & scripting';
+      if (n === 'iac' || n.includes('infrastructureascode')) return 'infrastructure as code';
+      if (n.includes('multicloud')) return 'multi-cloud strategy';
+      if (n.includes('incidentmanagement')) return 'incident management';
+      if (n.includes('errorbudgets')) return 'error budgets & slos';
+      if (n.includes('reliability') && n.includes('performance')) return 'reliability & performance';
+      return n;
+    };
+    const seen = new Map<string, (typeof filteredComps)[number]>();
+    for (const comp of filteredComps) {
+      const key = getCanonicalKey(comp.name);
+      if (!seen.has(key)) {
+        seen.set(key, comp);
+      }
+    }
+    return Array.from(seen.values());
+  }, [filteredComps]);
 
   const gapByCode = new Map((gapData?.employees ?? []).map((employee) => [employee.emp_code, employee]));
   const reportSearch = reportFilters.search.trim().toLowerCase();
@@ -470,11 +491,11 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                   ))}
                 </select>
               </div>
-              <ResponsiveContainer width="100%" height={640}>
+              <ResponsiveContainer width="100%" height={860}>
                 <RadarChart
                   data={radarData}
-                  outerRadius="55%"
-                  margin={{ top: 35, right: 140, bottom: 35, left: 140 }}
+                  outerRadius="54%"
+                  margin={{ top: 36, right: 150, bottom: 36, left: 150 }}
                 >
                   <PolarGrid stroke={c.radarGrid} />
                   <PolarAngleAxis
@@ -487,17 +508,33 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                       const ux = dx / dist;
                       const uy = dy / dist;
 
-                      // 2-tier radial offset staggering prevents label collisions across 32 spokes
-                      const offset = index % 2 === 0 ? 14 : 46;
+                      // Stagger radial offsets (18px vs 52px) to prevent adjacent collisions
+                      const offset = index % 2 === 0 ? 18 : 52;
                       const lx = cx + ux * (dist + offset);
                       const ly = cy + uy * (dist + offset);
 
                       const item = radarData[index];
                       const labelColor = item?.color ?? c.accent;
                       const labelText = payload?.value ?? '';
-                      const textDisplay = labelText.length > 20 ? `${labelText.slice(0, 18)}…` : labelText;
 
-                      const anchor = dx > 12 ? 'start' : dx < -12 ? 'end' : 'middle';
+                      // Split long labels onto multiple lines for full unabbreviated display
+                      const words = labelText.split(' ');
+                      const lines: string[] = [];
+                      let currentLine = '';
+
+                      for (const w of words) {
+                        if ((currentLine + ' ' + w).trim().length <= 16) {
+                          currentLine = (currentLine + ' ' + w).trim();
+                        } else {
+                          if (currentLine) lines.push(currentLine);
+                          currentLine = w;
+                        }
+                      }
+                      if (currentLine) lines.push(currentLine);
+
+                      const anchor = dx > 15 ? 'start' : dx < -15 ? 'end' : 'middle';
+                      const lineHeight = 12;
+                      const startY = ly - ((lines.length - 1) * lineHeight) / 2;
 
                       return (
                         <g key={index}>
@@ -505,24 +542,28 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                             <line
                               x1={cx + ux * (dist + 3)}
                               y1={cy + uy * (dist + 3)}
-                              x2={cx + ux * (dist + offset - 5)}
-                              y2={cy + uy * (dist + offset - 5)}
+                              x2={cx + ux * (dist + offset - 4)}
+                              y2={cy + uy * (dist + offset - 4)}
                               stroke={labelColor}
                               strokeWidth={1}
-                              strokeOpacity={0.6}
+                              strokeOpacity={0.4}
                               strokeDasharray="2 2"
                             />
                           )}
                           <text
                             x={lx}
-                            y={ly}
+                            y={startY}
                             textAnchor={anchor}
-                            dominantBaseline="middle"
+                            dominantBaseline="central"
                             fontSize={10}
-                            fontWeight={600}
+                            fontWeight={650}
                             fill={labelColor}
                           >
-                            {textDisplay}
+                            {lines.map((lineStr, li) => (
+                              <tspan key={li} x={lx} dy={li === 0 ? 0 : lineHeight}>
+                                {lineStr}
+                              </tspan>
+                            ))}
                           </text>
                         </g>
                       );

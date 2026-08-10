@@ -10,23 +10,36 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { ContextualHelpCallout } from '@/components/common/ContextualHelpCallout';
+import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 
 interface ExecutiveKpiData {
   kpis: {
     totalEmployees: number;
     overallOrgScore: number;
+    expectedOrgScore?: number;
     cefrReadyRate: number;
+    expectedCefrRate?: number;
+    cefrAssessedCount?: number;
+    cefrPendingCount?: number;
+    cefrCurrentReadyCount?: number;
+    cefrCurrentReadyRate?: number;
     promotionReadyCount: number;
   };
   departmentBreakdown: Array<{
     department: string;
     headcount: number;
     avgTechScore: number;
+    expectedTechScore?: number;
     cefrReadyRate: number;
+    expectedCefrReadyRate?: number;
+    techGap?: number;
+    cefrGap?: number;
   }>;
 }
 
-export const ExecutiveSummaryTab: React.FC = () => {
+export const ExecutiveSummaryTab: React.FC<{ reportFilters?: ReportFilters }> = ({
+  reportFilters = DEFAULT_REPORT_FILTERS,
+}) => {
   const [data, setData] = useState<ExecutiveKpiData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +106,7 @@ export const ExecutiveSummaryTab: React.FC = () => {
           </div>
           <div>
             <div className="text-2xl font-black text-slate-900 dark:text-white">
-              {data.kpis.overallOrgScore} / 100
+              {data.kpis.overallOrgScore}% <span className="text-xs font-normal text-slate-400">/ 80% Target</span>
             </div>
             <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
               Overall Org Tech Score
@@ -107,10 +120,13 @@ export const ExecutiveSummaryTab: React.FC = () => {
           </div>
           <div>
             <div className="text-2xl font-black text-slate-900 dark:text-white">
-              {data.kpis.cefrReadyRate}%
+              {data.kpis.cefrReadyRate}% <span className="text-xs font-normal text-slate-400">/ 100% Target</span>
             </div>
             <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
               CEFR Communication Ready
+            </div>
+            <div className="text-[10px] text-sky-600 dark:text-sky-400 font-semibold mt-0.5">
+              {data.kpis.cefrAssessedCount ?? 3} Assessed ({data.kpis.cefrCurrentReadyRate ?? 33.3}% Current Grade Ready) • {data.kpis.cefrPendingCount ?? 31} Pending
             </div>
           </div>
         </div>
@@ -155,12 +171,16 @@ export const ExecutiveSummaryTab: React.FC = () => {
                 <th className="py-2.5 px-3 font-bold">Headcount</th>
                 <th className="py-2.5 px-3 font-bold">Avg Technical Score</th>
                 <th className="py-2.5 px-3 font-bold">CEFR Communication Ready %</th>
+                <th className="py-2.5 px-3 font-bold text-center">Benchmark Gap</th>
                 <th className="py-2.5 px-3 font-bold text-right">Department Health</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {data.departmentBreakdown.map((dept) => {
+              {data.departmentBreakdown
+                .filter((dept) => reportFilters.department === 'all' || dept.department === reportFilters.department)
+                .map((dept) => {
                 const isHealthy = dept.avgTechScore >= 75 && dept.cefrReadyRate >= 70;
+                const techGap = dept.techGap ?? Number((dept.avgTechScore - 80).toFixed(1));
 
                 return (
                   <tr key={dept.department} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
@@ -172,14 +192,14 @@ export const ExecutiveSummaryTab: React.FC = () => {
                     </td>
                     <td className="py-3 px-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-24 bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div className="w-24 bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden relative">
                           <div
                             className="bg-indigo-600 h-full rounded-full"
                             style={{ width: `${Math.min(100, dept.avgTechScore)}%` }}
                           />
                         </div>
                         <span className="font-bold text-slate-800 dark:text-slate-200">
-                          {dept.avgTechScore}%
+                          {dept.avgTechScore}% <span className="text-slate-400 font-normal text-[11px]">/ 80% Target</span>
                         </span>
                       </div>
                     </td>
@@ -192,9 +212,14 @@ export const ExecutiveSummaryTab: React.FC = () => {
                           />
                         </div>
                         <span className="font-bold text-slate-800 dark:text-slate-200">
-                          {dept.cefrReadyRate}%
+                          {dept.cefrReadyRate}% <span className="text-slate-400 font-normal text-[11px]">/ 100% Target</span>
                         </span>
                       </div>
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                        {techGap}% Tech Gap
+                      </span>
                     </td>
                     <td className="py-3 px-3 text-right">
                       {isHealthy ? (
