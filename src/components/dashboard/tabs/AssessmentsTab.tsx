@@ -14,6 +14,7 @@ import {
 import { type User } from '@/store/authStore';
 import { useCompetencyScores, usePromotionReadiness, useGapMatrix } from '@/hooks/useReports';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
+import { toPct } from '@/lib/formatters';
 import { toast } from '@/lib/toast';
 import { hasPermission, isLeaderRole } from '@/types/rbac';
 import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
@@ -107,11 +108,6 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   const selectedListRow = rows.find((r) => r.emp_code === effectiveEmpCode);
   const selectedFromGrade = formatGrade(selectedListRow?.current_grade, selectedListRow?.current_grade_title);
   const selectedToGrade = formatGrade(selectedListRow?.target_grade, selectedListRow?.target_grade_title);
-
-  const toPct = (val: number | null | undefined): number => {
-    if (val == null || isNaN(val)) return 0;
-    return Math.round(val > 1 ? val : val * 100);
-  };
 
   const avgThreshold = toPct(promoRow?.avg_threshold);
 
