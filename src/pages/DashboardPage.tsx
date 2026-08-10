@@ -40,7 +40,7 @@ export const DashboardPage: React.FC = () => {
   const { user, logout, setUser } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>(() => defaultDashboardTabForRole(user?.role));
   const [activeConfigTab, setActiveConfigTab] = useState<ConfigTab>('scoring');
-  const [activeReportTab, setActiveReportTab] = useState<ReportTabId>('executive_summary');
+  const [activeReportTab, setActiveReportTab] = useState<ReportTabId>('executive_leaderboard');
   const [configMenuOpen, setConfigMenuOpen] = useState(true);
   const [reportsMenuOpen, setReportsMenuOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
