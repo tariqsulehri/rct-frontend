@@ -135,7 +135,7 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
   });
 
   const notReadyPipeline = sortedRows.filter(r => !r.promotion_ready).slice(0, 8);
-  const pipelineMax = Math.max(...notReadyPipeline.map(r => r.overall_score), 0.05);
+  const pipelineMax = Math.max(...notReadyPipeline.map(r => getScorePct(r.overall_score)), 1);
 
   const ScoreBarTooltip = ({ active, payload }: ScoreBarTooltipProps) => {
     if (!active || !payload?.length) return null;
@@ -343,9 +343,10 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
                   {notReadyPipeline.length === 0 ? (
                     <p className="text-xs py-3 text-center" style={{ color: 'rgb(var(--text-3))' }}>All assessed people are ready.</p>
                   ) : notReadyPipeline.map((r) => {
-                    const scorePct  = Math.round(r.overall_score * 100);
-                    const barWidthPct = (r.overall_score / pipelineMax) * 100;
-                    const thrPos    = avgNeeded > 0 ? Math.min((avgNeeded / 100 / pipelineMax) * 100, 100) : 0;
+                    const scorePct = Math.round(getScorePct(r.overall_score));
+                    const normScore = getScorePct(r.overall_score);
+                    const barWidthPct = Math.min((normScore / Math.max(1, pipelineMax)) * 100, 100);
+                    const thrPos = avgNeeded > 0 ? Math.min((avgNeeded / Math.max(1, pipelineMax)) * 100, 100) : 0;
                     return (
                       <div key={r.employee_id}>
                         <div className="flex items-center justify-between text-xs mb-1">
@@ -542,8 +543,8 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
       ) : (
         <DataTable headers={['Name', 'Code', 'Grade', 'Achieved', 'Required', 'Gap', 'Meets', 'Rating', 'CEFR Level', 'Status']}>
           {sortedRows.map(r => {
-            const achieved = Math.round(r.overall_score * 100);
-            const required = r.avg_threshold > 0 ? Math.round(r.avg_threshold * 100) : null;
+            const achieved = Math.round(getScorePct(r.overall_score));
+            const required = r.avg_threshold > 0 ? Math.round(getThreshPct(r.avg_threshold)) : null;
             const gap = required !== null ? achieved - required : null;
 
             const isTechReady = r.promotion_ready;
