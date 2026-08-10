@@ -9,11 +9,12 @@ import {
   Layers,
   Sparkles,
   Users,
-  Compass,
   Lock,
+  Trophy,
 } from 'lucide-react';
 
 export type ReportTabId =
+  | 'executive_leaderboard'
   | 'executive_summary'
   | 'department_benchmark'
   | 'competency_scores'
@@ -42,16 +43,44 @@ export interface ReportCategory {
 
 export const REPORT_CATEGORIES: ReportCategory[] = [
   {
-    id: 'executive_suite',
-    title: 'EXECUTIVE SUITE',
-    icon: Compass,
+    id: 'executive_leaderboard_suite',
+    title: 'EXECUTIVE LEADERBOARD',
+    icon: Trophy,
     items: [
+      {
+        id: 'executive_leaderboard',
+        label: 'Executive Leaderboard',
+        icon: Trophy,
+        badge: 'Top Talent',
+        description: 'Org-wide top talent rankings, technical scores & CEFR readiness',
+      },
       {
         id: 'executive_summary',
         label: 'Executive Health Overview',
         icon: BarChart3,
         badge: 'CEO / CTO',
         description: 'Org-wide health score, CEFR readiness & headcount KPIs',
+      },
+      {
+        id: 'promotion_readiness',
+        label: 'Promotion Readiness Index',
+        icon: UserCheck,
+        badge: 'Actionable',
+        description: 'Candidates meeting technical & CEFR requirements',
+      },
+      {
+        id: 'cefr_analytics',
+        label: 'CEFR Org Benchmarks',
+        icon: ShieldCheck,
+        badge: 'Gating Matrix',
+        description: '6-dimension CEFR breakdown & gating blockers',
+      },
+      {
+        id: 'yoy_growth',
+        label: 'Multi-Year YoY Growth',
+        icon: TrendingUp,
+        badge: 'YoY',
+        description: 'Historical progression across fiscal years',
       },
     ],
   },
@@ -87,34 +116,6 @@ export const REPORT_CATEGORIES: ReportCategory[] = [
     ],
   },
   {
-    id: 'cefr_communication',
-    title: 'CEFR COMMUNICATION',
-    icon: ShieldCheck,
-    items: [
-      {
-        id: 'cefr_analytics',
-        label: 'CEFR Org Benchmarks',
-        icon: ShieldCheck,
-        badge: 'Gating Matrix',
-        description: '6-dimension CEFR breakdown & gating blockers',
-      },
-    ],
-  },
-  {
-    id: 'promotion_pipeline',
-    title: 'PROMOTION PIPELINE',
-    icon: UserCheck,
-    items: [
-      {
-        id: 'promotion_readiness',
-        label: 'Promotion Readiness Index',
-        icon: UserCheck,
-        badge: 'Actionable',
-        description: 'Candidates meeting technical & CEFR requirements',
-      },
-    ],
-  },
-  {
     id: 'individual_scorecards',
     title: 'INDIVIDUAL SCORECARDS',
     icon: Users,
@@ -124,13 +125,6 @@ export const REPORT_CATEGORIES: ReportCategory[] = [
         label: 'Member Result Sheet',
         icon: Users,
         description: 'Individual employee report card & target fit',
-      },
-      {
-        id: 'yoy_growth',
-        label: 'Multi-Year YoY Growth',
-        icon: TrendingUp,
-        badge: 'YoY',
-        description: 'Historical progression across fiscal years',
       },
     ],
   },

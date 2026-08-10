@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ExecutiveLeaderboardTab } from './tabs/ExecutiveLeaderboardTab';
 import { PromotionReadinessTab } from './tabs/PromotionReadinessTab';
 import { EmployeeResultSheetTab } from './tabs/EmployeeResultSheetTab';
 import { CompetencyScoresTab } from './tabs/CompetencyScoresTab';
@@ -46,6 +47,7 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({ activeTab }) => 
 
       {/* Main Full-Width Visualization Canvas */}
       <main className="w-full min-w-0">
+        {activeTab === 'executive_leaderboard' && <ExecutiveLeaderboardTab reportFilters={filters} />}
         {activeTab === 'executive_summary' && <ExecutiveSummaryTab reportFilters={filters} />}
         {activeTab === 'cefr_analytics' && <CefrAnalyticsTab reportFilters={filters} />}
         {activeTab === 'promotion_readiness' && <PromotionReadinessTab reportFilters={filters} />}
