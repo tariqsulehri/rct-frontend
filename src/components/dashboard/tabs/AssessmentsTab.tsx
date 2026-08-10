@@ -14,7 +14,7 @@ import {
 import { type User } from '@/store/authStore';
 import { useCompetencyScores, usePromotionReadiness, useGapMatrix } from '@/hooks/useReports';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
-import { toPct } from '@/lib/formatters';
+import { toPct, formatGrade, formatEmployeeOption } from '@/lib/formatters';
 import { toast } from '@/lib/toast';
 import { hasPermission, isLeaderRole } from '@/types/rbac';
 import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
@@ -100,9 +100,6 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   const myRow = rows.find((r) => r.emp_code === effectiveEmpCode);
   const promoRow = (promoData ?? []).find((r) => r.emp_code === effectiveEmpCode);
   const gapRow = (gapData?.employees ?? []).find((r) => r.emp_code === effectiveEmpCode);
-  const formatGrade = (code?: string, title?: string) => [code, title].filter(Boolean).join(' - ') || 'N/A';
-  const formatEmployeeOption = (name?: string, empCode?: string) =>
-    [name, empCode ? `ID ${empCode}` : undefined].filter(Boolean).join(' · ');
   const fromGrade = formatGrade(myRow?.current_grade, myRow?.current_grade_title);
   const toGrade = formatGrade(myRow?.target_grade, myRow?.target_grade_title);
   const selectedListRow = rows.find((r) => r.emp_code === effectiveEmpCode);
