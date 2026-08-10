@@ -108,7 +108,12 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   const selectedFromGrade = formatGrade(selectedListRow?.current_grade, selectedListRow?.current_grade_title);
   const selectedToGrade = formatGrade(selectedListRow?.target_grade, selectedListRow?.target_grade_title);
 
-  const avgThreshold = promoRow && promoRow.avg_threshold > 0 ? Math.round(promoRow.avg_threshold * 100) : 0;
+  const toPct = (val: number | null | undefined): number => {
+    if (val == null || isNaN(val)) return 0;
+    return Math.round(val > 1 ? val : val * 100);
+  };
+
+  const avgThreshold = toPct(promoRow?.avg_threshold);
 
   const domains = Array.from(
     new Set([
@@ -119,9 +124,9 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   );
 
   const radarData = domains.map((d, i) => {
-    const score = Math.round((myRow?.domain_scores[d] ?? 0) * 100);
+    const score = toPct(myRow?.domain_scores[d]);
     const domGap = gapRow?.domain_gaps[d];
-    const threshold = domGap && domGap.threshold > 0 ? Math.round(domGap.threshold * 100) : avgThreshold;
+    const threshold = domGap && domGap.threshold > 0 ? toPct(domGap.threshold) : avgThreshold;
     return {
       domain: d.length > 14 ? d.slice(0, 14) + '…' : d,
       fullDomain: d,
@@ -136,8 +141,8 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   const competencyRows = (gapData?.competencies ?? [])
     .map((comp) => {
       const gap = gapRow?.competency_gaps?.[comp.name];
-      const score = Math.round((gap?.score ?? 0) * 100);
-      const threshold = Math.round((gap?.threshold ?? 0) * 100);
+      const score = toPct(gap?.score);
+      const threshold = toPct(gap?.threshold);
       const gapPct = Math.max(0, threshold - score);
       const meets = threshold > 0 && score >= threshold;
 
@@ -280,7 +285,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
     );
   }
 
-  const overallPct = Math.round((myRow?.overall_score ?? 0) * 100);
+  const overallPct = toPct(myRow?.overall_score);
 
   return (
     <div className="space-y-4 animate-slide-up">
