@@ -323,11 +323,13 @@ export const TeamRoster: React.FC = () => {
             <tbody>
               {filteredRoster.map((member) => {
                 const promotion = promoByEmployeeId.get(member.id);
-                const achieved = promotion ? Math.round(promotion.overall_score * 100) : null;
-                const required = promotion && promotion.avg_threshold > 0 ? Math.round(promotion.avg_threshold * 100) : null;
-                const gap = promotion && promotion.avg_threshold > 0
-                  ? Math.round((promotion.overall_score - promotion.avg_threshold) * 100)
-                  : null;
+                const toPct = (val: number | null | undefined): number | null => {
+                  if (val == null || isNaN(val)) return null;
+                  return Math.round(val > 1 ? val : val * 100);
+                };
+                const achieved = promotion ? toPct(promotion.overall_score) : null;
+                const required = promotion && promotion.avg_threshold > 0 ? toPct(promotion.avg_threshold) : null;
+                const gap = achieved !== null && required !== null ? achieved - required : null;
                 const skillsMet = promotion && promotion.total_competencies > 0
                   ? `${promotion.meets_count} / ${promotion.total_competencies}`
                   : "N/A";

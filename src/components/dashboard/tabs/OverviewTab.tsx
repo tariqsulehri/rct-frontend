@@ -30,24 +30,29 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
   const leaderRows = overviewPromoData ?? [];
   const assessedLeaderRows = leaderRows.filter((r) => r.overall_score > 0);
   const thresholdLeaderRows = leaderRows.filter((r) => r.avg_threshold > 0);
-  const leaderScore = assessedLeaderRows.length
-    ? Math.round(
-        (assessedLeaderRows.reduce((sum, r) => sum + r.overall_score, 0) / assessedLeaderRows.length) * 100
-      )
+  const toPct = (val: number | null | undefined): number | null => {
+    if (val == null || isNaN(val)) return null;
+    return Math.round(val > 1 ? val : val * 100);
+  };
+
+  const rawLeaderScore = assessedLeaderRows.length
+    ? assessedLeaderRows.reduce((sum, r) => sum + r.overall_score, 0) / assessedLeaderRows.length
     : null;
-  const leaderRequired = thresholdLeaderRows.length
-    ? Math.round(
-        (thresholdLeaderRows.reduce((sum, r) => sum + r.avg_threshold, 0) / thresholdLeaderRows.length) * 100
-      )
+  const leaderScore = toPct(rawLeaderScore);
+
+  const rawLeaderRequired = thresholdLeaderRows.length
+    ? thresholdLeaderRows.reduce((sum, r) => sum + r.avg_threshold, 0) / thresholdLeaderRows.length
     : null;
+  const leaderRequired = toPct(rawLeaderRequired);
+
   const readyCount = leaderRows.filter((r) => r.promotion_ready).length;
   const needsAttention = leaderRows.filter((r) => !r.promotion_ready && r.total_competencies > 0).length;
   const leaderGap = leaderScore !== null && leaderRequired !== null ? leaderScore - leaderRequired : null;
 
   const myCompRow = (overviewCompData ?? []).find((r) => r.emp_code === user?.empCode);
   const myGapRow = (overviewGapData?.employees ?? []).find((r) => r.emp_code === user?.empCode);
-  const myScore = myCompRow ? Math.round(myCompRow.overall_score * 100) : null;
-  const myRequired = myGapRow && myGapRow.overall_threshold > 0 ? Math.round(myGapRow.overall_threshold * 100) : null;
+  const myScore = myCompRow ? toPct(myCompRow.overall_score) : null;
+  const myRequired = myGapRow && myGapRow.overall_threshold > 0 ? toPct(myGapRow.overall_threshold) : null;
   const myTotal = myGapRow?.total_with_threshold ?? 0;
   const myMeets = myGapRow?.meets_count ?? 0;
   const myGap = myScore !== null && myRequired !== null ? myScore - myRequired : null;
