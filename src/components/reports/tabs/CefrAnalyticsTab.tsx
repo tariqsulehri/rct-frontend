@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import apiClient from '@/lib/api';
 import { ShieldCheck, Lock, CheckCircle2 } from 'lucide-react';
 import { ContextualHelpCallout } from '@/components/common/ContextualHelpCallout';
+import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 
 interface CombinedMatrixItem {
   id: number;
@@ -17,8 +18,10 @@ interface CombinedMatrixItem {
   overallStatus: 'READY' | 'GATED' | 'BELOW';
 }
 
-export const CefrAnalyticsTab: React.FC = () => {
-  const [employees, setEmployees] = useState<CombinedMatrixItem[]>([]);
+export const CefrAnalyticsTab: React.FC<{ reportFilters?: ReportFilters }> = ({
+  reportFilters = DEFAULT_REPORT_FILTERS,
+}) => {
+  const [allEmployees, setEmployees] = useState<CombinedMatrixItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -35,6 +38,22 @@ export const CefrAnalyticsTab: React.FC = () => {
     };
     void fetchMatrixData();
   }, []);
+
+  const q = reportFilters.search.trim().toLowerCase();
+  const employees = allEmployees.filter((emp) => {
+    const matchesSearch = !q || `${emp.full_name} ${emp.emp_code}`.toLowerCase().includes(q);
+    const matchesDepartment = reportFilters.department === 'all' || emp.department === reportFilters.department;
+    const matchesCurrent = reportFilters.currentGrade === 'all' || emp.current_grade === reportFilters.currentGrade;
+    const matchesTarget = reportFilters.targetGrade === 'all' || emp.target_grade === reportFilters.targetGrade;
+    const isReady = emp.overallStatus === 'READY';
+    const isGated = emp.overallStatus === 'GATED';
+    const matchesReadiness =
+      reportFilters.readiness === 'all' ||
+      (reportFilters.readiness === 'ready' && isReady) ||
+      (reportFilters.readiness === 'near-ready' && isGated) ||
+      (reportFilters.readiness === 'not-ready' && !isReady);
+    return matchesSearch && matchesDepartment && matchesCurrent && matchesTarget && matchesReadiness;
+  });
 
   if (loading) {
     return (

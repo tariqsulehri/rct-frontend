@@ -99,6 +99,12 @@ export interface FormattedCommAssessment {
   status: 'draft' | 'pending' | 'approved';
   assessor_id: number | null;
   assessor_name: string | null;
+  appraisal_period_id?: number | null;
+  period?: {
+    id: number;
+    code: string;
+    name: string;
+  } | null;
   assessed_at: string;
   created_at: string;
   updated_at: string;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PromotionReadinessTab } from './tabs/PromotionReadinessTab';
 import { EmployeeResultSheetTab } from './tabs/EmployeeResultSheetTab';
 import { CompetencyScoresTab } from './tabs/CompetencyScoresTab';
@@ -6,6 +6,8 @@ import { GapAnalysisTab } from './tabs/GapAnalysisTab';
 import { ExecutiveSummaryTab } from './tabs/ExecutiveSummaryTab';
 import { CefrAnalyticsTab } from './tabs/CefrAnalyticsTab';
 import { YoYGrowthTab } from './tabs/YoYGrowthTab';
+import { ReportFilterBar } from './ReportFilterBar';
+import { DEFAULT_REPORT_FILTERS, type ReportFilters } from './reportFilters';
 import type { ReportTabId } from './ReportSidebar';
 
 interface ReportsSectionProps {
@@ -14,6 +16,8 @@ interface ReportsSectionProps {
 }
 
 export const ReportsSection: React.FC<ReportsSectionProps> = ({ activeTab }) => {
+  const [filters, setFilters] = useState<ReportFilters>(DEFAULT_REPORT_FILTERS);
+
   return (
     <div className="space-y-4 w-full">
       {/* Top Header Card */}
@@ -37,17 +41,20 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({ activeTab }) => 
         </div>
       </div>
 
+      {/* Global Multi-Angle Filter Bar */}
+      <ReportFilterBar filters={filters} onFilterChange={setFilters} />
+
       {/* Main Full-Width Visualization Canvas */}
       <main className="w-full min-w-0">
-        {activeTab === 'executive_summary' && <ExecutiveSummaryTab />}
-        {activeTab === 'cefr_analytics' && <CefrAnalyticsTab />}
-        {activeTab === 'promotion_readiness' && <PromotionReadinessTab />}
-        {activeTab === 'competency_scores' && <CompetencyScoresTab />}
-        {activeTab === 'competency_matrix' && <CompetencyScoresTab />}
-        {activeTab === 'gap_analysis' && <GapAnalysisTab />}
-        {activeTab === 'skills_summary' && <CompetencyScoresTab />}
-        {activeTab === 'employee_result_sheet' && <EmployeeResultSheetTab />}
-        {activeTab === 'yoy_growth' && <YoYGrowthTab />}
+        {activeTab === 'executive_summary' && <ExecutiveSummaryTab reportFilters={filters} />}
+        {activeTab === 'cefr_analytics' && <CefrAnalyticsTab reportFilters={filters} />}
+        {activeTab === 'promotion_readiness' && <PromotionReadinessTab reportFilters={filters} />}
+        {activeTab === 'competency_scores' && <CompetencyScoresTab reportFilters={filters} />}
+        {activeTab === 'competency_matrix' && <CompetencyScoresTab reportFilters={filters} />}
+        {activeTab === 'gap_analysis' && <GapAnalysisTab reportFilters={filters} />}
+        {activeTab === 'skills_summary' && <CompetencyScoresTab reportFilters={filters} />}
+        {activeTab === 'employee_result_sheet' && <EmployeeResultSheetTab reportFilters={filters} />}
+        {activeTab === 'yoy_growth' && <YoYGrowthTab reportFilters={filters} />}
       </main>
     </div>
   );

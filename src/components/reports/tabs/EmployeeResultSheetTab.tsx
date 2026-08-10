@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import { useGapAnalysis, usePromotionReadiness, useCompetencyScores } from '@/hooks/useReports';
+import { useLatestCommAssessment } from '@/hooks/useCommunication';
 import { Empty, GapResult, InfoTip, Loading } from '../shared';
 import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 
@@ -74,6 +75,29 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
   const gapResult = gapData as GapResult | undefined;
   const promoRow = (promoData ?? []).find(r => r.emp_code === selectedId);
   const compRow = (compData ?? []).find(r => r.emp_code === selectedId);
+  const { data: commData } = useLatestCommAssessment(selectedId);
+
+  const isTechReady = Boolean(promoRow?.promotion_ready);
+  const commLevel = commData?.evaluation?.overallCefr ?? (commData?.ratings?.length ? 'B2' : 'B1');
+  const commExpected = commData?.evaluation?.expectedCefr ?? 'B2';
+  const isCommReady = Boolean(
+    commData?.evaluation?.communicationReady ??
+    (commData?.status === 'approved' && commLevel >= commExpected)
+  );
+
+  let combinedStatusText = 'NOT READY';
+  let combinedBadgeStyle = { backgroundColor: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)' };
+
+  if (isTechReady && isCommReady) {
+    combinedStatusText = 'PROMOTION READY';
+    combinedBadgeStyle = { backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.25)' };
+  } else if (isTechReady && !isCommReady) {
+    combinedStatusText = 'CEFR GATED';
+    combinedBadgeStyle = { backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.25)' };
+  } else if (!isTechReady && isCommReady) {
+    combinedStatusText = 'TECH GAP';
+    combinedBadgeStyle = { backgroundColor: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)' };
+  }
 
   const domainRows = Object.entries(compRow?.domain_scores ?? {})
     .filter(([domain]) => reportFilters.skillArea === 'all' || domain === reportFilters.skillArea)
@@ -97,8 +121,6 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
     ? Math.round(promoRow.avg_threshold * 100)
     : null;
 
-
-
   const domainChartData = domainRows.slice(0, 10).map((d) => ({
     domain: d.domain.length > 14 ? `${d.domain.slice(0, 14)}…` : d.domain,
     fullDomain: d.domain,
@@ -112,11 +134,6 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
     target: Math.round(g.threshold * 100),
     gap: Math.round(g.gap * 100),
   }));
-
-  const statusText = promoRow?.promotion_ready ? 'Ready for Next Grade' : 'Not Ready';
-  const statusStyle = promoRow?.promotion_ready
-    ? { backgroundColor: 'rgb(var(--success-soft))', color: 'rgb(var(--success))' }
-    : { backgroundColor: 'rgb(var(--warning-soft))', color: 'rgb(var(--warning))' };
 
   const starsText = (n: number) => `${'★'.repeat(Math.max(0, Math.min(5, n)))}${'☆'.repeat(Math.max(0, 5 - Math.min(5, n)))}`;
   const esc = (value: string) =>
@@ -138,7 +155,6 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
     // Use same source as the preview: promoRow (domain-level avg) with gapResult as fallback
     const overallScore = Math.round((promoRow?.overall_score ?? gapResult.overall_score) * 100);
     const meetsText = gapResult.total_competencies === 0 ? 'N/A' : `${gapResult.meets_count}/${gapResult.total_competencies}`;
-    const rating = promoRow ? starsText(promoRow.star_rating) : 'N/A';
     const domainBarsHtml = domainRows.length > 0
       ? domainRows
           .slice(0, 8)
@@ -243,19 +259,23 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
               <div class="item"><div class="label">Person Code</div><div class="value">${empCode}</div></div>
               <div class="item"><div class="label">Department</div><div class="value">${department}</div></div>
               <div class="item"><div class="label">Grade Path</div><div class="value">${gradeText}</div></div>
-              <div class="item"><div class="label">Status</div><div class="value"><span class="badge" style="background:${promoRow?.promotion_ready ? '#dcfce7' : '#fef3c7'};color:${promoRow?.promotion_ready ? '#166534' : '#92400e'};">${promoRow?.promotion_ready ? 'Ready' : 'Not Ready'}</span></div></div>
+              <div class="item"><div class="label">Technical Target</div><div class="value">${isTechReady ? 'Met' : 'Pending'}</div></div>
+              <div class="item"><div class="label">CEFR Level</div><div class="value">${commLevel} (${commExpected} Target)</div></div>
+              <div class="item"><div class="label">CEFR Status</div><div class="value">${isCommReady ? 'Certified' : 'Gated'}</div></div>
+              <div class="item"><div class="label">Promotion Readiness</div><div class="value"><span class="badge" style="background:${isTechReady && isCommReady ? '#dcfce7' : isTechReady ? '#fef3c7' : '#fee2e2'};color:${isTechReady && isCommReady ? '#166534' : isTechReady ? '#92400e' : '#991b1b'};">${combinedStatusText}</span></div></div>
             </div>
           </div>
 
           <div class="section">
-            <h3>Summary</h3>
+            <h3>Pillar Evaluation Summary</h3>
             <table>
-              <tr><th>Overall Score</th><th>Skills Met</th><th>Rating</th><th>Ready For Next Grade</th></tr>
+              <tr><th>Technical Score</th><th>Technical Target</th><th>CEFR Level</th><th>CEFR Benchmark</th><th>Combined Status</th></tr>
               <tr>
                 <td style="font-weight:700;">${overallScore}%</td>
-                <td>${meetsText}</td>
-                <td>${esc(rating)}</td>
-                <td>${promoRow?.promotion_ready ? 'Ready' : 'Not Ready'}</td>
+                <td>${isTechReady ? 'Met' : 'Gap'} (${meetsText})</td>
+                <td style="font-weight:700;">${commLevel}</td>
+                <td>${commExpected} (${isCommReady ? 'Certified' : 'Gated'})</td>
+                <td><strong style="color:${isTechReady && isCommReady ? '#166534' : isTechReady ? '#92400e' : '#991b1b'};">${combinedStatusText}</strong></td>
               </tr>
             </table>
           </div>
@@ -367,10 +387,12 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
                 {gapResult.employee.emp_code} • {gapResult.employee.department} • {gapResult.employee.current_grade} {'->'} {gapResult.employee.target_grade}
               </p>
             </div>
-            <span className="badge" style={statusStyle}>{statusText}</span>
+            <div className="flex items-center gap-2">
+              <span className="badge" style={combinedBadgeStyle}>{combinedStatusText}</span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface))' }}>
               <div className="flex items-center gap-1">
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Overall Score</p>
@@ -396,6 +418,18 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
                 {gapResult.total_competencies === 0 ? 'N/A' : `${gapResult.meets_count}/${gapResult.total_competencies}`}
               </p>
               <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-2))' }}>skills met</p>
+            </div>
+            <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface))' }}>
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>CEFR Proficiency</p>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-2xl font-bold leading-none" style={{ color: isCommReady ? 'rgb(var(--success))' : 'rgb(var(--warning))' }}>
+                  {commLevel}
+                </span>
+                <span className="text-xs font-semibold" style={{ color: 'rgb(var(--text-3))' }}>/ {commExpected} Target</span>
+              </div>
+              <p className="text-xs mt-1 font-medium" style={{ color: isCommReady ? 'rgb(var(--success))' : 'rgb(var(--warning))' }}>
+                {isCommReady ? '✓ Certified' : '⚠ Benchmark Deficit'}
+              </p>
             </div>
             <div className="rounded-lg p-3" style={{ backgroundColor: 'rgb(var(--surface))' }}>
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Rating</p>
