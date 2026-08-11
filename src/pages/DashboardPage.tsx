@@ -22,6 +22,8 @@ import { AdminDashboardTab } from '@/components/dashboard/tabs/AdminDashboardTab
 import { OverviewTab } from '@/components/dashboard/tabs/OverviewTab';
 import { AssessmentsTab } from '@/components/dashboard/tabs/AssessmentsTab';
 import { AIInsightsTab } from '@/components/dashboard/tabs/AIInsightsTab';
+import { BehavioralAssessmentView } from '@/components/behavioral/BehavioralAssessmentView';
+import { CommunicationAssessmentView } from '@/components/communication/CommunicationAssessmentView';
 import {
   TabType,
   NAV,
@@ -538,6 +540,26 @@ export const DashboardPage: React.FC = () => {
             )}
 
             {activeTab === 'assessments' && <AssessmentsTab user={user} onNavigate={setActiveTab} />}
+
+            {activeTab === 'communication' && (
+              <div className="animate-slide-up w-full">
+                <CommunicationAssessmentView
+                  employeeId={user?.empCode || ''}
+                  employeeName={user?.employeeName || user?.username || 'Employee'}
+                  currentGradeCode={user?.currentGrade}
+                />
+              </div>
+            )}
+
+            {activeTab === 'behavioral' && (
+              <div className="animate-slide-up w-full">
+                <BehavioralAssessmentView
+                  employeeId={user?.empCode || ''}
+                  employeeName={user?.employeeName || user?.username || 'Employee'}
+                  canAssess={isLeaderRole(user?.role)}
+                />
+              </div>
+            )}
 
             {activeTab === 'ai' && isLeaderRole(user?.role) && (
               <AIInsightsTab user={user} onNavigate={setActiveTab} />

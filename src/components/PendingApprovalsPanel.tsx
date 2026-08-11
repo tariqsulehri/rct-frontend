@@ -22,6 +22,7 @@ const fallbackLevels: PendingApproval['level'][] = [
   'Expert',
   'Advanced',
   'Proficient',
+  'Intermediate',
   'Foundational',
   'Beginner',
   'Awareness',

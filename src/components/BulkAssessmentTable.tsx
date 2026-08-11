@@ -31,7 +31,7 @@ interface Props {
   onClose?: () => void;
 }
 
-export type AssessmentLevel = 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
+export type AssessmentLevel = 'Expert' | 'Advanced' | 'Proficient' | 'Intermediate' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
 
 export interface BulkRow {
   id: string;
@@ -72,6 +72,7 @@ export const LEVEL_COLORS: Record<AssessmentLevel, string> = {
   Expert:      'rgb(var(--success))',
   Advanced:    '#22d3ee',
   Proficient:  'rgb(var(--warning))',
+  Intermediate:'#f97316',
   Foundational:'#f97316',
   Beginner:    '#f97316',
   Awareness:   '#a855f7',
@@ -82,7 +83,8 @@ export const LEVEL_LABELS: Record<AssessmentLevel, string> = {
   Expert:      'Expert',
   Advanced:    'Advanced',
   Proficient:  'Proficient',
-  Foundational:'Foundational',
+  Intermediate:'Intermediate',
+  Foundational:'Intermediate',
   Beginner:    'Beginner',
   Awareness:   'Awareness',
 };
@@ -626,7 +628,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         // Regular update
         await updateAssessment.mutateAsync({
           id: row.existingAssessmentId,
-          data: { type: row.type, projects: row.projects, level: row.level },
+          data: { type: row.type, projects: row.projects, level: row.level as any },
         });
         setEditingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
         toast.success('Skill assessment updated successfully!', 'Saved');
@@ -638,7 +640,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           technology_id: row.technologyId!,
           type: row.type,
           projects: row.projects,
-          level: row.level,
+          level: row.level as any,
           status: initialStatus,
         });
         setRows((prev) => prev.map((r) =>

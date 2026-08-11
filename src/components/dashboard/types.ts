@@ -10,11 +10,23 @@ import {
   Zap,
   Bot,
   CheckSquare,
+  Award,
+  MessageSquareText,
 } from 'lucide-react';
 import { Theme } from '@/store/themeStore';
 import { type PermissionCode, type RoleCode } from '@/types/rbac';
 
-export type TabType = 'admin' | 'overview' | 'approvals' | 'team' | 'assessments' | 'ai' | 'reports' | 'config';
+export type TabType =
+  | 'admin'
+  | 'overview'
+  | 'approvals'
+  | 'team'
+  | 'assessments'
+  | 'communication'
+  | 'behavioral'
+  | 'ai'
+  | 'reports'
+  | 'config';
 
 export const LEADERS: RoleCode[] = ['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER'];
 
@@ -31,7 +43,9 @@ export const NAV: NavItem[] = [
   { id: 'overview',    label: 'Overview',        icon: LayoutDashboard, roles: ['TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER', 'ENGINEER'] },
   { id: 'approvals',   label: 'Pending Approvals', icon: CheckSquare,   roles: LEADERS },
   { id: 'team',        label: 'Team Roster',     icon: Users,           roles: LEADERS },
-  { id: 'assessments', label: 'Assessments',     icon: ClipboardCheck,  roles: ['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER', 'ENGINEER'] },
+  { id: 'assessments', label: 'Technical Skills', icon: ClipboardCheck,  roles: ['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER', 'ENGINEER'] },
+  { id: 'communication', label: 'CEFR Communication', icon: MessageSquareText, roles: ['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER', 'ENGINEER'] },
+  { id: 'behavioral',  label: 'Behavioral Framework', icon: Award,     roles: ['ADMIN', 'TOP_MANAGEMENT', 'MANAGER', 'LINE_MANAGER', 'ENGINEER'] },
   { id: 'ai',          label: 'AI Dashboard',     icon: Bot,             roles: LEADERS },
   { id: 'reports',     label: 'Reports',         icon: BarChart2,       roles: LEADERS, permission: 'reports.view' },
   { id: 'config',      label: 'Setup',           icon: Settings2,       roles: ['ADMIN'] },

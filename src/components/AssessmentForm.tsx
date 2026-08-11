@@ -32,13 +32,14 @@ const DEFAULT_TYPE_HINTS: Record<string, string> = {
   Tertiary: 'coeff 0.10',
 };
 
-type AssessmentLevel = 'Unset' | 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness';
-const LEVEL_LABELS: Record<AssessmentLevel, string> = {
+type AssessmentLevel = 'Unset' | 'Expert' | 'Advanced' | 'Proficient' | 'Intermediate' | 'Foundational' | 'Beginner' | 'Awareness';
+const LEVEL_LABELS: Record<string, string> = {
   Unset:       '— Unset',
   Expert:      'Expert',
   Advanced:    'Advanced',
   Proficient:  'Proficient',
-  Foundational:'Foundational',
+  Intermediate:'Intermediate',
+  Foundational:'Intermediate',
   Beginner:    'Beginner',
   Awareness:   'Awareness',
 };
@@ -274,7 +275,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
         technology_id: techId,
         type,
         projects,
-        level,
+        level: level as any,
       });
 
       if (saved.computed) {
@@ -308,7 +309,7 @@ export const AssessmentForm: React.FC<Props> = ({ employeeId, onSuccess, onClose
         data: {
           type,
           projects,
-          level,
+          level: level as any,
         },
       });
 

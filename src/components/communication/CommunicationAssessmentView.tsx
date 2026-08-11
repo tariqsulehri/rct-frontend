@@ -422,6 +422,23 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
           </div>
         </div>
 
+        {/* Top Action Bar (Reviewers only) - Positioned at Top of Form */}
+        {canEdit && (
+          <div className="p-3.5 px-5 flex flex-col sm:flex-row items-center justify-between gap-3 border border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-2xl shadow-xs">
+            <div className="flex items-center gap-3 text-xs text-zinc-600 dark:text-zinc-400 flex-wrap font-medium">
+              <div>Overall Level: <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{liveEvaluation?.band} ({liveEvaluation?.averageWeight.toFixed(2)})</strong></div>
+              <span className="text-zinc-300">•</span>
+              <div>Role Benchmark Req: <strong className="text-amber-600 dark:text-amber-400 font-extrabold">{liveEvaluation?.orgBenchmark}</strong></div>
+              {hasUnsavedChanges && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">Unsaved Changes</span>}
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button type="button" disabled={createMutation.isPending} onClick={() => handleSubmit('draft')} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 rounded-xl transition-colors disabled:opacity-50 shadow-xs"><Save size={14} /> Save Draft</button>
+              <button type="button" disabled={createMutation.isPending} onClick={() => handleSubmit('approved')} className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50"><CheckCircle2 size={14} /> {createMutation.isPending ? 'Saving...' : 'Approve & Save Evaluation'}</button>
+            </div>
+          </div>
+        )}
+
         {liveEvaluation && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
             <div className="lg:col-span-7 space-y-4">
@@ -670,23 +687,6 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
           })}
         </div>
       </div>
-
-      {/* Sticky Bottom Action Bar (Reviewers only) */}
-      {canEdit && (
-        <div className="card p-4 flex flex-col sm:flex-row items-center justify-between gap-3 sticky bottom-4 shadow-2xl z-30 border-indigo-500/30 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md">
-          <div className="flex items-center gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-            <div>Overall Level: <strong className="text-zinc-900 dark:text-zinc-100">{liveEvaluation?.band} ({liveEvaluation?.averageWeight.toFixed(2)})</strong></div>
-            <span className="text-zinc-300">•</span>
-            <div>Role Req: <strong className="text-indigo-600 dark:text-indigo-400">{liveEvaluation?.orgBenchmark}</strong></div>
-            {hasUnsavedChanges && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Unsaved Changes</span>}
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <button type="button" disabled={createMutation.isPending} onClick={() => handleSubmit('draft')} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl transition-colors disabled:opacity-50"><Save size={14} /> Save Draft</button>
-            <button type="button" disabled={createMutation.isPending} onClick={() => handleSubmit('approved')} className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md transition-all disabled:opacity-50"><CheckCircle2 size={14} /> {createMutation.isPending ? 'Saving...' : 'Approve & Save Evaluation'}</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

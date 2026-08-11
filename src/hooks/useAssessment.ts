@@ -9,7 +9,7 @@ export interface SkillAssessment {
   technology_id: number;
   type: 'Primary' | 'Secondary' | 'Tertiary';
   projects: number;
-  level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
+  level: 'Expert' | 'Advanced' | 'Proficient' | 'Intermediate' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
   status: 'draft' | 'pending' | 'approved';
   assessed_by: string;   // emp_code of assessor e.g. "1139"
   assessed_at: string;
@@ -34,7 +34,7 @@ export interface PendingApproval {
   domain_name: string;
   type: 'Primary' | 'Secondary' | 'Tertiary';
   projects: number;
-  level: 'Expert' | 'Advanced' | 'Proficient' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
+  level: 'Expert' | 'Advanced' | 'Proficient' | 'Intermediate' | 'Foundational' | 'Beginner' | 'Awareness' | 'Unset';
   score: number;
   status: 'pending';
   submitted_by: string;

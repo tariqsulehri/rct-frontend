@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, RefreshCw, BarChart3, ListChecks, MessageSquareText } from 'lucide-react';
+import { Search, RefreshCw, BarChart3, ListChecks, MessageSquareText, Award } from 'lucide-react';
 import {
   ResponsiveContainer,
   RadarChart,
@@ -13,6 +13,8 @@ import {
 } from 'recharts';
 import { type User } from '@/store/authStore';
 import { useCompetencyScores, usePromotionReadiness, useGapMatrix } from '@/hooks/useReports';
+import { useLatestCommAssessment } from '@/hooks/useCommunication';
+import { useLatestBehavioralAssessment } from '@/hooks/useBehavioral';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { toPct, formatGrade, formatEmployeeOption } from '@/lib/formatters';
 import { toast } from '@/lib/toast';
@@ -20,6 +22,8 @@ import { hasPermission, isLeaderRole } from '@/types/rbac';
 import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
 import { SkillAreaNameFilterSelect } from '@/components/filters/TaxonomyFilterSelects';
 import { CommunicationAssessmentView } from '@/components/communication/CommunicationAssessmentView';
+import { BehavioralAssessmentView } from '@/components/behavioral/BehavioralAssessmentView';
+import { TriDimensionReadinessCard } from '@/components/dashboard/TriDimensionReadinessCard';
 import { InfoTip } from '../layout/InfoTip';
 import { TabType } from '../types';
 
@@ -90,7 +94,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   const [competencyDomainFilter, setCompetencyDomainFilter] = useState('all');
   const [competencyStatusFilter, setCompetencyStatusFilter] = useState('all');
   const [competencyCriticalFilter, setCompetencyCriticalFilter] = useState('all');
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'competencies' | 'communication'>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'competencies' | 'communication' | 'behavioral'>('overview');
 
   const rows = compData ?? [];
   const [selectedEmpCode, setSelectedEmpCode] = useState<string | null>(null);
@@ -100,6 +104,10 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   const myRow = rows.find((r) => r.emp_code === effectiveEmpCode);
   const promoRow = (promoData ?? []).find((r) => r.emp_code === effectiveEmpCode);
   const gapRow = (gapData?.employees ?? []).find((r) => r.emp_code === effectiveEmpCode);
+
+  const { data: commAssessment } = useLatestCommAssessment(effectiveEmpCode);
+  const { data: behavAssessment } = useLatestBehavioralAssessment(effectiveEmpCode);
+
   const fromGrade = formatGrade(myRow?.current_grade, myRow?.current_grade_title);
   const toGrade = formatGrade(myRow?.target_grade, myRow?.target_grade_title);
   const selectedListRow = rows.find((r) => r.emp_code === effectiveEmpCode);
@@ -396,7 +404,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
         </div>
       </div>
 
-      {/* Clean Segmented 3-Sub-Tab Switcher */}
+      {/* Clean Segmented 4-Sub-Tab Switcher */}
       <div className="flex items-center gap-1.5 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 w-fit flex-wrap">
         <button
           type="button"
@@ -436,7 +444,29 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
           <MessageSquareText size={15} />
           <span>CEFR Communication</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('behavioral')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeSubTab === 'behavioral'
+              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-zinc-700/80'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+          }`}
+        >
+          <Award size={15} />
+          <span>Behavioral Framework</span>
+        </button>
       </div>
+
+      {/* ── Sub-Tab 4: Behavioral Framework ─────────────────────────── */}
+      {activeSubTab === 'behavioral' && effectiveEmpCode && (
+        <BehavioralAssessmentView
+          employeeId={effectiveEmpCode}
+          employeeName={myRow?.full_name || user?.employeeName || 'Employee'}
+          canAssess={isPrivileged}
+        />
+      )}
 
       {/* ── Sub-Tab 3: CEFR Communication ─────────────────────────────────── */}
       {activeSubTab === 'communication' && effectiveEmpCode && (
@@ -451,6 +481,15 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
       {/* ── Sub-Tab 1: Overview & Radar ────────────────────────────────────── */}
       {activeSubTab === 'overview' && (
         <>
+          {/* Tri-Dimension Promotion Readiness Card */}
+          <TriDimensionReadinessCard
+            technicalReady={promoRow?.promotion_ready ?? false}
+            communicationReady={commAssessment ? true : false}
+            behavioralReady={behavAssessment?.result?.behavioralReady ?? false}
+            currentGrade={myRow?.current_grade || 'G14'}
+            targetGrade={myRow?.target_grade || 'G15'}
+          />
+
           {/* KPI strip — status, meets, stars, required */}
           {promoRow && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
