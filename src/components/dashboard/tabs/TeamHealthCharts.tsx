@@ -15,6 +15,7 @@ import {
 import { usePromotionReadiness, useCompetencyScores } from '@/hooks/useReports';
 import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { InfoTip } from '../layout/InfoTip';
+import { toPct, toPctNullable } from '@/lib/formatters';
 import { TabType } from '../types';
 
 const RANK_MEDALS = ['🥇', '🥈', '🥉'];
@@ -116,8 +117,8 @@ export const TeamHealthCharts: React.FC<TeamHealthChartsProps> = ({ onNavigate }
         name: r.full_name.split(' ').slice(0, 2).join(' '),
         grade: r.current_grade,
         targetGrade: promo?.target_grade ?? r.target_grade,
-        score: Math.round(r.overall_score * 100),
-        required: promo?.avg_threshold ? Math.round(promo.avg_threshold * 100) : null,
+        score: toPct(r.overall_score),
+        required: toPctNullable(promo?.avg_threshold),
         ready: promo?.promotion_ready ?? false,
         meets: promo?.meets_count ?? 0,
         total: promo?.total_competencies ?? 0,
@@ -574,9 +575,9 @@ export const TeamHealthCharts: React.FC<TeamHealthChartsProps> = ({ onNavigate }
                 const notReadyRows = [...rows]
                   .map((r) => ({
                     ...r,
-                    pct: Math.round(r.overall_score * 100),
-                    requiredPct: Math.round((r.avg_threshold ?? 0) * 100),
-                    gapPct: Math.max(0, Math.round(((r.avg_threshold ?? 0) - r.overall_score) * 100)),
+                    pct: toPct(r.overall_score),
+                    requiredPct: toPct(r.avg_threshold),
+                    gapPct: Math.max(0, toPct(r.avg_threshold) - toPct(r.overall_score)),
                   }))
                   .filter((r) => !r.promotion_ready && r.overall_score > 0 && r.requiredPct > 0)
                   .sort((a, b) => a.gapPct - b.gapPct)

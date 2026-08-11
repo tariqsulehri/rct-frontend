@@ -21,6 +21,20 @@ describe('formatters utility (single source of truth)', () => {
       expect(toPct(73.4)).toBe(73);
       expect(toPct(88.0)).toBe(88);
       expect(toPct(100)).toBe(100);
+      expect(toPct(58.57)).toBe(59);
+    });
+
+    it('correctly calculates team roster score averages without 5857% double-scaling', () => {
+      // Simulates 30 employees with average overall_score of 58.57 (pre-scaled) and avg_threshold of 0.72 (fractional)
+      const scores = Array(30).fill(58.57);
+      const thresholds = Array(30).fill(0.72);
+
+      const rawAvgScore = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+      const rawAvgThresh = thresholds.reduce((sum, t) => sum + t, 0) / thresholds.length;
+
+      expect(toPctNullable(rawAvgScore)).toBe(59);
+      expect(toPctNullable(rawAvgThresh)).toBe(72);
+      expect((toPctNullable(rawAvgScore) ?? 0) - (toPctNullable(rawAvgThresh) ?? 0)).toBe(-13);
     });
 
     it('handles null, undefined, and NaN gracefully', () => {

@@ -9,6 +9,7 @@ import { ActionBtns, StatusBadge, StatusFilterSelect, TableShell, TD, TR } from 
 import { HEADER_GRADIENTS, useTableState } from '../ConfigTableState';
 import { toast } from '@/lib/toast';
 import { getApiErrorMessage } from '@/lib/apiError';
+import { toPct } from '@/lib/formatters';
 import {
   ConfigEmployee,
   useConfigDepartments,
@@ -92,7 +93,7 @@ const EmployeeProfile: React.FC<{ employee: ConfigEmployee; onClose: () => void 
           <div className="rounded-xl p-3 text-center" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
             <p className="text-xs mb-1" style={{ color: 'rgb(var(--text-3))' }}>Overall Score</p>
             <p className="text-xl font-bold" style={{ color: 'rgb(var(--accent))' }}>
-              {Math.round((empPromo?.overall_score ?? 0) * 100)}%
+              {toPct(empPromo?.overall_score)}%
             </p>
           </div>
           <div className="rounded-xl p-3 text-center" style={{ backgroundColor: 'rgb(var(--surface-2))' }}>
