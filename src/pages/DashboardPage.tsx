@@ -47,6 +47,14 @@ export const DashboardPage: React.FC = () => {
   const [reportsMenuOpen, setReportsMenuOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+  const toggleCategoryCollapse = (categoryId: string) => {
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [categoryId]: !prev[categoryId],
+    }));
+  };
 
   const canViewReports = hasPermission(user?.permissions, 'reports.view');
   const visibleNav = NAV.filter(
@@ -262,61 +270,76 @@ export const DashboardPage: React.FC = () => {
                       <div className="pl-2 pr-1 py-1 space-y-3.5 border-l-2 border-blue-500 dark:border-blue-700 ml-4 animate-fade-in">
                         {REPORT_CATEGORIES.map((category) => {
                           const CatIcon = category.icon;
+                          const isCollapsed = Boolean(collapsedCategories[category.id]);
+
                           return (
                             <div key={category.id} className="space-y-1.5">
-                              {/* Category Header with Solid Blue Background and White Text */}
-                              <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-blue-600 dark:bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider shadow-sm mb-1.5">
+                              {/* Category Header with Solid Blue Background, White Text, and Collapse Toggle */}
+                              <button
+                                type="button"
+                                onClick={() => toggleCategoryCollapse(category.id)}
+                                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-blue-600 dark:bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider shadow-sm hover:bg-blue-700 transition-colors mb-1.5 cursor-pointer text-left"
+                              >
                                 <div className="flex items-center gap-2 truncate">
                                   <CatIcon size={14} className="text-white shrink-0" />
                                   <span className="truncate text-white font-extrabold">{category.title}</span>
                                 </div>
-                                {category.isUpcoming && (
-                                  <span className="text-[8px] bg-blue-800 text-white px-1.5 py-0.5 rounded font-extrabold uppercase">
-                                    Soon
-                                  </span>
-                                )}
-                              </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {category.isUpcoming && (
+                                    <span className="text-[8px] bg-blue-800 text-white px-1.5 py-0.5 rounded font-extrabold uppercase">
+                                      Soon
+                                    </span>
+                                  )}
+                                  {isCollapsed ? (
+                                    <ChevronRight size={14} className="text-white shrink-0" />
+                                  ) : (
+                                    <ChevronDown size={14} className="text-white shrink-0" />
+                                  )}
+                                </div>
+                              </button>
 
                               {/* Category Items */}
-                              <div className="space-y-1">
-                                {category.items.map((subItem) => {
-                                  const SubIcon = subItem.icon;
-                                  const isSubActive = activeTab === 'reports' && activeReportTab === subItem.id;
+                              {!isCollapsed && (
+                                <div className="space-y-1">
+                                  {category.items.map((subItem) => {
+                                    const SubIcon = subItem.icon;
+                                    const isSubActive = activeTab === 'reports' && activeReportTab === subItem.id;
 
-                                  return (
-                                    <button
-                                      key={subItem.id}
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveTab('reports');
-                                        setActiveReportTab(subItem.id);
-                                      }}
-                                      title={subItem.description}
-                                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${
-                                        isSubActive
-                                          ? 'bg-blue-600 text-white font-bold shadow-xs'
-                                          : 'text-zinc-700 dark:text-zinc-200 hover:bg-blue-50 dark:hover:bg-zinc-800 hover:text-blue-700 dark:hover:text-white'
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <SubIcon size={13} className={isSubActive ? 'text-white' : 'text-zinc-400'} />
-                                        <span className="truncate">{subItem.label}</span>
-                                      </div>
-                                      {subItem.badge && (
-                                        <span
-                                          className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
-                                            isSubActive
-                                              ? 'bg-blue-700 text-blue-100'
-                                              : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
-                                          }`}
-                                        >
-                                          {subItem.badge}
-                                        </span>
-                                      )}
-                                    </button>
-                                  );
-                                })}
-                              </div>
+                                    return (
+                                      <button
+                                        key={subItem.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveTab('reports');
+                                          setActiveReportTab(subItem.id);
+                                        }}
+                                        title={subItem.description}
+                                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${
+                                          isSubActive
+                                            ? 'bg-blue-600 text-white font-bold shadow-xs'
+                                            : 'text-zinc-700 dark:text-zinc-200 hover:bg-blue-50 dark:hover:bg-zinc-800 hover:text-blue-700 dark:hover:text-white'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <SubIcon size={13} className={isSubActive ? 'text-white' : 'text-zinc-400'} />
+                                          <span className="truncate">{subItem.label}</span>
+                                        </div>
+                                        {subItem.badge && (
+                                          <span
+                                            className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                                              isSubActive
+                                                ? 'bg-blue-700 text-blue-100'
+                                                : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                                            }`}
+                                          >
+                                            {subItem.badge}
+                                          </span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -384,55 +407,70 @@ export const DashboardPage: React.FC = () => {
                       <div className="pl-2 pr-1 py-1 space-y-3.5 border-l-2 border-blue-500 dark:border-blue-700 ml-4 animate-fade-in">
                         {CONFIG_CATEGORIES.map((category) => {
                           const CatIcon = category.icon;
+                          const isCollapsed = Boolean(collapsedCategories[category.id]);
+
                           return (
                             <div key={category.id} className="space-y-1.5">
-                              {/* Category Header with Solid Blue Background and White Text */}
-                              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 dark:bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider shadow-sm mb-1.5">
-                                <CatIcon size={14} className="text-white shrink-0" />
-                                <span className="truncate text-white font-extrabold">{category.title}</span>
-                              </div>
+                              {/* Category Header with Solid Blue Background, White Text, and Collapse Toggle */}
+                              <button
+                                type="button"
+                                onClick={() => toggleCategoryCollapse(category.id)}
+                                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-blue-600 dark:bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider shadow-sm hover:bg-blue-700 transition-colors mb-1.5 cursor-pointer text-left"
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <CatIcon size={14} className="text-white shrink-0" />
+                                  <span className="truncate text-white font-extrabold">{category.title}</span>
+                                </div>
+                                {isCollapsed ? (
+                                  <ChevronRight size={14} className="text-white shrink-0" />
+                                ) : (
+                                  <ChevronDown size={14} className="text-white shrink-0" />
+                                )}
+                              </button>
 
                               {/* Category Items */}
-                              <div className="space-y-1">
-                                {category.items.map((subItem) => {
-                                  const SubIcon = subItem.icon;
-                                  const isSubActive = activeTab === 'config' && activeConfigTab === subItem.id;
+                              {!isCollapsed && (
+                                <div className="space-y-1">
+                                  {category.items.map((subItem) => {
+                                    const SubIcon = subItem.icon;
+                                    const isSubActive = activeTab === 'config' && activeConfigTab === subItem.id;
 
-                                  return (
-                                    <button
-                                      key={subItem.id}
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveTab('config');
-                                        setActiveConfigTab(subItem.id);
-                                        window.location.hash = subItem.id;
-                                      }}
-                                      title={subItem.help}
-                                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-[13px] font-semibold transition-all ${
-                                        isSubActive
-                                          ? 'bg-indigo-600 text-white font-bold shadow-xs'
-                                          : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-950 dark:hover:text-white'
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-2.5 min-w-0">
-                                        <SubIcon size={14} className={isSubActive ? 'text-white' : 'text-zinc-500 dark:text-zinc-400'} />
-                                        <span className="truncate">{subItem.label}</span>
-                                      </div>
-                                      {subItem.badge && (
-                                        <span
-                                          className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
-                                            isSubActive
-                                              ? 'bg-indigo-700 text-indigo-100 border-indigo-400/40'
-                                              : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700'
-                                          }`}
-                                        >
-                                          {subItem.badge}
-                                        </span>
-                                      )}
-                                    </button>
-                                  );
-                                })}
-                              </div>
+                                    return (
+                                      <button
+                                        key={subItem.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveTab('config');
+                                          setActiveConfigTab(subItem.id);
+                                          window.location.hash = subItem.id;
+                                        }}
+                                        title={subItem.help}
+                                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-[13px] font-semibold transition-all ${
+                                          isSubActive
+                                            ? 'bg-blue-600 text-white font-bold shadow-xs'
+                                            : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-950 dark:hover:text-white'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <SubIcon size={14} className={isSubActive ? 'text-white' : 'text-zinc-500 dark:text-zinc-400'} />
+                                          <span className="truncate">{subItem.label}</span>
+                                        </div>
+                                        {subItem.badge && (
+                                          <span
+                                            className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                                              isSubActive
+                                                ? 'bg-blue-700 text-blue-100 border-blue-400/40'
+                                                : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700'
+                                            }`}
+                                          >
+                                            {subItem.badge}
+                                          </span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
