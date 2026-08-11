@@ -173,6 +173,13 @@ export const useDeleteAssessment = () => {
   });
 };
 
+/**
+ * TanStack Mutation hook for approving or adjusting a pending technical skill assessment.
+ * Automatically invalidates assessment, team roster, report, and AI dashboard queries.
+ *
+ * @summary Approves or updates a pending assessment record.
+ * @returns React Query mutation object for approving assessments.
+ */
 export const useApproveAssessment = () => {
   const queryClient = useQueryClient();
   return useMutation({
