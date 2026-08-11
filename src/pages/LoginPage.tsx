@@ -91,10 +91,11 @@ export const LoginPage: React.FC = () => {
         <div className="relative z-10">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-xl">
-              🚀
-            </div>
-            <span className="text-white font-bold text-lg tracking-tight">DevOps Skills Readiness</span>
+            <img
+              src="/assets/svg/calibr-lockup-horizontal-white.svg"
+              alt="Calibr Logo"
+              className="h-10 w-auto object-contain"
+            />
           </div>
 
           {/* Hero text */}
@@ -131,8 +132,11 @@ export const LoginPage: React.FC = () => {
 
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2 mb-8">
-          <span className="text-2xl">🚀</span>
-          <span className="font-bold text-lg" style={{ color: 'rgb(var(--text-1))' }}>DevOps Skills Readiness</span>
+          <img
+            src="/assets/svg/calibr-lockup-horizontal-color.svg"
+            alt="Calibr Logo"
+            className="h-8 w-auto object-contain"
+          />
         </div>
 
         <div className="w-full max-w-sm animate-slide-up">

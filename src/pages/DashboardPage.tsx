@@ -28,7 +28,6 @@ import {
   TabType,
   NAV,
   ROLE_GRADIENT,
-  CURRENT_ORGANIZATION,
   defaultDashboardTabForRole,
 } from '@/components/dashboard/types';
 
@@ -135,27 +134,13 @@ export const DashboardPage: React.FC = () => {
           </button>
 
           {/* Organization logo / Brand */}
-          <a
-            href={CURRENT_ORGANIZATION.baseUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2.5 mr-4 rounded-lg"
-            title={CURRENT_ORGANIZATION.baseUrl}
-          >
+          <div className="flex items-center gap-2.5 mr-4 py-1">
             <img
-              src={CURRENT_ORGANIZATION.logoUrl}
-              alt={`${CURRENT_ORGANIZATION.name} logo`}
-              className="w-7 h-7 rounded-lg object-cover"
+              src="/assets/svg/calibr-lockup-horizontal-color.svg"
+              alt="Calibr Logo"
+              className="h-8 w-auto object-contain"
             />
-            <div className="hidden sm:flex flex-col leading-tight">
-              <span className="font-bold text-sm" style={{ color: 'rgb(var(--text-1))' }}>
-                {CURRENT_ORGANIZATION.name}
-              </span>
-              <span className="text-[11px] font-medium" style={{ color: 'rgb(var(--text-3))' }}>
-                DevOps Skills Readiness
-              </span>
-            </div>
-          </a>
+          </div>
 
           {/* Search bar */}
           <div
