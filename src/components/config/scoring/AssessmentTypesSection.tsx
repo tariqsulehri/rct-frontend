@@ -19,7 +19,7 @@ export const AssessmentTypesSection: React.FC = () => {
   const updateType = useUpdateAssessmentType();
 
   const [editing, setEditing] = useState<ConfigAssessmentType | null>(null);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [form, setForm] = useState({ label: '', weight: '', description: '', sort_order: '', is_active: true });
 
   const openEdit = (type: ConfigAssessmentType) => {
@@ -55,8 +55,8 @@ export const AssessmentTypesSection: React.FC = () => {
 
   const filteredTypes = useMemo(() => {
     return (types ?? []).filter(t => {
-      if (statusFilter === 'active' && !t.is_active) return false;
-      if (statusFilter === 'inactive' && t.is_active) return false;
+      if (statusFilter === 'active') return t.is_active;
+      if (statusFilter === 'inactive') return !t.is_active;
       return true;
     });
   }, [types, statusFilter]);

@@ -195,18 +195,18 @@ export const StatusBadge: React.FC<{ active?: boolean }> = ({ active }) => (
 
 export const StatusFilterSelect: React.FC<{
   value: string;
-  onChange: (v: string) => void;
+  onChange: (v: any) => void;
   placeholder?: string;
-}> = ({ value, onChange, placeholder = 'All statuses' }) => (
+}> = ({ value, onChange }) => (
   <select
     value={value}
     onChange={e => onChange(e.target.value)}
-    className="field text-xs py-1.5 px-3 rounded-lg cursor-pointer shrink-0"
+    className="field text-xs py-1.5 px-3 rounded-lg cursor-pointer shrink-0 font-medium"
     style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-1))', border: '1px solid rgb(var(--border))' }}
   >
-    <option value="">{placeholder}</option>
-    <option value="active">Active only</option>
-    <option value="inactive">Inactive only</option>
+    <option value="active">Active</option>
+    <option value="inactive">Inactive</option>
+    <option value="all">All</option>
   </select>
 );
 

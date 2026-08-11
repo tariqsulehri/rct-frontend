@@ -35,7 +35,7 @@ export const CategoriesSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigCompetencyCategory | null>(null);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [form, setForm] = useState({ name: '', description: '', color: '#6366f1', weight: '1', sort_order: '0', is_active: true });
 
   const openCreate = () => { setForm({ name: '', description: '', color: '#6366f1', weight: '1', sort_order: String((categories?.length ?? 0) + 1), is_active: true }); setEditing(null); setModal('create'); };
@@ -76,8 +76,8 @@ export const CategoriesSection: React.FC = () => {
 
   const filteredCategories = useMemo(() => {
     return (categories ?? []).filter(c => {
-      if (statusFilter === 'active' && !c.is_active) return false;
-      if (statusFilter === 'inactive' && c.is_active) return false;
+      if (statusFilter === 'active') return c.is_active;
+      if (statusFilter === 'inactive') return !c.is_active;
       return true;
     });
   }, [categories, statusFilter]);

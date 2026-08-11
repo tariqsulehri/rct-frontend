@@ -18,7 +18,7 @@ export const AssessmentStatusesSection: React.FC = () => {
   const { data: statuses, isLoading, isError } = useConfigAssessmentStatuses();
   const updateStatus = useUpdateAssessmentStatus();
   const [editing, setEditing] = useState<ConfigAssessmentStatus | null>(null);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [form, setForm] = useState({ label: '', description: '', counts_toward_score: false, is_terminal: false, sort_order: '', is_active: true });
 
   const openEdit = (status: ConfigAssessmentStatus) => {
@@ -56,8 +56,8 @@ export const AssessmentStatusesSection: React.FC = () => {
 
   const filteredStatuses = useMemo(() => {
     return (statuses ?? []).filter(s => {
-      if (statusFilter === 'active' && !s.is_active) return false;
-      if (statusFilter === 'inactive' && s.is_active) return false;
+      if (statusFilter === 'active') return s.is_active;
+      if (statusFilter === 'inactive') return !s.is_active;
       return true;
     });
   }, [statuses, statusFilter]);

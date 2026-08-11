@@ -139,7 +139,7 @@ export const CefrGradeMatrixTab: React.FC = () => {
   const { data: dbGrades } = useConfigGrades();
   const updateMutation = useUpdateCommConfig();
 
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [matrixState, setMatrixState] = useState<GradeRowConfig[]>(DEFAULT_ORG_ROWS);
   const [initialJson, setInitialJson] = useState<string>(JSON.stringify(DEFAULT_ORG_ROWS));
 

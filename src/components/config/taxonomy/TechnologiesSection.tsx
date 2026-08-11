@@ -29,7 +29,7 @@ export const TechnologiesSection: React.FC = () => {
 
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editing, setEditing] = useState<ConfigTechnology | null>(null);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [form, setForm] = useState({ name: '', competency_id: '', is_active: true });
 
   const openCreate = () => { setForm({ name: '', competency_id: '', is_active: true }); setEditing(null); setModal('create'); };
@@ -53,8 +53,8 @@ export const TechnologiesSection: React.FC = () => {
 
   const filteredTechnologies = useMemo(() => {
     return (technologies ?? []).filter(t => {
-      if (statusFilter === 'active' && !t.is_active) return false;
-      if (statusFilter === 'inactive' && t.is_active) return false;
+      if (statusFilter === 'active') return t.is_active;
+      if (statusFilter === 'inactive') return !t.is_active;
       return true;
     });
   }, [technologies, statusFilter]);

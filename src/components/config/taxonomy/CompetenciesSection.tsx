@@ -47,7 +47,7 @@ export const CompetenciesSection: React.FC = () => {
   const [selectedCompetency, setSelectedCompetency] = useState<ConfigCompetency | null>(null);
   const [techSearch, setTechSearch] = useState('');
   const [managementCategoryId, setManagementCategoryId] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [formError, setFormError] = useState('');
   const [activeSkillModule, setActiveSkillModule] = useState<'management' | 'map' | 'targets'>('management');
 
@@ -108,8 +108,8 @@ export const CompetenciesSection: React.FC = () => {
     const all = competencies ?? [];
     return all.filter((competency) => {
       if (managementCategoryId && String(competency.category_id) !== managementCategoryId) return false;
-      if (statusFilter === 'active' && !competency.is_active) return false;
-      if (statusFilter === 'inactive' && competency.is_active) return false;
+      if (statusFilter === 'active') return competency.is_active;
+      if (statusFilter === 'inactive') return !competency.is_active;
       return true;
     });
   }, [competencies, managementCategoryId, statusFilter]);

@@ -66,7 +66,7 @@ export const SkillDomainsSection: React.FC = () => {
   const [form, setForm] = useState({ name: '', description: '', color: '', category_id: '', is_active: true });
   const [formError, setFormError] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const usedSkillAreaColors = useMemo(
     () => new Set((domains ?? []).map(domain => normalizeHexColor(domain.color)).filter(Boolean)),
     [domains],
@@ -76,8 +76,8 @@ export const SkillDomainsSection: React.FC = () => {
   const filteredDomainsByCategory = useMemo(() => {
     return (domains ?? []).filter(domain => {
       if (categoryFilter && String(domain.category_id) !== categoryFilter) return false;
-      if (statusFilter === 'active' && !domain.is_active) return false;
-      if (statusFilter === 'inactive' && domain.is_active) return false;
+      if (statusFilter === 'active') return domain.is_active;
+      if (statusFilter === 'inactive') return !domain.is_active;
       return true;
     });
   }, [categoryFilter, statusFilter, domains]);

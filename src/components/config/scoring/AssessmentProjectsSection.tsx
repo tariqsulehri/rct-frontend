@@ -18,7 +18,7 @@ export const AssessmentProjectsSection: React.FC = () => {
   const { data: projects, isLoading, isError } = useConfigAssessmentProjects();
   const updateProject = useUpdateAssessmentProject();
   const [editing, setEditing] = useState<ConfigAssessmentProject | null>(null);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [form, setForm] = useState({ label: '', description: '', duration_months_min: '', duration_months_max: '', credit: '', threshold: '', sort_order: '', is_active: true });
 
   const openEdit = (project: ConfigAssessmentProject) => {
@@ -60,8 +60,8 @@ export const AssessmentProjectsSection: React.FC = () => {
 
   const filteredProjects = useMemo(() => {
     return (projects ?? []).filter(p => {
-      if (statusFilter === 'active' && !p.is_active) return false;
-      if (statusFilter === 'inactive' && p.is_active) return false;
+      if (statusFilter === 'active') return p.is_active;
+      if (statusFilter === 'inactive') return !p.is_active;
       return true;
     });
   }, [projects, statusFilter]);

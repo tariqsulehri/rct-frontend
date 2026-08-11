@@ -18,7 +18,7 @@ export const AssessmentLevelsSection: React.FC = () => {
   const { data: levels, isLoading, isError } = useConfigAssessmentLevels();
   const updateLevel = useUpdateAssessmentLevel();
   const [editing, setEditing] = useState<ConfigAssessmentLevel | null>(null);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [form, setForm] = useState({ label: '', weight: '', threshold: '', description: '', sort_order: '', is_active: true });
 
   const openEdit = (levelConfig: ConfigAssessmentLevel) => {
@@ -56,8 +56,8 @@ export const AssessmentLevelsSection: React.FC = () => {
 
   const filteredLevels = useMemo(() => {
     return (levels ?? []).filter(l => {
-      if (statusFilter === 'active' && !l.is_active) return false;
-      if (statusFilter === 'inactive' && l.is_active) return false;
+      if (statusFilter === 'active') return l.is_active;
+      if (statusFilter === 'inactive') return !l.is_active;
       return true;
     });
   }, [levels, statusFilter]);
