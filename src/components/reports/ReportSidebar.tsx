@@ -159,15 +159,15 @@ export const ReportSidebar: React.FC<ReportSidebarProps> = ({ activeTab, onSelec
           const CategoryIcon = category.icon;
 
           return (
-            <div key={category.id} className="space-y-1">
-              <div className="px-2 py-1 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 tracking-wider flex items-center gap-1.5">
-                  <CategoryIcon className="w-3.5 h-3.5 text-slate-400" />
-                  {category.title}
+            <div key={category.id} className="space-y-1.5">
+              <div className="px-3 py-2 rounded-lg bg-blue-600 dark:bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider shadow-sm mb-1.5 flex items-center justify-between">
+                <span className="text-[11px] font-extrabold text-white tracking-wider flex items-center gap-2">
+                  <CategoryIcon className="w-4 h-4 text-white shrink-0" />
+                  <span className="text-white font-extrabold">{category.title}</span>
                 </span>
                 {category.isUpcoming && (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] font-medium bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 px-1.5 py-0.2 rounded border border-amber-200/40">
-                    <Lock className="w-2.5 h-2.5" /> Coming Soon
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold bg-blue-800 text-white px-1.5 py-0.5 rounded uppercase">
+                    <Lock className="w-2.5 h-2.5 text-white" /> Soon
                   </span>
                 )}
               </div>

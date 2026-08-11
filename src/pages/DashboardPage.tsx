@@ -259,19 +259,19 @@ export const DashboardPage: React.FC = () => {
 
                     {/* Expandable Report Category Tree (When Sidebar is Open) */}
                     {sidebarOpen && reportsMenuOpen && (
-                      <div className="pl-3.5 pr-1 py-1 space-y-3 border-l-2 border-indigo-300 dark:border-indigo-800 ml-4 animate-fade-in">
+                      <div className="pl-2 pr-1 py-1 space-y-3.5 border-l-2 border-blue-500 dark:border-blue-700 ml-4 animate-fade-in">
                         {REPORT_CATEGORIES.map((category) => {
                           const CatIcon = category.icon;
                           return (
-                            <div key={category.id} className="space-y-1">
-                              {/* Category Header */}
-                              <div className="flex items-center justify-between px-2 py-1 text-[10px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                                <div className="flex items-center gap-1.5 truncate">
-                                  <CatIcon size={12} className="text-zinc-400 shrink-0" />
-                                  <span className="truncate">{category.title}</span>
+                            <div key={category.id} className="space-y-1.5">
+                              {/* Category Header with Solid Blue Background and White Text */}
+                              <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-blue-600 dark:bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider shadow-sm mb-1.5">
+                                <div className="flex items-center gap-2 truncate">
+                                  <CatIcon size={14} className="text-white shrink-0" />
+                                  <span className="truncate text-white font-extrabold">{category.title}</span>
                                 </div>
                                 {category.isUpcoming && (
-                                  <span className="text-[8px] bg-amber-50 dark:bg-amber-950/60 text-amber-600 px-1 py-0.2 rounded font-bold">
+                                  <span className="text-[8px] bg-blue-800 text-white px-1.5 py-0.5 rounded font-extrabold uppercase">
                                     Soon
                                   </span>
                                 )}
@@ -292,10 +292,10 @@ export const DashboardPage: React.FC = () => {
                                         setActiveReportTab(subItem.id);
                                       }}
                                       title={subItem.description}
-                                      className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${
+                                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${
                                         isSubActive
-                                          ? 'bg-indigo-600 text-white font-bold shadow-xs'
-                                          : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-950 dark:hover:text-white'
+                                          ? 'bg-blue-600 text-white font-bold shadow-xs'
+                                          : 'text-zinc-700 dark:text-zinc-200 hover:bg-blue-50 dark:hover:bg-zinc-800 hover:text-blue-700 dark:hover:text-white'
                                       }`}
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
@@ -306,7 +306,7 @@ export const DashboardPage: React.FC = () => {
                                         <span
                                           className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
                                             isSubActive
-                                              ? 'bg-indigo-700 text-indigo-100'
+                                              ? 'bg-blue-700 text-blue-100'
                                               : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
                                           }`}
                                         >
@@ -343,8 +343,8 @@ export const DashboardPage: React.FC = () => {
                       title={!sidebarOpen ? label : undefined}
                       className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all duration-150 group"
                       style={{
-                        backgroundColor: active ? 'rgb(var(--accent-soft))' : 'transparent',
-                        color: active ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))',
+                        backgroundColor: active ? '#2563eb' : 'transparent',
+                        color: active ? '#ffffff' : 'rgb(var(--text-2))',
                         justifyContent: sidebarOpen ? 'flex-start' : 'center',
                       }}
                       onMouseEnter={(e) => {
@@ -356,13 +356,13 @@ export const DashboardPage: React.FC = () => {
                     >
                       <Icon
                         size={19}
-                        style={{ color: active ? 'rgb(var(--accent))' : 'rgb(var(--text-2))', flexShrink: 0 }}
+                        style={{ color: active ? '#ffffff' : 'rgb(var(--text-2))', flexShrink: 0 }}
                       />
                       {sidebarOpen && (
                         <>
                           <span
                             className="truncate flex-1 text-left font-bold text-[14px]"
-                            style={{ color: active ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))' }}
+                            style={{ color: active ? '#ffffff' : 'rgb(var(--text-2))' }}
                           >
                             {label}
                           </span>
@@ -381,15 +381,15 @@ export const DashboardPage: React.FC = () => {
 
                     {/* Expandable Category Tree (When Sidebar is Open) */}
                     {sidebarOpen && configMenuOpen && (
-                      <div className="pl-3.5 pr-1 py-1 space-y-3.5 border-l-2 border-indigo-300 dark:border-indigo-800 ml-4 animate-fade-in">
+                      <div className="pl-2 pr-1 py-1 space-y-3.5 border-l-2 border-blue-500 dark:border-blue-700 ml-4 animate-fade-in">
                         {CONFIG_CATEGORIES.map((category) => {
                           const CatIcon = category.icon;
                           return (
-                            <div key={category.id} className="space-y-1">
-                              {/* Category Header */}
-                              <div className="flex items-center gap-2 px-2 py-1 text-[11px] font-black uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
-                                <CatIcon size={13} className="text-zinc-500 dark:text-zinc-400 shrink-0" />
-                                <span className="truncate">{category.title}</span>
+                            <div key={category.id} className="space-y-1.5">
+                              {/* Category Header with Solid Blue Background and White Text */}
+                              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 dark:bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider shadow-sm mb-1.5">
+                                <CatIcon size={14} className="text-white shrink-0" />
+                                <span className="truncate text-white font-extrabold">{category.title}</span>
                               </div>
 
                               {/* Category Items */}
