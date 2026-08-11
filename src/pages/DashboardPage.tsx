@@ -4,7 +4,6 @@ import {
   ChevronRight,
   ChevronDown,
   Bell,
-  Search,
 } from 'lucide-react';
 import { useAuthStore, type User } from '@/store/authStore';
 import { TeamRoster } from '@/components/TeamRoster';
@@ -140,15 +139,6 @@ export const DashboardPage: React.FC = () => {
               alt="Calibr Logo"
               className="h-8 w-auto object-contain"
             />
-          </div>
-
-          {/* Search bar */}
-          <div
-            className="flex-1 max-w-xs hidden md:flex items-center gap-2 rounded-lg px-3 py-1.5 border text-sm"
-            style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}
-          >
-            <Search size={13} style={{ color: 'rgb(var(--text-3))' }} />
-            <span style={{ color: 'rgb(var(--text-3))' }}>Search…</span>
           </div>
 
           <div className="flex-1" />
