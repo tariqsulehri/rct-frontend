@@ -6,6 +6,7 @@ import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { useAuthStore } from '@/store/authStore';
 import { isLeaderRole } from '@/types/rbac';
 import { Empty, InfoTip, Loading } from '../shared';
+import { toPct } from '@/lib/formatters';
 import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -672,7 +673,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                   <td className="px-1 py-2 text-center font-bold"
                     style={{ color: 'rgb(var(--accent))', borderLeft: '2px solid rgb(var(--border))' }}>
                     {visibleEmps.length > 0
-                      ? `${Math.round((visibleEmps.reduce((s, e) => s + e.overall_score, 0) / visibleEmps.length) * 100)}%`
+                      ? `${toPct(visibleEmps.reduce((s, e) => s + e.overall_score, 0) / visibleEmps.length)}%`
                       : '—'}
                   </td>
                 </tr>
@@ -708,7 +709,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                     })}
                     <td className="px-1 py-2 text-center font-bold"
                       style={{ color: 'rgb(var(--accent))', borderLeft: '2px solid rgb(var(--border))' }}>
-                      {Math.round(emp.overall_score * 100)}%
+                      {toPct(emp.overall_score)}%
                     </td>
                   </tr>
                 ))}

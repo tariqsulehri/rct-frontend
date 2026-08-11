@@ -96,12 +96,15 @@ export const TeamRoster: React.FC = () => {
   const assessedPromotions = filteredPromotions.filter((row) => row.overall_score > 0);
   const requiredRows = filteredPromotions.filter((row) => row.avg_threshold > 0);
 
-  const avgScore = assessedPromotions.length > 0
-    ? Math.round((assessedPromotions.reduce((sum, row) => sum + row.overall_score, 0) / assessedPromotions.length) * 100)
+  const rawAvgScore = assessedPromotions.length > 0
+    ? assessedPromotions.reduce((sum, row) => sum + row.overall_score, 0) / assessedPromotions.length
     : null;
-  const avgRequired = requiredRows.length > 0
-    ? Math.round((requiredRows.reduce((sum, row) => sum + row.avg_threshold, 0) / requiredRows.length) * 100)
-    : 0;
+  const avgScore = toPctNullable(rawAvgScore);
+
+  const rawAvgRequired = requiredRows.length > 0
+    ? requiredRows.reduce((sum, row) => sum + row.avg_threshold, 0) / requiredRows.length
+    : null;
+  const avgRequired = toPctNullable(rawAvgRequired) ?? 0;
   const readyCount = filteredPromotions.filter((row) => row.promotion_ready).length;
   const meetsCount = filteredPromotions.reduce((sum, row) => sum + row.meets_count, 0);
   const totalCompetencies = filteredPromotions.reduce((sum, row) => sum + row.total_competencies, 0);

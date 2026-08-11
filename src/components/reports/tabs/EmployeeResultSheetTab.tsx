@@ -3,6 +3,7 @@ import { Download } from 'lucide-react';
 import { useGapAnalysis, usePromotionReadiness, useCompetencyScores } from '@/hooks/useReports';
 import { useLatestCommAssessment } from '@/hooks/useCommunication';
 import { Empty, GapResult, InfoTip, Loading } from '../shared';
+import { toPct, toPctNullable } from '@/lib/formatters';
 import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -111,15 +112,13 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
     .filter(g => g.gap > 0)
     .sort((a, b) => b.gap - a.gap);
 
-  const overallScorePct = Math.round((promoRow?.overall_score ?? gapResult?.overall_score ?? 0) * 100);
+  const overallScorePct = toPct(promoRow?.overall_score ?? gapResult?.overall_score ?? 0);
   const meetsCheckedPct = promoRow && promoRow.total_competencies > 0
     ? Math.round((promoRow.meets_count / promoRow.total_competencies) * 100)
     : gapResult && gapResult.total_competencies > 0
       ? Math.round((gapResult.meets_count / gapResult.total_competencies) * 100)
       : 0;
-  const thresholdPct = promoRow && promoRow.avg_threshold > 0
-    ? Math.round(promoRow.avg_threshold * 100)
-    : null;
+  const thresholdPct = toPctNullable(promoRow?.avg_threshold);
 
   const domainChartData = domainRows.slice(0, 10).map((d) => ({
     domain: d.domain.length > 14 ? `${d.domain.slice(0, 14)}…` : d.domain,
@@ -153,7 +152,7 @@ export const EmployeeResultSheetTab: React.FC<{ reportFilters?: ReportFilters }>
     const gradeText = esc(`${gapResult.employee.current_grade} -> ${gapResult.employee.target_grade}`);
     const generatedOn = esc(new Date().toLocaleString());
     // Use same source as the preview: promoRow (domain-level avg) with gapResult as fallback
-    const overallScore = Math.round((promoRow?.overall_score ?? gapResult.overall_score) * 100);
+    const overallScore = toPct(promoRow?.overall_score ?? gapResult.overall_score);
     const meetsText = gapResult.total_competencies === 0 ? 'N/A' : `${gapResult.meets_count}/${gapResult.total_competencies}`;
     const domainBarsHtml = domainRows.length > 0
       ? domainRows
