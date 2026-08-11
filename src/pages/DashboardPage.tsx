@@ -176,7 +176,7 @@ export const DashboardPage: React.FC = () => {
         <aside
           className="shrink-0 flex flex-col border-r overflow-hidden transition-all duration-200"
           style={{
-            width: sidebarOpen ? '285px' : '68px',
+            width: sidebarOpen ? '310px' : '68px',
             borderColor: 'rgb(var(--border))',
             backgroundColor: 'rgb(var(--surface))',
           }}
@@ -242,33 +242,33 @@ export const DashboardPage: React.FC = () => {
 
                     {/* Expandable Report Category Tree (When Sidebar is Open) */}
                     {sidebarOpen && reportsMenuOpen && (
-                      <div className="pl-2 pr-1 py-1 space-y-3.5 border-l-2 border-blue-500 dark:border-blue-700 ml-4 animate-fade-in">
+                      <div className="pl-2 pr-1 py-1 space-y-3 border-l-2 border-indigo-500/60 dark:border-indigo-600/60 ml-4 animate-fade-in">
                         {REPORT_CATEGORIES.map((category) => {
                           const CatIcon = category.icon;
                           const isCollapsed = Boolean(collapsedCategories[category.id]);
 
                           return (
-                            <div key={category.id} className="space-y-1.5">
-                              {/* Category Header with Solid Blue Background, White Text, and Collapse Toggle */}
+                            <div key={category.id} className="space-y-1">
+                              {/* Category Header */}
                               <button
                                 type="button"
                                 onClick={() => toggleCategoryCollapse(category.id)}
-                                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-blue-600 dark:bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider shadow-sm hover:bg-blue-700 transition-colors mb-1.5 cursor-pointer text-left"
+                                className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-100/90 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 font-bold text-[11px] uppercase tracking-wider hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/60 transition-colors mb-1 cursor-pointer text-left"
                               >
                                 <div className="flex items-center gap-2 truncate">
-                                  <CatIcon size={14} className="text-white shrink-0" />
-                                  <span className="truncate text-white font-extrabold">{category.title}</span>
+                                  <CatIcon size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                  <span className="truncate text-slate-800 dark:text-slate-100 font-bold">{category.title}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 shrink-0">
                                   {category.isUpcoming && (
-                                    <span className="text-[8px] bg-blue-800 text-white px-1.5 py-0.5 rounded font-extrabold uppercase">
+                                    <span className="text-[8.5px] bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded font-extrabold border border-indigo-200 dark:border-indigo-800 uppercase">
                                       Soon
                                     </span>
                                   )}
                                   {isCollapsed ? (
-                                    <ChevronRight size={14} className="text-white shrink-0" />
+                                    <ChevronRight size={14} className="text-slate-400 shrink-0" />
                                   ) : (
-                                    <ChevronDown size={14} className="text-white shrink-0" />
+                                    <ChevronDown size={14} className="text-slate-400 shrink-0" />
                                   )}
                                 </div>
                               </button>
@@ -289,22 +289,22 @@ export const DashboardPage: React.FC = () => {
                                           setActiveReportTab(subItem.id);
                                         }}
                                         title={subItem.description}
-                                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${
+                                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[12.5px] transition-all ${
                                           isSubActive
-                                            ? 'bg-blue-600 text-white font-bold shadow-xs'
-                                            : 'text-zinc-700 dark:text-zinc-200 hover:bg-blue-50 dark:hover:bg-zinc-800 hover:text-blue-700 dark:hover:text-white'
+                                            ? 'bg-indigo-600 text-white font-semibold shadow-xs shadow-indigo-500/20'
+                                            : 'text-zinc-700 dark:text-zinc-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-indigo-600 dark:hover:text-indigo-400'
                                         }`}
                                       >
                                         <div className="flex items-center gap-2 min-w-0">
-                                          <SubIcon size={13} className={isSubActive ? 'text-white' : 'text-zinc-400'} />
-                                          <span className="truncate">{subItem.label}</span>
+                                          <SubIcon size={13.5} className={isSubActive ? 'text-white' : 'text-zinc-400 group-hover:text-indigo-600'} />
+                                          <span className="truncate leading-snug">{subItem.label}</span>
                                         </div>
                                         {subItem.badge && (
                                           <span
-                                            className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                                            className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
                                               isSubActive
-                                                ? 'bg-blue-700 text-blue-100'
-                                                : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                                                ? 'bg-indigo-700/80 text-indigo-100 border-indigo-400/40'
+                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-slate-700/80'
                                             }`}
                                           >
                                             {subItem.badge}
@@ -379,27 +379,27 @@ export const DashboardPage: React.FC = () => {
 
                     {/* Expandable Category Tree (When Sidebar is Open) */}
                     {sidebarOpen && configMenuOpen && (
-                      <div className="pl-2 pr-1 py-1 space-y-3.5 border-l-2 border-blue-500 dark:border-blue-700 ml-4 animate-fade-in">
+                      <div className="pl-2 pr-1 py-1 space-y-3 border-l-2 border-indigo-500/60 dark:border-indigo-600/60 ml-4 animate-fade-in">
                         {CONFIG_CATEGORIES.map((category) => {
                           const CatIcon = category.icon;
                           const isCollapsed = Boolean(collapsedCategories[category.id]);
 
                           return (
-                            <div key={category.id} className="space-y-1.5">
-                              {/* Category Header with Solid Blue Background, White Text, and Collapse Toggle */}
+                            <div key={category.id} className="space-y-1">
+                              {/* Category Header */}
                               <button
                                 type="button"
                                 onClick={() => toggleCategoryCollapse(category.id)}
-                                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-blue-600 dark:bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider shadow-sm hover:bg-blue-700 transition-colors mb-1.5 cursor-pointer text-left"
+                                className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-100/90 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 font-bold text-[11px] uppercase tracking-wider hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/60 transition-colors mb-1 cursor-pointer text-left"
                               >
                                 <div className="flex items-center gap-2 truncate">
-                                  <CatIcon size={14} className="text-white shrink-0" />
-                                  <span className="truncate text-white font-extrabold">{category.title}</span>
+                                  <CatIcon size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                  <span className="truncate text-slate-800 dark:text-slate-100 font-bold">{category.title}</span>
                                 </div>
                                 {isCollapsed ? (
-                                  <ChevronRight size={14} className="text-white shrink-0" />
+                                  <ChevronRight size={14} className="text-slate-400 shrink-0" />
                                 ) : (
-                                  <ChevronDown size={14} className="text-white shrink-0" />
+                                  <ChevronDown size={14} className="text-slate-400 shrink-0" />
                                 )}
                               </button>
 
@@ -420,22 +420,22 @@ export const DashboardPage: React.FC = () => {
                                           window.location.hash = subItem.id;
                                         }}
                                         title={subItem.help}
-                                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-[13px] font-semibold transition-all ${
+                                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[12.5px] transition-all ${
                                           isSubActive
-                                            ? 'bg-blue-600 text-white font-bold shadow-xs'
-                                            : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-950 dark:hover:text-white'
+                                            ? 'bg-indigo-600 text-white font-semibold shadow-xs shadow-indigo-500/20'
+                                            : 'text-zinc-700 dark:text-zinc-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-indigo-600 dark:hover:text-indigo-400'
                                         }`}
                                       >
                                         <div className="flex items-center gap-2.5 min-w-0">
-                                          <SubIcon size={14} className={isSubActive ? 'text-white' : 'text-zinc-500 dark:text-zinc-400'} />
-                                          <span className="truncate">{subItem.label}</span>
+                                          <SubIcon size={14} className={isSubActive ? 'text-white' : 'text-zinc-500 dark:text-zinc-400 group-hover:text-indigo-600'} />
+                                          <span className="truncate leading-snug">{subItem.label}</span>
                                         </div>
                                         {subItem.badge && (
                                           <span
-                                            className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                                            className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
                                               isSubActive
-                                                ? 'bg-blue-700 text-blue-100 border-blue-400/40'
-                                                : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700'
+                                                ? 'bg-indigo-700/80 text-indigo-100 border-indigo-400/40'
+                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-slate-700/80'
                                             }`}
                                           >
                                             {subItem.badge}
