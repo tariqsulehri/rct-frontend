@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Info, Search, RefreshCw } from "lucide-react";
+import { Info, Search, RefreshCw, X } from "lucide-react";
 import { useTeamRoster } from "@/hooks/useAssessment";
 import { useAuthStore } from "@/store/authStore";
 import { BulkAssessmentTable } from "@/components/BulkAssessmentTable";
@@ -7,6 +7,7 @@ import { usePromotionReadiness, PromotionRow } from "@/hooks/useReports";
 import { toast } from "@/lib/toast";
 import { toPctNullable } from "@/lib/formatters";
 import { CefrAssessmentModal } from "@/components/communication/CefrAssessmentModal";
+import { BehavioralAssessmentView } from "@/components/behavioral/BehavioralAssessmentView";
 
 interface AssessmentModalState {
   isOpen: boolean;
@@ -43,6 +44,12 @@ export const TeamRoster: React.FC = () => {
     employeeId: null,
     employeeName: null,
     gradeLevel: 3,
+  });
+  const [behavModal, setBehavModal] = useState<{ isOpen: boolean; employeeId: string | null; employeeName: string | null; gradeCode: string | null }>({
+    isOpen: false,
+    employeeId: null,
+    employeeName: null,
+    gradeCode: null,
   });
   const [teamSearch, setTeamSearch] = useState("");
   const [selectedGrade, setSelectedGrade] = useState<string>("all");
@@ -423,6 +430,13 @@ export const TeamRoster: React.FC = () => {
                         >
                           CEFR
                         </button>
+                        <button
+                          onClick={() => setBehavModal({ isOpen: true, employeeId: member.emp_code, employeeName: member.full_name, gradeCode: member.current_grade.code })}
+                          className="text-xs py-1.5 px-2.5 rounded-lg border border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 font-bold whitespace-nowrap"
+                          title="Evaluate Behavioral Competencies"
+                        >
+                          Behavioral
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -476,6 +490,50 @@ export const TeamRoster: React.FC = () => {
           employeeName={commModal.employeeName || 'Employee'}
           currentGradeLevel={commModal.gradeLevel}
         />
+      )}
+
+      {/* Behavioral Assessment Modal */}
+      {behavModal.isOpen && behavModal.employeeId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 animate-fade-in"
+          style={{
+            backgroundColor: "rgb(0 0 0 / 0.6)",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <div
+            className="w-full max-w-[1500px] h-[92vh] rounded-2xl shadow-elevated animate-scale-in overflow-hidden flex flex-col"
+            style={{
+              backgroundColor: "rgb(var(--surface))",
+              border: "1px solid rgb(var(--border))",
+            }}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
+              <div>
+                <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">
+                  Behavioral Evaluation: {behavModal.employeeName}
+                </h2>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Evaluate leadership, ownership, problem solving, and collaborative competencies.
+                </p>
+              </div>
+              <button
+                onClick={() => setBehavModal({ isOpen: false, employeeId: null, employeeName: null, gradeCode: null })}
+                className="btn-ghost p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <BehavioralAssessmentView
+                employeeId={behavModal.employeeId}
+                employeeName={behavModal.employeeName ?? undefined}
+                gradeCode={behavModal.gradeCode ?? undefined}
+                canAssess={true}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

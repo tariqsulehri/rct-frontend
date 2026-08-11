@@ -47,19 +47,24 @@ const DEFAULT_EXPECTED_MATRIX: Record<string, Record<string, BehavioralLevelCode
   G17: { ownership: 'L5', collaboration: 'L5', customer_business: 'L5', communication: 'L4', adaptability: 'L4', integrity: 'L5', develops_people: 'L4', strategic_thinking: 'L4', drives_change: 'L4', decision_making: 'L4', builds_teams: 'L4' },
 };
 
+import { useTeamRoster } from '@/hooks/useAssessment';
+
 export interface BehavioralAssessmentViewProps {
   employeeId: string;
   employeeName?: string;
+  gradeCode?: string;
   canAssess?: boolean;
 }
 
 export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> = ({
   employeeId,
-  employeeName = 'Tariq Mahmood',
+  employeeName,
+  gradeCode,
   canAssess = false,
 }) => {
   const { data: assessment, isLoading } = useLatestBehavioralAssessment(employeeId);
   const { data: config } = useBehavioralConfig();
+  const { data: roster } = useTeamRoster();
   const createMutation = useCreateBehavioralAssessment();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -69,7 +74,12 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
   const [ratings, setRatings] = useState<Record<string, { level: BehavioralLevelCode; evidence: string }>>({});
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const gradeKey = assessment?.gradeKey || 'G15';
+  const rosterMember = roster?.find(
+    (m) => m.emp_code === employeeId || String(m.id) === String(employeeId)
+  );
+
+  const resolvedName = employeeName || rosterMember?.full_name || 'Tariq Mahmood';
+  const gradeKey = gradeCode || assessment?.gradeKey || rosterMember?.current_grade.code || 'G18';
 
   const competencies = (config?.competencies && config.competencies.length > 0)
     ? config.competencies
@@ -172,7 +182,7 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800/80 pb-4">
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-xl font-black text-zinc-900 dark:text-zinc-100">{employeeName}</span>
+              <span className="text-xl font-black text-zinc-900 dark:text-zinc-100">{resolvedName}</span>
               <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
                 ID: {employeeId}
               </span>
@@ -195,7 +205,7 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
               )}
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
-              Target Level: <span className="font-bold text-zinc-800 dark:text-zinc-200">{gradeKey}</span> — Role Benchmark: <span className="font-bold text-amber-600 dark:text-amber-400">{assessment?.result?.overallExpectedCw !== null ? `L3 (${assessment?.result?.overallExpectedCw}cw)` : 'L3 (60cw)'}</span> • <span className="text-zinc-500 italic">Reviewer Mode: System Administrator / Evaluator</span>
+              Target Level: <span className="font-bold text-zinc-800 dark:text-zinc-200">{gradeKey}</span> — Role Benchmark: <span className="font-bold text-amber-600 dark:text-amber-400">{assessment?.result?.overallExpectedCw ? `L3 (${assessment.result.overallExpectedCw}cw)` : 'L3 (60cw)'}</span> • <span className="text-zinc-500 italic">Reviewer Mode: System Administrator / Evaluator</span>
             </p>
           </div>
 
