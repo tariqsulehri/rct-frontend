@@ -71,16 +71,22 @@ export interface CompetencyEvaluation {
 
 export interface CefrAssessmentResult {
   overallScore: number;
+  overallWeight?: number | null;
   overallCefr: CefrLevelCode;
   expectedCefr: CefrLevelCode;
   expectedScore: number;
+  overallExpectedWeight?: number;
   overallGap: number;
   overallStatus: 'MEETS' | 'BELOW' | 'ABOVE';
   isPromotionGated: boolean;
+  isGated?: boolean;
   communicationReady: boolean | null;
   developmentPriorities: CompetencyKey[];
+  developmentPriority?: CompetencyKey[];
   isComplete: boolean;
+  complete?: boolean;
   competencyBreakdown: CompetencyEvaluation[];
+  perCompetency?: CompetencyEvaluation[] | any[];
 }
 
 export interface RatingInput {
@@ -108,12 +114,17 @@ export interface FormattedCommAssessment {
   assessed_at: string;
   created_at: string;
   updated_at: string;
-  ratings: Array<{
+  ratings?: Array<{
     competency_key: CompetencyKey;
     cefr: CefrLevelCode;
     evidence: string | null;
   }>;
-  evaluation: CefrAssessmentResult;
+  ratingCount?: number;
+  overallCefr?: CefrLevelCode | null;
+  overallGap?: number | null;
+  overallStatus?: 'MEETS' | 'BELOW' | 'ABOVE' | null;
+  communicationReady?: boolean | null;
+  evaluation?: CefrAssessmentResult;
 }
 
 export interface CreateCommAssessmentPayload {

@@ -538,21 +538,31 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
             <button type="button" onClick={() => setShowHistory(false)} className="text-xs text-zinc-400 hover:text-zinc-600">Close</button>
           </div>
           <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-            {history.map((h) => (
-              <div key={h.id} className="flex items-center justify-between p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs">
-                <div className="flex items-center gap-3">
-                  <CefrLevelBadge level={h.evaluation.overallCefr} size="sm" />
-                  <div>
-                    <span className="font-bold text-zinc-900 dark:text-zinc-100">{new Date(h.assessed_at).toLocaleDateString()}</span>
-                    <span className="text-zinc-400 ml-2">by {h.assessor_name || reviewerTitle}</span>
+            {history.map((h) => {
+              const cefrLevel = h.evaluation?.overallCefr || h.overallCefr || 'B1';
+              const scoreNum =
+                h.evaluation?.overallScore ??
+                h.evaluation?.overallWeight ??
+                (typeof h.overallGap === 'number' ? 1 - Math.abs(h.overallGap) : null);
+
+              return (
+                <div key={h.id} className="flex items-center justify-between p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs">
+                  <div className="flex items-center gap-3">
+                    <CefrLevelBadge level={cefrLevel} size="sm" />
+                    <div>
+                      <span className="font-bold text-zinc-900 dark:text-zinc-100">{new Date(h.assessed_at).toLocaleDateString()}</span>
+                      <span className="text-zinc-400 ml-2">by {h.assessor_name || reviewerTitle}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    {scoreNum !== null && scoreNum !== undefined && (
+                      <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">Score: {Number(scoreNum).toFixed(2)}</span>
+                    )}
+                    <span className={`font-bold uppercase px-2.5 py-0.5 rounded-full text-[10px] border ${h.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-zinc-100 text-zinc-600 border-zinc-300'}`}>{h.status}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">Score: {h.evaluation.overallScore.toFixed(2)}</span>
-                  <span className={`font-bold uppercase px-2.5 py-0.5 rounded-full text-[10px] border ${h.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-zinc-100 text-zinc-600 border-zinc-300'}`}>{h.status}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
