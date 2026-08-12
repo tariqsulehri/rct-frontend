@@ -2,13 +2,13 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { Stars } from '@/components/ui/Stars';
-import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, CheckCheck, ShieldCheck, Info, Copy, Layers, SaveAll, Send, RefreshCw } from 'lucide-react';
+import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, CheckCheck, ShieldCheck, Info, Copy, Layers, SaveAll, Send, RefreshCw, AlertTriangle } from 'lucide-react';
 import { CloneColleagueDialog } from './CloneColleagueDialog';
 import { BulkAddDialog, BulkAddTechnologyPayload } from './BulkAddDialog';
 import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
 import { getApiErrorMessage } from '@/lib/apiError';
 import { toast } from '@/lib/toast';
-import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes } from '@/hooks/useConfig';
+import { useConfigAssessmentLevels, useConfigAssessmentProjects, useConfigAssessmentTypes, useAppraisalPeriods } from '@/hooks/useConfig';
 import {
   useSkillsHierarchy,
   useEmployeeAssessments,
@@ -347,7 +347,20 @@ export const BulkAssessmentTable: React.FC<Props> = ({ employeeId, employeeName,
   const { data: assessmentTypes = [] } = useConfigAssessmentTypes();
   const { data: assessmentLevels = [] } = useConfigAssessmentLevels();
   const { data: assessmentProjects = [] } = useConfigAssessmentProjects();
+  const { data: appraisalPeriods = [], isLoading: appraisalPeriodsLoading } = useAppraisalPeriods();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
+
+  const activeAppraisalPeriod = useMemo(() => {
+    const now = new Date();
+    return (appraisalPeriods ?? []).find((p) => {
+      if (!p.is_active || p.status !== 'OPEN') return false;
+      const start = new Date(p.start_date);
+      const end = p.grace_period_end ? new Date(p.grace_period_end) : new Date(p.end_date);
+      return now >= start && now <= end;
+    });
+  }, [appraisalPeriods]);
+
+  const hasActivePeriod = Boolean(activeAppraisalPeriod);
 
   const [rows, setRows] = useState<BulkRow[]>([]);
 
@@ -600,6 +613,13 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     const row = rows.find((r) => r.id === rowId);
     if (!row) return;
 
+    if (!hasActivePeriod) {
+      const errMsg = 'Assessment submission blocked: No active evaluation period is currently open for submissions.';
+      setRowError(rowId, errMsg);
+      toast.error(errMsg, 'Save Blocked');
+      return;
+    }
+
     const isApproving = approvingRowIds.has(rowId);
 
     // Validate
@@ -708,6 +728,10 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
   }, []);
 
   const handleSaveAllDrafts = useCallback(async () => {
+    if (!hasActivePeriod) {
+      toast.error('Assessment submission blocked: No active evaluation period is currently open for submissions.', 'Save Blocked');
+      return;
+    }
     setIsSavingAll(true);
     const unsavedRows = rows.filter(r => r.isNew && r.technologyId);
     let successCount = 0;
@@ -719,9 +743,13 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     if (successCount > 0) {
       toast.success(readOnlyLevel ? `Saved ${successCount} draft skills.` : `Saved ${successCount} skills.`, 'Saved');
     }
-  }, [rows, handleSaveRow, readOnlyLevel]);
+  }, [rows, handleSaveRow, readOnlyLevel, hasActivePeriod]);
 
   const handleSubmitAllDrafts = useCallback(async () => {
+    if (!hasActivePeriod) {
+      toast.error('Assessment submission blocked: No active evaluation period is currently open for submissions.', 'Submission Blocked');
+      return;
+    }
     setIsSubmittingDrafts(true);
     try {
       // 1. Save any unpersisted rows first
@@ -746,7 +774,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     } finally {
       setIsSubmittingDrafts(false);
     }
-  }, [rows, handleSaveRow, submitDrafts, employeeId, refetchExistingAssessments, onSuccess]);
+  }, [rows, handleSaveRow, submitDrafts, employeeId, refetchExistingAssessments, onSuccess, hasActivePeriod]);
 
   const handleRefresh = useCallback(async () => {
     setIsManualRefreshing(true);
@@ -929,6 +957,10 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
   const draftCount = rows.filter((r) => (r.status === 'draft' || r.isNew) && r.technologyId).length;
 
   const handleApproveAllPending = useCallback(async () => {
+    if (!hasActivePeriod) {
+      toast.error('Assessment submission blocked: No active evaluation period is currently open for submissions.', 'Approval Blocked');
+      return;
+    }
     const pendingRows = rows.filter((r) => !r.isNew && r.status === 'pending' && r.existingAssessmentId);
     if (pendingRows.length === 0) return;
     const confirmed = await confirm({
@@ -954,7 +986,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
     } finally {
       setIsSubmittingDrafts(false);
     }
-  }, [rows, confirm, updateAssessment, onSuccess]);
+  }, [rows, confirm, updateAssessment, onSuccess, hasActivePeriod]);
 
   return (
     <>
@@ -985,6 +1017,16 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
           </button>
         )}
       </div>
+
+      {!appraisalPeriodsLoading && !hasActivePeriod && (
+        <div className="flex items-start gap-3 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 animate-fade-in my-1">
+          <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-xs leading-relaxed">
+            <span className="font-bold text-amber-300">Assessment Submissions Closed: </span>
+            No active evaluation period is currently open for submissions. Existing skill rows remain visible, but saving new entries or submitting drafts requires an active evaluation cycle. (Administrators can enable an active period under <span className="font-semibold underline">System Config &gt; Evaluation Periods</span>).
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         {/* Status View Filter Tabs */}
