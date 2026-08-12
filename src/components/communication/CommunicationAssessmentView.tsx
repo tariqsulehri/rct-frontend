@@ -371,7 +371,7 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
       {!canEdit && (
         <div className="card p-4 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50/80 dark:bg-amber-950/20 text-amber-800 dark:text-amber-200 text-xs font-semibold flex items-center gap-3 shadow-2xs">
           <AlertTriangle size={16} className="shrink-0 text-amber-600" />
-          <span>🔒 Read-only view. CEFR communication assessments are evaluated by your {reviewerTitle}.</span>
+          <span>🔒 Read-only view. CEFR communication assessments are evaluated by your Line Manager or Authorized Evaluator.</span>
         </div>
       )}
 
@@ -387,7 +387,7 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
                 <span className={`text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${latestAssessment.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700'}`}>Status: {latestAssessment.status}</span>
               )}
             </div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">Target Level: <span className="font-bold text-zinc-800 dark:text-zinc-200">{orgLevelKey.toUpperCase()}</span> — Role Benchmark: <span className="font-bold text-amber-600 dark:text-amber-400">{liveEvaluation?.orgBenchmark}</span> • <span className="text-zinc-500 italic">Reviewer Mode: {reviewerTitle}</span></p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">Target Level: <span className="font-bold text-zinc-800 dark:text-zinc-200">{orgLevelKey.toUpperCase()}</span> — Role Benchmark: <span className="font-bold text-amber-600 dark:text-amber-400">{liveEvaluation?.orgBenchmark}</span> • <span className="text-zinc-500 italic">{canEdit ? `Reviewer Mode: ${reviewerTitle}` : `Evaluated by: ${latestAssessment?.assessor_name || 'Line Manager / Authorized Evaluator'}`}</span></p>
           </div>
           
           <div className="flex items-center gap-2 self-start md:self-center flex-wrap">
@@ -551,7 +551,7 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
                     <CefrLevelBadge level={cefrLevel} size="sm" />
                     <div>
                       <span className="font-bold text-zinc-900 dark:text-zinc-100">{new Date(h.assessed_at).toLocaleDateString()}</span>
-                      <span className="text-zinc-400 ml-2">by {h.assessor_name || reviewerTitle}</span>
+                      <span className="text-zinc-400 ml-2">by {h.assessor_name || (canEdit ? reviewerTitle : 'Line Manager / Authorized Evaluator')}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
@@ -688,7 +688,7 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
 
                   {!canEdit && (
                     <div className="text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 font-medium">
-                      {ratings[comp.key]?.evidence ? <span>{ratings[comp.key].evidence}</span> : <span className="text-zinc-400 italic">No {reviewerTitle} evidence notes recorded.</span>}
+                      {ratings[comp.key]?.evidence ? <span>{ratings[comp.key].evidence}</span> : <span className="text-zinc-400 italic">No evaluator evidence notes recorded.</span>}
                     </div>
                   )}
                 </div>
