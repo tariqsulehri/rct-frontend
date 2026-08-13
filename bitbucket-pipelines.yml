@@ -1,20 +1,29 @@
 image: node:24
 
+clone:
+  depth: full
+
 definitions:
   caches:
     node: ~/.npm
+    sonar: ~/.sonar
   steps:
     - step: &quality-checks
-        name: Quality Checks
+        name: Frontend Quality Checks & SonarQube Analysis
         caches:
           - node
+          - sonar
         script:
           - rm -rf node_modules
           - npm ci
           - npm run lint
           - npm run type-check
-          - npm run test -- --run
+          - npm run test -- --run --coverage
           - npm run build
+          - pipe: sonarsource/sonarqube-scan:3.0.2
+            variables:
+              SONAR_HOST_URL: ${SONAR_HOST_URL}
+              SONAR_TOKEN: ${SONAR_TOKEN}
         artifacts:
           - dist/**
     - step: &build-staging-image
@@ -46,7 +55,8 @@ definitions:
           - export SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
           - export TIMESTAMP=$(date +'%m%d%y-%H%M%S')
           - export PKG_VERSION=$(node -p "require('./package.json').version")
-          - docker build --platform linux/amd64 -t tariqsulehri/rct-frontend:production -t tariqsulehri/rct-frontend:production-$SHORT_SHA -t tariqsulehri/rct-frontend:v$PKG_VERSION-$TIMESTAMP -t tariqsulehri/rct-frontend:latest-$TIMESTAMP .
+          - docker build --platform linux/amd64 -t tariqsulehri/rct-frontend:latest -t tariqsulehri/rct-frontend:production -t tariqsulehri/rct-frontend:production-$SHORT_SHA -t tariqsulehri/rct-frontend:v$PKG_VERSION-$TIMESTAMP -t tariqsulehri/rct-frontend:latest-$TIMESTAMP .
+          - docker push tariqsulehri/rct-frontend:latest
           - docker push tariqsulehri/rct-frontend:production
           - docker push tariqsulehri/rct-frontend:production-$SHORT_SHA
           - docker push tariqsulehri/rct-frontend:v$PKG_VERSION-$TIMESTAMP
