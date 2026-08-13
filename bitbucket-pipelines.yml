@@ -1,20 +1,29 @@
 image: node:24
 
+clone:
+  depth: full
+
 definitions:
   caches:
     node: ~/.npm
+    sonar: ~/.sonar
   steps:
     - step: &quality-checks
-        name: Quality Checks
+        name: Frontend Quality Checks & SonarQube Analysis
         caches:
           - node
+          - sonar
         script:
           - rm -rf node_modules
           - npm ci
           - npm run lint
           - npm run type-check
-          - npm run test -- --run
+          - npm run test -- --run --coverage
           - npm run build
+          - pipe: sonarsource/sonarqube-scan:3.0.2
+            variables:
+              SONAR_HOST_URL: ${SONAR_HOST_URL}
+              SONAR_TOKEN: ${SONAR_TOKEN}
         artifacts:
           - dist/**
     - step: &build-staging-image
