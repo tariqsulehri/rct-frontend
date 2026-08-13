@@ -15,6 +15,8 @@ definitions:
           - npm run type-check
           - npm run test -- --run
           - npm run build
+        artifacts:
+          - dist/**
     - step: &build-staging-image
         name: Build & Push Staging Docker Image
         image: docker:24.0.9
@@ -27,7 +29,7 @@ definitions:
           - echo "$DH_TOKEN" | docker login --username "$DH_USER" --password-stdin
           - export DOCKER_BUILDKIT=0
           - export SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
-          - docker build --platform linux/amd64 --build-arg VITE_API_URL=/api/v1 -t tariqsulehri/rct-frontend:staging -t tariqsulehri/rct-frontend:staging-$SHORT_SHA .
+          - docker build --platform linux/amd64 -t tariqsulehri/rct-frontend:staging -t tariqsulehri/rct-frontend:staging-$SHORT_SHA .
           - docker push tariqsulehri/rct-frontend:staging
           - docker push tariqsulehri/rct-frontend:staging-$SHORT_SHA
     - step: &build-master-image
@@ -44,7 +46,7 @@ definitions:
           - export SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
           - export TIMESTAMP=$(date +'%m%d%y-%H%M%S')
           - export PKG_VERSION=$(node -p "require('./package.json').version")
-          - docker build --platform linux/amd64 --build-arg VITE_API_URL=/api/v1 -t tariqsulehri/rct-frontend:production -t tariqsulehri/rct-frontend:production-$SHORT_SHA -t tariqsulehri/rct-frontend:v$PKG_VERSION-$TIMESTAMP -t tariqsulehri/rct-frontend:latest-$TIMESTAMP .
+          - docker build --platform linux/amd64 -t tariqsulehri/rct-frontend:production -t tariqsulehri/rct-frontend:production-$SHORT_SHA -t tariqsulehri/rct-frontend:v$PKG_VERSION-$TIMESTAMP -t tariqsulehri/rct-frontend:latest-$TIMESTAMP .
           - docker push tariqsulehri/rct-frontend:production
           - docker push tariqsulehri/rct-frontend:production-$SHORT_SHA
           - docker push tariqsulehri/rct-frontend:v$PKG_VERSION-$TIMESTAMP
@@ -66,7 +68,7 @@ pipelines:
             - echo "$DH_TOKEN" | docker login --username "$DH_USER" --password-stdin
             - export DOCKER_BUILDKIT=0
             - export SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
-            - docker build --platform linux/amd64 --build-arg VITE_API_URL=/api/v1 -t tariqsulehri/rct-frontend:dev -t tariqsulehri/rct-frontend:dev-$SHORT_SHA .
+            - docker build --platform linux/amd64 -t tariqsulehri/rct-frontend:dev -t tariqsulehri/rct-frontend:dev-$SHORT_SHA .
             - docker push tariqsulehri/rct-frontend:dev
             - docker push tariqsulehri/rct-frontend:dev-$SHORT_SHA
 
@@ -100,7 +102,7 @@ pipelines:
             - export MAJOR_VERSION=$(echo $TAG_VERSION | cut -d. -f1)
             - export MINOR_VERSION=$(echo $TAG_VERSION | cut -d. -f1,2)
             - export SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
-            - docker build --platform linux/amd64 --build-arg VITE_API_URL=/api/v1 -t tariqsulehri/rct-frontend:$TAG_VERSION -t tariqsulehri/rct-frontend:$MINOR_VERSION -t tariqsulehri/rct-frontend:$MAJOR_VERSION -t tariqsulehri/rct-frontend:latest -t tariqsulehri/rct-frontend:production-$SHORT_SHA .
+            - docker build --platform linux/amd64 -t tariqsulehri/rct-frontend:$TAG_VERSION -t tariqsulehri/rct-frontend:$MINOR_VERSION -t tariqsulehri/rct-frontend:$MAJOR_VERSION -t tariqsulehri/rct-frontend:latest -t tariqsulehri/rct-frontend:production-$SHORT_SHA .
             - docker push tariqsulehri/rct-frontend:$TAG_VERSION
             - docker push tariqsulehri/rct-frontend:$MINOR_VERSION
             - docker push tariqsulehri/rct-frontend:$MAJOR_VERSION

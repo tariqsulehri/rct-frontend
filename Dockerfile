@@ -1,51 +1,19 @@
-# Production frontend image.
-# Stage 1 compiles the Vite/React application into static files.
-FROM --platform=linux/amd64 ubuntu:24.04 AS builder
-ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=Etc/UTC
-WORKDIR /build
+# Production frontend image using lightweight Nginx Alpine (~20MB).
+# Pre-built dist/ folder is produced during pipeline quality checks
+# for instant docker builds (<15 seconds) with 0 QEMU emulation overhead.
 
-# Install dependencies before copying source so Docker can cache npm ci when
-# only application code changes.
-RUN apt-get update && apt-get install -y curl ca-certificates tzdata && \
-    curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
-    apt-get install -y nodejs && rm -rf /var/lib/apt/lists/*
+FROM --platform=linux/amd64 nginx:alpine AS runner
 
-COPY package.json package-lock.json* ./
-RUN npm ci
+# Remove default Nginx site config
+RUN rm -f /etc/nginx/conf.d/default.conf
 
-# Copy only files needed by the Vite build.
-COPY tsconfig.json tsconfig.node.json vite.config.ts tailwind.config.ts postcss.config.js* ./
-COPY index.html ./
-COPY src ./src
-COPY public ./public
+# Copy pre-compiled frontend distribution bundle and Nginx routing config
+COPY dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Keep API URL relative in production. nginx.conf proxies /api/v1 to the backend,
-# so the same image can run on localhost, VM IPs, or a real domain.
-ARG VITE_API_URL=/api/v1
-ENV VITE_API_URL=$VITE_API_URL
-
-RUN npm run build
-
-# Stage 2 is the small runtime image. It contains nginx plus the compiled files;
-# Node and source code are not shipped to production.
-FROM --platform=linux/amd64 ubuntu:24.04 AS runner
-ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=Etc/UTC
-
-RUN apt-get update && apt-get install -y nginx curl tzdata && rm -rf /var/lib/apt/lists/*
-
-# Remove default Ubuntu nginx site to prevent it from serving the "Welcome to nginx!" page
-RUN rm -f /etc/nginx/sites-enabled/default
-
-COPY --from=builder /build/dist /usr/share/nginx/html
-COPY nginx.conf                 /etc/nginx/conf.d/default.conf
-
-# Browser traffic enters here.
 EXPOSE 80
 
-# Health check for Ubuntu runtime container
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD curl -f http://localhost/health || exit 1
+  CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
