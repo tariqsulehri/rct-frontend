@@ -18,7 +18,7 @@ definitions:
           - npm ci
           - npm run lint
           - npm run type-check
-          - npm run test -- --run --coverage
+          - npx vitest run --coverage
           - npm run build
           - export S_URL="${SONAR_HOST_URL:-${sonar_host_url:-$SONAR_URL}}"
           - export S_TOKEN="${SONAR_TOKEN:-${sonar_token:-$SONAR_SECRET}}"

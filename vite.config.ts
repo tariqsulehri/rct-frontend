@@ -9,11 +9,19 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  test: {
+    globals: true,
+    environment: 'node',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov', 'json'],
+      reportsDirectory: './coverage',
+    },
+  },
   server: {
     port: 5173,
     proxy: {
       '/api': {
-        // VITE_PROXY_TARGET lets docker-compose.dev.yml route to the api service
         target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:4000',
         changeOrigin: true,
         secure: false,
