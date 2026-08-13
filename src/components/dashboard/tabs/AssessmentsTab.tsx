@@ -315,35 +315,31 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
                   </option>
                 ))}
               </select>
-              <div className="grid gap-1 text-xs">
-                <div className="flex items-start gap-2">
-                  <span className="font-semibold shrink-0" style={{ color: 'rgb(var(--accent-txt))' }}>
-                    From Grade:
-                  </span>
-                  <span style={{ color: 'rgb(var(--text-1))' }}>{fromGrade}</span>
+              <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">From</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{fromGrade}</span>
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-semibold shrink-0" style={{ color: 'rgb(var(--warning))' }}>
-                    To Grade:
-                  </span>
-                  <span style={{ color: 'rgb(var(--text-1))' }}>{toGrade}</span>
+                <span className="text-slate-400 font-bold">→</span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Target</span>
+                  <span className="font-bold text-indigo-700 dark:text-indigo-300">{toGrade}</span>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="section-desc grid gap-1">
+            <div className="section-desc">
               <span>{formatEmployeeOption(myRow?.full_name, myRow?.emp_code)}</span>
-              <div className="flex items-start gap-2">
-                <span className="font-semibold shrink-0" style={{ color: 'rgb(var(--accent-txt))' }}>
-                  From Grade:
-                </span>
-                <span style={{ color: 'rgb(var(--text-1))' }}>{fromGrade}</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="font-semibold shrink-0" style={{ color: 'rgb(var(--warning))' }}>
-                  To Grade:
-                </span>
-                <span style={{ color: 'rgb(var(--text-1))' }}>{toGrade}</span>
+              <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">From</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{fromGrade}</span>
+                </div>
+                <span className="text-slate-400 font-bold">→</span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Target</span>
+                  <span className="font-bold text-indigo-700 dark:text-indigo-300">{toGrade}</span>
+                </div>
               </div>
             </div>
           )}
