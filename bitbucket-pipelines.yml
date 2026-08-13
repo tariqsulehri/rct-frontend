@@ -23,6 +23,7 @@ definitions:
         script:
           - export DH_USER="${DOCKERHUB_USERNAME:-${DOCKER_USERNAME:-${docker_username:-$DOCKER_USER}}}"
           - export DH_TOKEN="${DOCKERHUB_TOKEN:-${DOCKER_TOKEN:-${docker_tocken:-${docker_token:-$DOCKER_TOCKEN}}}}"
+          - echo "Authenticating with Docker Hub as user '$DH_USER' (Token length ${#DH_TOKEN} chars)..."
           - echo "$DH_TOKEN" | docker login --username "$DH_USER" --password-stdin
           - export SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
           - docker build --platform linux/amd64 --build-arg VITE_API_URL=/api/v1 -t tariqsulehri/rct-frontend:staging -t tariqsulehri/rct-frontend:staging-$SHORT_SHA .
@@ -36,6 +37,7 @@ definitions:
         script:
           - export DH_USER="${DOCKERHUB_USERNAME:-${DOCKER_USERNAME:-${docker_username:-$DOCKER_USER}}}"
           - export DH_TOKEN="${DOCKERHUB_TOKEN:-${DOCKER_TOKEN:-${docker_tocken:-${docker_token:-$DOCKER_TOCKEN}}}}"
+          - echo "Authenticating with Docker Hub as user '$DH_USER' (Token length ${#DH_TOKEN} chars)..."
           - echo "$DH_TOKEN" | docker login --username "$DH_USER" --password-stdin
           - export SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
           - export TIMESTAMP=$(date +'%m%d%y-%H%M%S')
@@ -58,6 +60,7 @@ pipelines:
           script:
             - export DH_USER="${DOCKERHUB_USERNAME:-${DOCKER_USERNAME:-${docker_username:-$DOCKER_USER}}}"
             - export DH_TOKEN="${DOCKERHUB_TOKEN:-${DOCKER_TOKEN:-${docker_tocken:-${docker_token:-$DOCKER_TOCKEN}}}}"
+            - echo "Authenticating with Docker Hub as user '$DH_USER' (Token length ${#DH_TOKEN} chars)..."
             - echo "$DH_TOKEN" | docker login --username "$DH_USER" --password-stdin
             - export SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
             - docker build --platform linux/amd64 --build-arg VITE_API_URL=/api/v1 -t tariqsulehri/rct-frontend:dev -t tariqsulehri/rct-frontend:dev-$SHORT_SHA .
@@ -87,6 +90,7 @@ pipelines:
           script:
             - export DH_USER="${DOCKERHUB_USERNAME:-${DOCKER_USERNAME:-${docker_username:-$DOCKER_USER}}}"
             - export DH_TOKEN="${DOCKERHUB_TOKEN:-${DOCKER_TOKEN:-${docker_tocken:-${docker_token:-$DOCKER_TOCKEN}}}}"
+            - echo "Authenticating with Docker Hub as user '$DH_USER' (Token length ${#DH_TOKEN} chars)..."
             - echo "$DH_TOKEN" | docker login --username "$DH_USER" --password-stdin
             - export TAG_VERSION=${BITBUCKET_TAG}
             - export MAJOR_VERSION=$(echo $TAG_VERSION | cut -d. -f1)
