@@ -31,7 +31,7 @@ pipelines:
             - docker push tariqsulehri/rct-frontend:dev
             - docker push tariqsulehri/rct-frontend:dev-$SHORT_SHA
 
-    staging:
+    staging: &staging-pipeline
       - step: *quality-checks
       - step:
           name: Build & Push Staging Docker Image
@@ -45,7 +45,10 @@ pipelines:
             - docker push tariqsulehri/rct-frontend:staging
             - docker push tariqsulehri/rct-frontend:staging-$SHORT_SHA
 
-    master:
+    # Alias for legacy/typo branch name "stagging"
+    stagging: *staging-pipeline
+
+    master: &master-pipeline
       - step: *quality-checks
       - step:
           name: Build & Push Production Master Image
@@ -55,13 +58,16 @@ pipelines:
           script:
             - echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
             - export SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
+            - export TIMESTAMP=$(date +'%m%d%y-%H%M%S')
             - export PKG_VERSION=$(node -p "require('./package.json').version")
-            - export BUILD_DATE=$(date -u +'%Y%m%d-%H%M%S')
-            # Tag strategy: rolling production, package.json version + build date, and immutable commit SHA
-            - docker build --platform linux/amd64 --build-arg VITE_API_URL=/api/v1 -t tariqsulehri/rct-frontend:production -t tariqsulehri/rct-frontend:production-$SHORT_SHA -t tariqsulehri/rct-frontend:v$PKG_VERSION-$BUILD_DATE .
+            # Production builds tagged with rolling production, commit SHA, version+timestamp, and timestamp
+            - docker build --platform linux/amd64 --build-arg VITE_API_URL=/api/v1 -t tariqsulehri/rct-frontend:production -t tariqsulehri/rct-frontend:production-$SHORT_SHA -t tariqsulehri/rct-frontend:v$PKG_VERSION-$TIMESTAMP -t tariqsulehri/rct-frontend:latest-$TIMESTAMP .
             - docker push tariqsulehri/rct-frontend:production
             - docker push tariqsulehri/rct-frontend:production-$SHORT_SHA
-            - docker push tariqsulehri/rct-frontend:v$PKG_VERSION-$BUILD_DATE
+            - docker push tariqsulehri/rct-frontend:v$PKG_VERSION-$TIMESTAMP
+            - docker push tariqsulehri/rct-frontend:latest-$TIMESTAMP
+
+    main: *master-pipeline
 
   tags:
     'v*.*.*':
@@ -77,7 +83,7 @@ pipelines:
             - export MAJOR_VERSION=$(echo $TAG_VERSION | cut -d. -f1)
             - export MINOR_VERSION=$(echo $TAG_VERSION | cut -d. -f1,2)
             - export SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
-            # Production Release SemVer Tagging (e.g. v1.0.0, v1.0, v1, latest, production)
+            # SemVer tag builds: v1.0.0, v1.0, v1, latest, and commit SHA tag
             - docker build --platform linux/amd64 --build-arg VITE_API_URL=/api/v1 -t tariqsulehri/rct-frontend:$TAG_VERSION -t tariqsulehri/rct-frontend:$MINOR_VERSION -t tariqsulehri/rct-frontend:$MAJOR_VERSION -t tariqsulehri/rct-frontend:latest -t tariqsulehri/rct-frontend:production-$SHORT_SHA .
             - docker push tariqsulehri/rct-frontend:$TAG_VERSION
             - docker push tariqsulehri/rct-frontend:$MINOR_VERSION
