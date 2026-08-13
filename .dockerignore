@@ -1,9 +1,6 @@
 # ── Dependencies ─────────────────────────────────────────────────────────────
 node_modules
 
-# ── Build output (rebuilt inside image via vite build) ───────────────────────
-dist
-
 # ── Test & coverage ──────────────────────────────────────────────────────────
 coverage
 
