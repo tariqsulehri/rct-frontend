@@ -46,7 +46,8 @@ definitions:
           - export SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
           - export TIMESTAMP=$(date +'%m%d%y-%H%M%S')
           - export PKG_VERSION=$(node -p "require('./package.json').version")
-          - docker build --platform linux/amd64 -t tariqsulehri/rct-frontend:production -t tariqsulehri/rct-frontend:production-$SHORT_SHA -t tariqsulehri/rct-frontend:v$PKG_VERSION-$TIMESTAMP -t tariqsulehri/rct-frontend:latest-$TIMESTAMP .
+          - docker build --platform linux/amd64 -t tariqsulehri/rct-frontend:latest -t tariqsulehri/rct-frontend:production -t tariqsulehri/rct-frontend:production-$SHORT_SHA -t tariqsulehri/rct-frontend:v$PKG_VERSION-$TIMESTAMP -t tariqsulehri/rct-frontend:latest-$TIMESTAMP .
+          - docker push tariqsulehri/rct-frontend:latest
           - docker push tariqsulehri/rct-frontend:production
           - docker push tariqsulehri/rct-frontend:production-$SHORT_SHA
           - docker push tariqsulehri/rct-frontend:v$PKG_VERSION-$TIMESTAMP
