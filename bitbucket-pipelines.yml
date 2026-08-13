@@ -22,11 +22,9 @@ definitions:
         script:
           - echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
           - export SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
-          - docker build --platform linux/amd64 --build-arg VITE_API_URL=/api/v1 -t tariqsulehri/rct-frontend:staging -t tariqsulehri/rct-frontend:staging-$SHORT_SHA -t tariqsulehri/rct-frontend:stagging -t tariqsulehri/rct-frontend:stagging-$SHORT_SHA .
+          - docker build --platform linux/amd64 --build-arg VITE_API_URL=/api/v1 -t tariqsulehri/rct-frontend:staging -t tariqsulehri/rct-frontend:staging-$SHORT_SHA .
           - docker push tariqsulehri/rct-frontend:staging
           - docker push tariqsulehri/rct-frontend:staging-$SHORT_SHA
-          - docker push tariqsulehri/rct-frontend:stagging
-          - docker push tariqsulehri/rct-frontend:stagging-$SHORT_SHA
     - step: &build-master-image
         name: Build & Push Production Master Image
         image: docker:24.0.9
@@ -60,10 +58,6 @@ pipelines:
             - docker push tariqsulehri/rct-frontend:dev-$SHORT_SHA
 
     staging:
-      - step: *quality-checks
-      - step: *build-staging-image
-
-    stagging:
       - step: *quality-checks
       - step: *build-staging-image
 
