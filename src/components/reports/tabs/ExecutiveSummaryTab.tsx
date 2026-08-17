@@ -86,60 +86,64 @@ export const ExecutiveSummaryTab: React.FC<{ reportFilters?: ReportFilters }> = 
 
       {/* Top Executive KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-3 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-xl">
+        <div className="p-4 rounded-2xl border shadow-card flex items-center gap-3 transition-all"
+             style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+          <div className="p-3 rounded-xl" style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent))' }}>
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">
+            <div className="text-2xl font-black" style={{ color: 'rgb(var(--text-1))' }}>
               {data.kpis.totalEmployees}
             </div>
-            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            <div className="text-xs font-medium" style={{ color: 'rgb(var(--text-2))' }}>
               Total Active Employees
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-3 bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 rounded-xl">
+        <div className="p-4 rounded-2xl border shadow-card flex items-center gap-3 transition-all"
+             style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+          <div className="p-3 rounded-xl" style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent))' }}>
             <Award className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">
-              {data.kpis.overallOrgScore}% <span className="text-xs font-normal text-slate-400">/ 80% Target</span>
+            <div className="text-2xl font-black" style={{ color: 'rgb(var(--text-1))' }}>
+              {data.kpis.overallOrgScore}% <span className="text-xs font-normal" style={{ color: 'rgb(var(--text-3))' }}>/ 80% Target</span>
             </div>
-            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            <div className="text-xs font-medium" style={{ color: 'rgb(var(--text-2))' }}>
               Overall Org Tech Score
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-3 bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 rounded-xl">
+        <div className="p-4 rounded-2xl border shadow-card flex items-center gap-3 transition-all"
+             style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+          <div className="p-3 rounded-xl" style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent))' }}>
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">
-              {data.kpis.cefrReadyRate}% <span className="text-xs font-normal text-slate-400">/ 100% Target</span>
+            <div className="text-2xl font-black" style={{ color: 'rgb(var(--text-1))' }}>
+              {data.kpis.cefrReadyRate}% <span className="text-xs font-normal" style={{ color: 'rgb(var(--text-3))' }}>/ 100% Target</span>
             </div>
-            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            <div className="text-xs font-medium" style={{ color: 'rgb(var(--text-2))' }}>
               CEFR Communication Ready
             </div>
-            <div className="text-[10px] text-sky-600 dark:text-sky-400 font-semibold mt-0.5">
+            <div className="text-[10px] font-semibold mt-0.5" style={{ color: 'rgb(var(--accent))' }}>
               {data.kpis.cefrAssessedCount ?? 3} Assessed ({data.kpis.cefrCurrentReadyRate ?? 33.3}% Current Grade Ready) • {data.kpis.cefrPendingCount ?? 31} Pending
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-xl">
+        <div className="p-4 rounded-2xl border shadow-card flex items-center gap-3 transition-all"
+             style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+          <div className="p-3 rounded-xl" style={{ backgroundColor: 'rgb(var(--success-soft))', color: 'rgb(var(--success))' }}>
             <TrendingUp className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">
+            <div className="text-2xl font-black" style={{ color: 'rgb(var(--text-1))' }}>
               {data.kpis.promotionReadyCount}
             </div>
-            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            <div className="text-xs font-medium" style={{ color: 'rgb(var(--text-2))' }}>
               Promotion Ready Talent
             </div>
           </div>
@@ -147,17 +151,18 @@ export const ExecutiveSummaryTab: React.FC<{ reportFilters?: ReportFilters }> = 
       </div>
 
       {/* Department Breakdown Matrix */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+      <div className="p-4 rounded-2xl border shadow-card space-y-3 transition-all"
+           style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+            <Building2 className="w-5 h-5" style={{ color: 'rgb(var(--accent))' }} />
+            <h3 className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>
               Department Health & Benchmark Comparison
             </h3>
           </div>
           <button
             onClick={() => window.print()}
-            className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all"
+            className="btn-secondary px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" /> Export PDF Summary
           </button>
