@@ -47,16 +47,17 @@ const LEVEL_LABELS: Record<string, string> = {
 const LEVEL_COLORS: Record<string, string> = {
   Unset:       'rgb(var(--text-3))',
   Expert:      'rgb(var(--success))',
-  Advanced:    '#22d3ee',
-  Proficient:  'rgb(var(--warning))',
-  Foundational:'#f97316',
-  Beginner:    '#f97316',
-  Awareness:   '#a855f7',
+  Advanced:    'rgb(var(--accent))',
+  Proficient:  'rgb(var(--accent))',
+  Intermediate:'rgb(var(--warning))',
+  Foundational:'rgb(var(--warning))',
+  Beginner:    'rgb(var(--warning))',
+  Awareness:   'rgb(var(--text-3))',
   // computed labels (for result card)
   'L4 Expert': 'rgb(var(--success))',
-  'L3 Proficient': '#22d3ee',
+  'L3 Proficient': 'rgb(var(--accent))',
   'L2 Intermediate': 'rgb(var(--warning))',
-  'L1 Beginner': '#f97316',
+  'L1 Beginner': 'rgb(var(--warning))',
   'L0 Developing': 'rgb(var(--text-3))',
 };
 

@@ -70,12 +70,12 @@ const LEVEL_RANKS: Record<string, number> = {
 export const LEVEL_COLORS: Record<AssessmentLevel, string> = {
   Unset:       'rgb(var(--text-3))',
   Expert:      'rgb(var(--success))',
-  Advanced:    '#22d3ee',
-  Proficient:  'rgb(var(--warning))',
-  Intermediate:'#f97316',
-  Foundational:'#f97316',
-  Beginner:    '#f97316',
-  Awareness:   '#a855f7',
+  Advanced:    'rgb(var(--accent))',
+  Proficient:  'rgb(var(--accent))',
+  Intermediate:'rgb(var(--warning))',
+  Foundational:'rgb(var(--warning))',
+  Beginner:    'rgb(var(--warning))',
+  Awareness:   'rgb(var(--text-3))',
 };
 
 export const LEVEL_LABELS: Record<AssessmentLevel, string> = {
