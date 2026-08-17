@@ -196,10 +196,24 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
     const behavioralReady = overallGapCw >= 0 && isIntegrityOk;
     const priorities = breakdown.filter((b) => b.status === 'BELOW').map((b) => b.name);
 
+    const BEHAVIORAL_RADAR_LABELS: Record<string, string> = {
+      ownership: 'Ownership',
+      collaboration: 'Collaboration',
+      customer_business: 'Customer Focus',
+      communication: 'Communication',
+      adaptability: 'Adaptability',
+      integrity: 'Integrity',
+      develops_people: 'Develops People',
+      strategic_thinking: 'Strategic Thinking',
+      drives_change: 'Drives Change',
+      decision_making: 'Decision Making',
+      builds_teams: 'Builds Teams',
+    };
+
     const radarData = breakdown.map((item) => {
-      const shortName = item.name.length > 14 ? item.name.slice(0, 12) + '…' : item.name;
+      const label = BEHAVIORAL_RADAR_LABELS[item.key] || item.name;
       return {
-        competency: shortName,
+        competency: label,
         fullName: item.name,
         Assessed: item.givenCw,
         Target: item.expectedCw,
@@ -582,18 +596,26 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
                       {liveEvaluation.overallExpectedLevel} ({liveEvaluation.overallExpectedDec})
                     </strong>
                   </span>
-                </div>
-
-                <div className="grid grid-cols-5 gap-2">
+                       <div className="grid grid-cols-5 gap-2">
                   {(['L1', 'L2', 'L3', 'L4', 'L5'] as BehavioralLevelCode[]).map((lvl) => {
                     const detail = BEHAVIORAL_LEVEL_DETAILS[lvl];
                     const isEvaluated = liveEvaluation.overallProficiency === lvl;
                     const isTarget = liveEvaluation.overallExpectedLevel === lvl;
+                    const evalCw = detail.weightCw;
+                    const targetCw = liveEvaluation.overallExpectedCw;
+                    const isEvalBelow = evalCw < targetCw;
+                    const isEvalAbove = evalCw > targetCw;
+
+                    const evaluatedBg = isEvalBelow
+                      ? 'rgb(var(--danger))'
+                      : isEvalAbove
+                      ? 'rgb(var(--success))'
+                      : 'rgb(var(--accent))';
 
                     return (
                       <div
                         key={lvl}
-                        className={`relative p-3 rounded-xl border text-center transition-all ${
+                        className={`relative h-16 min-h-[64px] p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-center ${
                           isEvaluated
                             ? 'text-white shadow-md ring-2 scale-[1.02]'
                             : isTarget
@@ -602,12 +624,12 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
                         }`}
                         style={{
                           backgroundColor: isEvaluated
-                            ? 'rgb(var(--accent))'
+                            ? evaluatedBg
                             : isTarget
                             ? 'rgb(var(--warning-soft))'
                             : 'rgb(var(--surface))',
                           borderColor: isEvaluated
-                            ? 'rgb(var(--accent))'
+                            ? evaluatedBg
                             : isTarget
                             ? 'rgb(var(--warning) / 0.5)'
                             : 'rgb(var(--border))',
@@ -629,16 +651,16 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
                           <span>{lvl}</span>
                         </div>
                         <div className="text-[10px] font-mono font-bold mt-0.5"
-                             style={{ color: isEvaluated ? 'rgba(255,255,255,0.85)' : 'rgb(var(--text-3))' }}>
+                             style={{ color: isEvaluated ? 'rgba(255,255,255,0.9)' : 'rgb(var(--text-3))' }}>
                           {detail.weightDec}
                         </div>
                         {isEvaluated && (
-                          <div className="text-[9px] font-bold uppercase tracking-wider mt-1 bg-white/20 px-1 rounded text-white">
+                          <div className="text-[8px] font-black uppercase tracking-wider mt-0.5 bg-white/20 px-1 rounded text-white">
                             EVALUATED
                           </div>
                         )}
                         {!isEvaluated && isTarget && (
-                          <div className="text-[8px] font-bold uppercase tracking-wider mt-1"
+                          <div className="text-[8px] font-bold uppercase tracking-wider mt-0.5"
                                style={{ color: 'rgb(var(--warning))' }}>
                             TARGET
                           </div>
@@ -646,7 +668,7 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
                       </div>
                     );
                   })}
-                </div>
+                </div>           </div>
               </div>
 
               {/* 4 Standardized Metric KPI Cards */}
@@ -771,9 +793,9 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
 
               <div className="w-full h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={liveEvaluation.radarData}>
+                  <RadarChart cx="50%" cy="50%" outerRadius="64%" data={liveEvaluation.radarData} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
                     <PolarGrid stroke={chartTheme.gridColor} />
-                    <PolarAngleAxis dataKey="competency" tick={{ fill: chartTheme.axisColor, fontSize: 10, fontWeight: 600 }} />
+                    <PolarAngleAxis dataKey="competency" tick={{ fill: chartTheme.axisColor, fontSize: 9.5, fontWeight: 700 }} />
                     <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
                     <Tooltip
                       contentStyle={{
@@ -957,13 +979,22 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
                       </div>
                     )}
 
-                    {/* Horizontal 5-Level Pill Buttons */}
+                    {/* Horizontal 5-Level Pill Buttons with 3-State Semantic Coloring */}
                     {!isNA && (
                       <div className="grid grid-cols-5 gap-1.5 pt-1">
                         {(['L1', 'L2', 'L3', 'L4', 'L5'] as BehavioralLevelCode[]).map((lvl) => {
                           const isSelected = activeRatingLevel === lvl;
                           const isTarget = expectedLevel === lvl;
                           const info = BEHAVIORAL_LEVEL_DETAILS[lvl];
+                          const lvlCw = info.weightCw;
+                          const isBelow = lvlCw < expCw;
+                          const isAbove = lvlCw > expCw;
+
+                          const selectedBg = isBelow
+                            ? 'rgb(var(--danger))'
+                            : isAbove
+                            ? 'rgb(var(--success))'
+                            : 'rgb(var(--accent))';
 
                           return (
                             <button
@@ -972,7 +1003,7 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
                               disabled={!canAssess}
                               onClick={() => handleLevelChange(comp.key, lvl)}
                               title={`${lvl} ${info.label} (${info.weightDec})`}
-                              className={`relative p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-center ${
+                              className={`relative h-14 min-h-[56px] p-1.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center ${
                                 isSelected
                                   ? 'text-white shadow-md ring-2 scale-[1.03]'
                                   : isTarget
@@ -981,12 +1012,12 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
                               } ${!canAssess ? 'cursor-default' : 'hover:scale-[1.02] cursor-pointer'}`}
                               style={{
                                 backgroundColor: isSelected
-                                  ? 'rgb(var(--accent))'
+                                  ? selectedBg
                                   : isTarget
                                   ? 'rgb(var(--warning-soft))'
                                   : 'rgb(var(--surface-2))',
                                 borderColor: isSelected
-                                  ? 'rgb(var(--accent))'
+                                  ? selectedBg
                                   : isTarget
                                   ? 'rgb(var(--warning) / 0.5)'
                                   : 'rgb(var(--border))',
@@ -1006,7 +1037,7 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
                               )}
                               <div className="text-xs font-black">{lvl}</div>
                               <div className="text-[9px] font-mono font-bold mt-0.5"
-                                   style={{ color: isSelected ? 'rgba(255,255,255,0.85)' : 'rgb(var(--text-3))' }}>
+                                   style={{ color: isSelected ? 'rgba(255,255,255,0.9)' : 'rgb(var(--text-3))' }}>
                                 {info.weightDec}
                               </div>
                               {isSelected && (
