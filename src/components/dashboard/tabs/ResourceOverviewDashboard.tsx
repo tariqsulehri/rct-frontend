@@ -77,6 +77,42 @@ const CEFR_6_COMPETENCIES = [
   { key: 'cross_cultural', label: 'Culture', fullLabel: 'Cross-Cultural' },
 ];
 
+/**
+ * BAR_PALETTE — 12 visually distinct gradient fills for per-bar nominal color encoding.
+ * Each category (domain / competency / pillar) gets a unique identity hue.
+ * Palette is perceptually balanced: adjacent entries have high hue contrast.
+ */
+const BAR_PALETTE = [
+  'linear-gradient(90deg,#6366f1,#818cf8)',   // 0 — indigo
+  'linear-gradient(90deg,#06b6d4,#22d3ee)',   // 1 — cyan
+  'linear-gradient(90deg,#f59e0b,#fbbf24)',   // 2 — amber
+  'linear-gradient(90deg,#10b981,#34d399)',   // 3 — emerald
+  'linear-gradient(90deg,#ec4899,#f472b6)',   // 4 — pink
+  'linear-gradient(90deg,#8b5cf6,#a78bfa)',   // 5 — violet
+  'linear-gradient(90deg,#f97316,#fb923c)',   // 6 — orange
+  'linear-gradient(90deg,#14b8a6,#2dd4bf)',   // 7 — teal
+  'linear-gradient(90deg,#3b82f6,#60a5fa)',   // 8 — blue
+  'linear-gradient(90deg,#84cc16,#a3e635)',   // 9 — lime
+  'linear-gradient(90deg,#d946ef,#e879f9)',   // 10 — fuchsia
+  'linear-gradient(90deg,#f43f5e,#fb7185)',   // 11 — rose
+] as const;
+
+/** Dot color for the value label — matches the palette entry hue */
+const BAR_PALETTE_TEXT = [
+  'text-indigo-400',
+  'text-cyan-400',
+  'text-amber-400',
+  'text-emerald-400',
+  'text-pink-400',
+  'text-violet-400',
+  'text-orange-400',
+  'text-teal-400',
+  'text-blue-400',
+  'text-lime-400',
+  'text-fuchsia-400',
+  'text-rose-400',
+] as const;
+
 export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps> = ({
   user,
   onNavigate,
@@ -447,27 +483,31 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           </div>
 
           {/* Horizontal bars — one per domain (scrollable if many) */}
-          <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-0.5">
-            {technicalChartData.map((d, i) => (
+          <div className="flex flex-col gap-2 flex-1 overflow-y-auto pr-0.5">
+            {technicalChartData.map((d, i) => {
+              const barColor = BAR_PALETTE[i % BAR_PALETTE.length];
+              const txtColor = BAR_PALETTE_TEXT[i % BAR_PALETTE_TEXT.length];
+              return (
               <div key={i} className="flex items-center gap-2">
                 <span className="text-[8.5px] text-text-3 w-11 truncate shrink-0" title={d.fullLabel}>{d.label}</span>
-                <div className="flex-1 relative h-2.5 rounded-full bg-surface-2 overflow-visible">
+                <div className="flex-1 relative h-4 rounded-full bg-surface-2 overflow-visible">
                   {/* Achieved fill */}
                   <div
                     className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-                    style={{ width: `${Math.min(d.score, 100)}%`, background: d.score >= d.benchmark ? 'linear-gradient(90deg,#6366f1,#818cf8)' : 'linear-gradient(90deg,#f43f5e,#fb7185)' }}
+                    style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
                   />
                   {/* Required threshold marker */}
                   <div
-                    className="absolute top-[-2px] bottom-[-2px] w-[2px] rounded-full bg-white/80 dark:bg-white/60 shadow-sm z-10"
+                    className="absolute top-[-3px] bottom-[-3px] w-[2.5px] rounded-full bg-white/90 dark:bg-white/70 shadow-md z-10"
                     style={{ left: `${Math.min(d.benchmark, 98)}%` }}
                   />
                 </div>
-                <span className="text-[8px] font-mono text-text-3 shrink-0 w-[52px] text-right tabular-nums">
-                  <span className={d.score >= d.benchmark ? 'text-indigo-500' : 'text-red-400'}>{d.score}%</span>/{d.benchmark}%
+                <span className={`text-[8px] font-mono shrink-0 w-[52px] text-right tabular-nums ${txtColor} font-bold`}>
+                  {d.score}%<span className="text-text-3 font-normal">/{d.benchmark}%</span>
                 </span>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Footer legend */}
@@ -516,25 +556,29 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           </div>
 
           {/* Horizontal bars — one per CEFR competency (scrollable) */}
-          <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-0.5">
-            {commChartData.map((d, i) => (
+          <div className="flex flex-col gap-2 flex-1 overflow-y-auto pr-0.5">
+            {commChartData.map((d, i) => {
+              const barColor = BAR_PALETTE[(i + 6) % BAR_PALETTE.length];
+              const txtColor = BAR_PALETTE_TEXT[(i + 6) % BAR_PALETTE_TEXT.length];
+              return (
               <div key={i} className="flex items-center gap-2">
                 <span className="text-[8.5px] text-text-3 w-11 truncate shrink-0" title={d.fullLabel}>{d.label}</span>
-                <div className="flex-1 relative h-2.5 rounded-full bg-surface-2 overflow-visible">
+                <div className="flex-1 relative h-4 rounded-full bg-surface-2 overflow-visible">
                   <div
                     className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-                    style={{ width: `${Math.min(d.score, 100)}%`, background: d.score >= d.benchmark ? 'linear-gradient(90deg,#0891b2,#22d3ee)' : 'linear-gradient(90deg,#f59e0b,#fcd34d)' }}
+                    style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
                   />
                   <div
-                    className="absolute top-[-2px] bottom-[-2px] w-[2px] rounded-full bg-white/80 dark:bg-white/60 shadow-sm z-10"
+                    className="absolute top-[-3px] bottom-[-3px] w-[2.5px] rounded-full bg-white/90 dark:bg-white/70 shadow-md z-10"
                     style={{ left: `${Math.min(d.benchmark, 98)}%` }}
                   />
                 </div>
-                <span className="text-[8px] font-mono text-text-3 shrink-0 w-[52px] text-right tabular-nums">
-                  <span className={d.score >= d.benchmark ? 'text-cyan-500' : 'text-amber-400'}>{d.score}%</span>/{d.benchmark}%
+                <span className={`text-[8px] font-mono shrink-0 w-[52px] text-right tabular-nums ${txtColor} font-bold`}>
+                  {d.score}%<span className="text-text-3 font-normal">/{d.benchmark}%</span>
                 </span>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Footer legend */}
@@ -585,33 +629,31 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             </div>
           </div>
 
-          {/* Horizontal bars — all 11 behavioral pillars (compact) */}
-          <div className="flex flex-col gap-[4.5px] flex-1 justify-center overflow-hidden">
-            {behavRadarData.map((d, i) => (
+          {/* Horizontal bars — all 11 behavioral pillars (compact, scrollable) */}
+          <div className="flex flex-col gap-[5px] flex-1 overflow-y-auto pr-0.5">
+            {behavRadarData.map((d, i) => {
+              const barColor = BAR_PALETTE[i % BAR_PALETTE.length];
+              return (
               <div key={i} className="flex items-center gap-1.5">
-                {/* Core vs Leadership color dot */}
+                {/* Type indicator dot */}
                 <span className={`w-1 h-1 rounded-full shrink-0 ${d.type === 'core' ? 'bg-amber-400' : 'bg-purple-400'}`} />
-                <span className="text-[7.5px] text-text-3 w-[52px] truncate shrink-0" title={d.fullName}>{d.name}</span>
-                <div className="flex-1 relative h-2 rounded-full bg-surface-2 overflow-visible">
+                <span className="text-[7.5px] text-text-3 w-[50px] truncate shrink-0" title={d.fullName}>{d.name}</span>
+                <div className="flex-1 relative h-3.5 rounded-full bg-surface-2 overflow-visible">
                   <div
                     className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-                    style={{
-                      width: `${Math.min(d.score, 100)}%`,
-                      background: d.score >= d.benchmark
-                        ? (d.type === 'core' ? 'linear-gradient(90deg,#d97706,#fbbf24)' : 'linear-gradient(90deg,#7c3aed,#a78bfa)')
-                        : 'linear-gradient(90deg,#f43f5e,#fb7185)'
-                    }}
+                    style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
                   />
                   <div
-                    className="absolute top-[-2px] bottom-[-2px] w-[2px] rounded-full bg-white/80 dark:bg-white/60 shadow-sm z-10"
+                    className="absolute top-[-3px] bottom-[-3px] w-[2.5px] rounded-full bg-white/90 dark:bg-white/70 shadow-md z-10"
                     style={{ left: `${Math.min(d.benchmark, 98)}%` }}
                   />
                 </div>
-                <span className={`text-[7px] font-mono shrink-0 tabular-nums ${d.score >= d.benchmark ? 'text-emerald-500' : 'text-red-400'}`}>
+                <span className={`text-[7px] font-bold font-mono shrink-0 tabular-nums w-5 text-right ${d.score >= d.benchmark ? 'text-emerald-400' : 'text-red-400'}`}>
                   {d.score >= d.benchmark ? '✓' : '↑'}
                 </span>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Footer legend */}
