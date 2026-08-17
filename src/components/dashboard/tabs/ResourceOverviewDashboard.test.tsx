@@ -116,26 +116,29 @@ describe('ResourceOverviewDashboard (SSR Rendering)', () => {
     targetGradeTitle: 'Senior DevOps Engineer',
   };
 
-  it('renders Top Capability Analytics Tile with score, trajectory, and stream switchers', () => {
+  it('renders Header Ribbon with greeting, career grade trajectory, and evaluation cycle title', () => {
     const html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
 
-    expect(html).toContain('Capability Mastery');
+    expect(html).toContain('Test Engineer');
     expect(html).toContain('G14');
     expect(html).toContain('G15');
-    expect(html).toContain('Technical');
-    expect(html).toContain('CEFR');
-    expect(html).toContain('Behavioral');
+    expect(html).toContain('Cycle 2026 (Active)');
+    expect(html).toContain('Assess Skills');
   });
 
-  it('renders Evaluation Cycle Calendar widget and Readiness Index', () => {
+  it('renders all three graphs simultaneously (Technical, CEFR Language, Behavioral Pillars)', () => {
     const html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
 
-    expect(html).toContain('Evaluation Cycle 2026');
-    expect(html).toContain('Readiness Index');
+    expect(html).toContain('1. Technical Domains');
+    expect(html).toContain('2. CEFR Language');
+    expect(html).toContain('3. Behavioral Pillars');
+    expect(html).toContain('Skills Grid');
+    expect(html).toContain('CEFR Rubric');
+    expect(html).toContain('Behavior Matrix');
   });
 
   it('renders AI Career Copilot and quick guidance prompts', () => {

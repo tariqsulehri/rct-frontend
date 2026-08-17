@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import {
   Sparkles,
-  ChevronLeft,
-  ChevronRight,
   TrendingUp,
+  Cpu,
+  MessageSquare,
+  Award,
   Send,
   ArrowUpRight,
-  SlidersHorizontal,
   Layers,
   Calendar as CalendarIcon,
 } from 'lucide-react';
@@ -39,14 +39,13 @@ export interface ResourceOverviewDashboardProps {
   onNavigate: (t: TabType) => void;
 }
 
-const DONUT_COLORS = ['#6366f1', '#06b6d4', '#f59e0b', '#10b981', '#a855f7', '#ec4899'];
+const DONUT_COLORS = ['#6366f1', '#06b6d4', '#f59e0b', '#10b981', '#a855f7'];
 
 export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps> = ({
   user,
   onNavigate,
 }) => {
   const chartTheme = useChartTheme();
-  const [activeCategory, setActiveCategory] = useState<'technical' | 'communication' | 'behavioral'>('technical');
   const [copilotQuery, setCopilotQuery] = useState('');
   const [copilotResponse, setCopilotResponse] = useState<string | null>(null);
 
@@ -75,10 +74,12 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   const myMeets = myGapRow?.meets_count ?? 18;
 
   // CEFR Communication calculations
-  const commLevel = latestComm?.overallCefr || 'B2';
+  const commLevel = (latestComm?.overallCefr as CefrLevelCode) || 'B2';
+  const commBenchmark = latestComm?.org_level_key || 'B2';
 
   // Behavioral calculations
-  const behavLevel = latestBehav?.result?.overallProficiency || 'L4';
+  const behavLevel = (latestBehav?.result?.overallProficiency as BehavioralLevelCode) || 'L4';
+  const behavBenchmark = latestBehav?.gradeKey || 'L3';
 
   // Grade Information
   const currentGrade = myCompRow?.current_grade || user?.currentGrade || 'G14';
@@ -87,49 +88,47 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   // Overall Readiness Score
   const skillsCompletionPct = myTotal > 0 ? Math.round((myMeets / myTotal) * 100) : myScore ?? 78;
 
-  // 1. Top Bar Chart Data
-  const barChartData = useMemo(() => {
-    if (activeCategory === 'technical') {
-      if (myGapRow?.domain_gaps && Object.keys(myGapRow.domain_gaps).length > 0) {
-        return Object.entries(myGapRow.domain_gaps).map(([domain, data], idx) => ({
-          label: domain.length > 8 ? `${domain.substring(0, 6)}…` : domain,
-          fullLabel: domain,
-          score: Math.round((data.score || 0) * 100),
-          benchmark: Math.round((data.threshold || 0) * 100),
-          highlight: idx === 1,
-        }));
-      }
-      return [
-        { label: 'Cloud', fullLabel: 'Cloud Architecture', score: 85, benchmark: 80, highlight: false },
-        { label: 'CI/CD', fullLabel: 'CI/CD Automation', score: 92, benchmark: 80, highlight: true },
-        { label: 'Arch', fullLabel: 'System Architecture', score: 74, benchmark: 75, highlight: false },
-        { label: 'DevOps', fullLabel: 'DevOps Tooling', score: 80, benchmark: 75, highlight: false },
-        { label: 'SRE', fullLabel: 'SRE & Reliability', score: 68, benchmark: 70, highlight: false },
-        { label: 'Sec', fullLabel: 'DevSecOps & Policy', score: 75, benchmark: 75, highlight: false },
-        { label: 'Obs', fullLabel: 'Observability & APM', score: 88, benchmark: 80, highlight: false },
-      ];
-    }
-    if (activeCategory === 'communication') {
-      return [
-        { label: 'Write', fullLabel: 'Written Clarity', score: 83, benchmark: 67, highlight: false },
-        { label: 'Speak', fullLabel: 'Spoken Fluency', score: 83, benchmark: 67, highlight: true },
-        { label: 'Present', fullLabel: 'Technical Presentation', score: 67, benchmark: 67, highlight: false },
-        { label: 'Listen', fullLabel: 'Active Listening', score: 83, benchmark: 67, highlight: false },
-        { label: 'Exec', fullLabel: 'Stakeholder Alignment', score: 67, benchmark: 67, highlight: false },
-        { label: 'Culture', fullLabel: 'Cross-Cultural', score: 83, benchmark: 67, highlight: false },
-      ];
+  // 1. Technical Domain Bar Chart Data
+  const technicalChartData = useMemo(() => {
+    if (myGapRow?.domain_gaps && Object.keys(myGapRow.domain_gaps).length > 0) {
+      return Object.entries(myGapRow.domain_gaps).map(([domain, data], idx) => ({
+        label: domain.length > 7 ? `${domain.substring(0, 6)}…` : domain,
+        fullLabel: domain,
+        score: Math.round((data.score || 0) * 100),
+        benchmark: Math.round((data.threshold || 0) * 100),
+        highlight: idx === 0,
+      }));
     }
     return [
-      { label: 'Own', fullLabel: 'Ownership & Accountability', score: 80, benchmark: 60, highlight: true },
-      { label: 'Collab', fullLabel: 'Collaboration', score: 80, benchmark: 60, highlight: false },
-      { label: 'Problem', fullLabel: 'Problem Solving', score: 80, benchmark: 60, highlight: false },
-      { label: 'Mentor', fullLabel: 'Mentorship', score: 60, benchmark: 60, highlight: false },
-      { label: 'Deliver', fullLabel: 'Delivery Excellence', score: 80, benchmark: 60, highlight: false },
-      { label: 'Integrity', fullLabel: 'Ethical Integrity', score: 80, benchmark: 60, highlight: false },
+      { label: 'Cloud', fullLabel: 'Cloud Architecture', score: 85, benchmark: 80, highlight: true },
+      { label: 'CI/CD', fullLabel: 'CI/CD Automation', score: 92, benchmark: 80, highlight: false },
+      { label: 'Arch', fullLabel: 'System Architecture', score: 74, benchmark: 75, highlight: false },
+      { label: 'DevOps', fullLabel: 'DevOps Tooling', score: 80, benchmark: 75, highlight: false },
+      { label: 'SRE', fullLabel: 'SRE & Reliability', score: 68, benchmark: 70, highlight: false },
     ];
-  }, [activeCategory, myGapRow]);
+  }, [myGapRow]);
 
-  // 2. Donut Chart Data
+  // 2. CEFR Communication Chart Data
+  const commChartData = useMemo(() => [
+    { label: 'Write', fullLabel: 'Written Clarity', score: 83, benchmark: 67, highlight: false },
+    { label: 'Speak', fullLabel: 'Spoken Fluency', score: 83, benchmark: 67, highlight: true },
+    { label: 'Present', fullLabel: 'Technical Presentation', score: 67, benchmark: 67, highlight: false },
+    { label: 'Listen', fullLabel: 'Active Listening', score: 83, benchmark: 67, highlight: false },
+    { label: 'Exec', fullLabel: 'Stakeholder Alignment', score: 67, benchmark: 67, highlight: false },
+    { label: 'Culture', fullLabel: 'Cross-Cultural', score: 83, benchmark: 67, highlight: false },
+  ], []);
+
+  // 3. Behavioral Leadership Chart Data
+  const behavChartData = useMemo(() => [
+    { label: 'Own', fullLabel: 'Ownership & Accountability', score: 80, benchmark: 60, highlight: true },
+    { label: 'Collab', fullLabel: 'Collaboration', score: 80, benchmark: 60, highlight: false },
+    { label: 'Problem', fullLabel: 'Problem Solving', score: 80, benchmark: 60, highlight: false },
+    { label: 'Mentor', fullLabel: 'Mentorship', score: 60, benchmark: 60, highlight: false },
+    { label: 'Deliver', fullLabel: 'Delivery Excellence', score: 80, benchmark: 60, highlight: false },
+    { label: 'Ethics', fullLabel: 'Ethical Integrity', score: 80, benchmark: 60, highlight: false },
+  ], []);
+
+  // 4. Donut Chart Data
   const donutData = useMemo(() => [
     { name: 'Cloud & Infra', value: 30 },
     { name: 'CI/CD & DevOps', value: 25 },
@@ -148,101 +147,152 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   };
 
   return (
-    <div className="space-y-3 animate-slide-up pb-3 text-zinc-100 font-sans">
-      {/* ── TOP SECTION (2-COLUMNS): HERO TRAJECTORY CHART (LEFT) + CALENDAR WIDGET (RIGHT) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* TOP LEFT: Main Capability Analytics Tile (2 Cols) */}
-        <div className="lg:col-span-2 relative overflow-hidden rounded-2xl p-4 sm:p-5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between">
-          {/* Header Row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">
-                  Capability Mastery
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  {formatGrade(currentGrade)} → {formatGrade(targetGrade)}
-                </span>
-              </div>
+    <div className="space-y-2.5 animate-slide-up pb-3 text-zinc-100 font-sans">
+      {/* ── TOP HEADER RIBBON: GREETING + TRAJECTORY + EVALUATION CYCLE TITLE ──── */}
+      <div className="relative overflow-hidden rounded-2xl px-4 py-2 sm:py-2.5 border border-zinc-800/90 bg-zinc-950/90 shadow-xl backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+        {/* Left: Greeting & Trajectory & Cycle Badge */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1.5">
+            <Sparkles size={14} className="text-blue-400 shrink-0" />
+            <h1 className="text-sm sm:text-base font-black tracking-tight text-white">
+              Welcome back, {displayName}! 👋
+            </h1>
+          </div>
 
-              <div className="flex items-baseline gap-2.5 mt-1">
-                <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
-                  {myScore !== null ? `${myScore}%` : '78%'}
-                </span>
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                  <TrendingUp size={12} />
-                  <span>+{myMeets} Skills Met</span>
-                </div>
-                <span className="text-xs text-zinc-400 font-medium">
-                  vs {myRequired}% target threshold
-                </span>
-              </div>
+          {/* Grade Trajectory Tag */}
+          <div className="flex items-center gap-1 text-xs font-semibold">
+            <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10.5px]">
+              {formatGrade(currentGrade)}
+            </span>
+            <span className="text-blue-400 font-bold">→</span>
+            <span className="px-2 py-0.5 rounded-md bg-blue-600/20 border border-blue-500/30 text-blue-300 text-[10.5px]">
+              Target: <strong className="font-mono text-white">{formatGrade(targetGrade)}</strong>
+            </span>
+          </div>
+
+          {/* Evaluation Cycle Title Badge */}
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+            <CalendarIcon size={12} className="text-indigo-400" />
+            <span>Cycle 2026 (Active)</span>
+          </div>
+        </div>
+
+        {/* Right: Promotion Readiness Pill & CTA */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 bg-zinc-900/90 px-2.5 py-1 rounded-xl border border-zinc-800 text-xs">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Readiness</span>
+            <span className="font-black text-white font-mono text-xs">{skillsCompletionPct}%</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('assessments')}
+            className="inline-flex items-center gap-1 px-3 py-1 rounded-xl font-bold text-[10.5px] uppercase tracking-wider text-zinc-950 bg-white hover:bg-zinc-100 shadow-sm transition-all active:scale-95"
+          >
+            <span>Assess Skills</span>
+            <ArrowUpRight size={12} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── ROW 1 (3-COLUMNS): ALL THREE PRO-LEVEL COMPETENCE GRAPHS ──────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+        {/* GRAPH 1: Technical Mastery */}
+        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Cpu size={13} className="text-indigo-400 shrink-0" />
+              <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+                1. Technical Domains
+              </h2>
             </div>
-
-            {/* Timeframe / Category Switcher Pills */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <div className="flex items-center bg-zinc-900/90 p-1 rounded-xl border border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory('technical')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                    activeCategory === 'technical'
-                      ? 'bg-zinc-100 text-zinc-950 shadow-md font-extrabold'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  Technical
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory('communication')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                    activeCategory === 'communication'
-                      ? 'bg-zinc-100 text-zinc-950 shadow-md font-extrabold'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  CEFR
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory('behavioral')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                    activeCategory === 'behavioral'
-                      ? 'bg-zinc-100 text-zinc-950 shadow-md font-extrabold'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  Behavioral
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('assessments')}
-                className="p-1.5 rounded-xl bg-zinc-900/90 text-zinc-400 hover:text-white border border-zinc-800 transition-colors"
-                title="Filter & Configure"
-              >
-                <SlidersHorizontal size={14} />
-              </button>
+            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400">
+              <TrendingUp size={11} />
+              <span>{myScore}% (Target: {myRequired}%)</span>
             </div>
           </div>
 
-          {/* Bar Chart Area */}
-          <div className="h-44 w-full mt-2">
+          <div className="h-36 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <BarChart data={technicalChartData} margin={{ top: 8, right: 5, left: -30, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
                 <XAxis
                   dataKey="label"
                   stroke="#71717a"
-                  fontSize={10}
+                  fontSize={9.5}
                   tickLine={false}
                   axisLine={{ stroke: '#27272a' }}
                 />
                 <YAxis
                   stroke="#71717a"
-                  fontSize={10}
+                  fontSize={9.5}
+                  tickLine={false}
+                  axisLine={false}
+                  domain={[0, 100]}
+                  tickFormatter={(val) => `${val}%`}
+                />
+                <Tooltip
+                  contentStyle={getChartTooltipStyle(chartTheme)}
+                  formatter={(val: number) => [`${val}%`, '']}
+                  labelFormatter={(_label, payload) =>
+                    payload?.[0]?.payload?.fullLabel ? `Domain: ${payload[0].payload.fullLabel}` : 'Domain'
+                  }
+                />
+                <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={22}>
+                  {technicalChartData.map((entry, index) => (
+                    <Cell
+                      key={`tech-cell-${index}`}
+                      fill={entry.highlight ? '#6366f1' : '#3f3f46'}
+                      className={entry.highlight ? 'filter drop-shadow-[0_0_6px_rgba(99,102,241,0.6)]' : ''}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/80">
+            <span>{myMeets} / {myTotal} Skills Met</span>
+            <button
+              type="button"
+              onClick={() => onNavigate('assessments')}
+              className="font-bold text-indigo-400 hover:underline inline-flex items-center gap-0.5"
+            >
+              <span>Skills Grid</span>
+              <ArrowUpRight size={10} />
+            </button>
+          </div>
+        </div>
+
+        {/* GRAPH 2: CEFR English Communication */}
+        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <MessageSquare size={13} className="text-cyan-400 shrink-0" />
+              <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+                2. CEFR Language
+              </h2>
+            </div>
+            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-cyan-400">
+              <CefrLevelBadge level={commLevel} size="sm" />
+            </div>
+          </div>
+
+          <div className="h-36 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={commChartData} margin={{ top: 8, right: 5, left: -30, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  stroke="#71717a"
+                  fontSize={9.5}
+                  tickLine={false}
+                  axisLine={{ stroke: '#27272a' }}
+                />
+                <YAxis
+                  stroke="#71717a"
+                  fontSize={9.5}
                   tickLine={false}
                   axisLine={false}
                   domain={[0, 100]}
@@ -255,109 +305,103 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
                     payload?.[0]?.payload?.fullLabel ? `Competency: ${payload[0].payload.fullLabel}` : 'Competency'
                   }
                 />
-                <Bar
-                  dataKey="score"
-                  name="Achieved Score"
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={28}
-                >
-                  {barChartData.map((entry, index) => (
+                <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                  {commChartData.map((entry, index) => (
                     <Cell
-                      key={`cell-${index}`}
-                      fill={
-                        entry.highlight
-                          ? '#3b82f6'
-                          : activeCategory === 'communication'
-                          ? '#06b6d4'
-                          : activeCategory === 'behavioral'
-                          ? '#f59e0b'
-                          : '#27272a'
-                      }
-                      className={entry.highlight ? 'filter drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : ''}
+                      key={`comm-cell-${index}`}
+                      fill={entry.highlight ? '#06b6d4' : '#3f3f46'}
+                      className={entry.highlight ? 'filter drop-shadow-[0_0_6px_rgba(6,182,212,0.6)]' : ''}
                     />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/80">
+            <span>6 Competencies (Target: {commBenchmark})</span>
+            <button
+              type="button"
+              onClick={() => onNavigate('assessments')}
+              className="font-bold text-cyan-400 hover:underline inline-flex items-center gap-0.5"
+            >
+              <span>CEFR Rubric</span>
+              <ArrowUpRight size={10} />
+            </button>
+          </div>
         </div>
 
-        {/* TOP RIGHT: Evaluation Period & Activity Calendar (1 Col) */}
-        <div className="rounded-2xl p-4 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-3">
-          {/* Calendar Header */}
+        {/* GRAPH 3: Behavioral Leadership Framework */}
+        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <CalendarIcon size={14} className="text-zinc-400" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                Evaluation Cycle 2026
+              <Award size={13} className="text-amber-400 shrink-0" />
+              <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+                3. Behavioral Pillars
               </h2>
             </div>
-            <div className="flex items-center gap-1 text-zinc-400">
-              <button type="button" className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
-                <ChevronLeft size={13} />
-              </button>
-              <button type="button" className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
-                <ChevronRight size={13} />
-              </button>
+            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400">
+              <BehavioralLevelBadge level={behavLevel} size="sm" />
             </div>
           </div>
 
-          {/* Mini Interactive Month Grid */}
-          <div className="space-y-1 text-center">
-            <div className="grid grid-cols-7 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-              <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-[11px] font-mono">
-              <span className="text-zinc-700 py-1">29</span>
-              <span className="text-zinc-700 py-1">30</span>
-              <span className="text-zinc-700 py-1">31</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">1</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">2</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">3</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">4</span>
-
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">5</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">6</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">7</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">8</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">9</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">10</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">11</span>
-
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">12</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">13</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">14</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">15</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">16</span>
-              <span className="text-blue-400 font-bold bg-blue-600/30 border border-blue-500/40 rounded-md py-1 shadow-sm">17</span>
-              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">18</span>
-            </div>
+          <div className="h-36 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={behavChartData} margin={{ top: 8, right: 5, left: -30, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  stroke="#71717a"
+                  fontSize={9.5}
+                  tickLine={false}
+                  axisLine={{ stroke: '#27272a' }}
+                />
+                <YAxis
+                  stroke="#71717a"
+                  fontSize={9.5}
+                  tickLine={false}
+                  axisLine={false}
+                  domain={[0, 100]}
+                  tickFormatter={(val) => `${val}%`}
+                />
+                <Tooltip
+                  contentStyle={getChartTooltipStyle(chartTheme)}
+                  formatter={(val: number) => [`${val}%`, '']}
+                  labelFormatter={(_label, payload) =>
+                    payload?.[0]?.payload?.fullLabel ? `Pillar: ${payload[0].payload.fullLabel}` : 'Pillar'
+                  }
+                />
+                <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                  {behavChartData.map((entry, index) => (
+                    <Cell
+                      key={`behav-cell-${index}`}
+                      fill={entry.highlight ? '#f59e0b' : '#3f3f46'}
+                      className={entry.highlight ? 'filter drop-shadow-[0_0_6px_rgba(245,158,11,0.6)]' : ''}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* Bottom Highlight KPI Box */}
-          <div className="bg-zinc-900/90 rounded-xl p-2.5 border border-zinc-800/80 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
-                <Layers size={14} />
-              </div>
-              <div>
-                <div className="text-[10px] text-zinc-400 font-medium">Readiness Index</div>
-                <div className="text-sm font-black font-mono text-white">{skillsCompletionPct}%</div>
-              </div>
-            </div>
-
-            <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400">
-              <TrendingUp size={11} />
-              <span>{formatGrade(targetGrade)} Eligible</span>
-            </div>
+          <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/80">
+            <span>6 Core Pillars (Target: {behavBenchmark})</span>
+            <button
+              type="button"
+              onClick={() => onNavigate('assessments')}
+              className="font-bold text-amber-400 hover:underline inline-flex items-center gap-0.5"
+            >
+              <span>Behavior Matrix</span>
+              <ArrowUpRight size={10} />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* ── BOTTOM SECTION (3-TILES): AI COPILOT (LEFT) + DONUT BREAKDOWN (CENTER) + MILESTONES (RIGHT) ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* ── ROW 2 (3-COLUMNS): AI COPILOT (LEFT) + DONUT BREAKDOWN (CENTER) + MILESTONES (RIGHT) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
         {/* BOTTOM LEFT: AI Career & Capability Copilot */}
-        <div className="rounded-2xl p-4 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-3">
+        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Sparkles size={14} className="text-blue-400" />
@@ -370,37 +414,37 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
               onClick={() => onNavigate('assessments')}
               className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
             >
-              <ArrowUpRight size={14} />
+              <ArrowUpRight size={13} />
             </button>
           </div>
 
           <div>
             <div className="text-[11px] font-bold text-zinc-300">AI Progression Summary</div>
-            <p className="text-[11px] text-zinc-400 leading-relaxed mt-0.5 line-clamp-3">
+            <p className="text-[10.5px] text-zinc-400 leading-relaxed mt-0.5 line-clamp-2">
               {copilotResponse ||
-                `Welcome ${displayName}. Your capability trajectory for ${formatGrade(currentGrade)} → ${formatGrade(
+                `Trajectory for ${formatGrade(currentGrade)} → ${formatGrade(
                   targetGrade
-                )} remains highly active. Technical mastery is stable at ${myScore}%, CEFR is verified at ${commLevel}, and Behavioral leadership stands at ${behavLevel}.`}
+                )} is active. Technical is stable at ${myScore}%, CEFR is verified at ${commLevel}, and Behavioral stands at ${behavLevel}.`}
             </p>
           </div>
 
           {/* 2 Mini Stat Blocks */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-zinc-900/90 p-2 rounded-xl border border-zinc-800/80">
-              <div className="text-[10px] text-zinc-400">Skills Verified</div>
+            <div className="bg-zinc-900/90 p-1.5 px-2 rounded-xl border border-zinc-800/80">
+              <div className="text-[9.5px] text-zinc-400">Skills Verified</div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-sm font-black font-mono text-white">{myMeets}</span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                <span className="text-xs font-black font-mono text-white">{myMeets}</span>
+                <span className="text-[8.5px] font-bold px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">
                   Active
                 </span>
               </div>
             </div>
 
-            <div className="bg-zinc-900/90 p-2 rounded-xl border border-zinc-800/80">
-              <div className="text-[10px] text-zinc-400">Gate Status</div>
+            <div className="bg-zinc-900/90 p-1.5 px-2 rounded-xl border border-zinc-800/80">
+              <div className="text-[9.5px] text-zinc-400">Gate Status</div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-sm font-black font-mono text-white">3/3</span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">
+                <span className="text-xs font-black font-mono text-white">3/3</span>
+                <span className="text-[8.5px] font-bold px-1 py-0.2 rounded bg-blue-500/20 text-blue-300">
                   Ready
                 </span>
               </div>
@@ -414,111 +458,109 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
               value={copilotQuery}
               onChange={(e) => setCopilotQuery(e.target.value)}
               placeholder="Ask Career AI anything..."
-              className="w-full bg-zinc-900/90 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500/60 pr-8 transition-colors"
+              className="w-full bg-zinc-900/90 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500/60 pr-8 transition-colors"
             />
             <button
               type="submit"
-              className="absolute right-2 top-2.5 text-zinc-400 hover:text-blue-400 transition-colors"
+              className="absolute right-2 top-2 text-zinc-400 hover:text-blue-400 transition-colors"
             >
-              <Send size={13} />
+              <Send size={12} />
             </button>
           </form>
         </div>
 
         {/* BOTTOM CENTER: Donut / Multi-Segment Competency Breakdown */}
-        <div className="rounded-2xl p-4 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-2">
+        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
               Competency Distribution
             </h2>
-            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded-md border border-zinc-800">
+            <span className="text-[9.5px] font-bold text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded-md border border-zinc-800">
               Cycle 2026 ▾
             </span>
           </div>
 
           {/* Donut Chart & Legend */}
-          <div className="flex items-center justify-between gap-2 py-1">
-            <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
+          <div className="flex items-center justify-between gap-2 py-0.5">
+            <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={donutData}
-                    innerRadius={32}
-                    outerRadius={48}
+                    innerRadius={26}
+                    outerRadius={40}
                     paddingAngle={3}
                     dataKey="value"
                   >
                     {donutData.map((_entry, index) => (
-                      <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                      <Cell key={`donut-cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
                     ))}
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute flex flex-col items-center justify-center text-center">
-                <span className="text-sm font-black font-mono text-white">{myScore}%</span>
-                <span className="text-[8px] uppercase tracking-wider text-zinc-400">Total</span>
+                <span className="text-xs font-black font-mono text-white">{myScore}%</span>
+                <span className="text-[7.5px] uppercase tracking-wider text-zinc-400">Total</span>
               </div>
             </div>
 
-            <div className="space-y-1 text-[10px] text-zinc-400 min-w-0">
+            <div className="space-y-1 text-[9.5px] text-zinc-400 min-w-0">
               <div className="flex items-center gap-1.5 truncate">
-                <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
                 <span className="truncate">Cloud &amp; Infra</span>
               </div>
               <div className="flex items-center gap-1.5 truncate">
-                <span className="w-2 h-2 rounded-full bg-cyan-500 shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0" />
                 <span className="truncate">CI/CD &amp; DevOps</span>
               </div>
               <div className="flex items-center gap-1.5 truncate">
-                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                 <span className="truncate">CEFR English</span>
               </div>
               <div className="flex items-center gap-1.5 truncate">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                 <span className="truncate">Behavioral</span>
               </div>
             </div>
           </div>
 
           {/* Insight Callout */}
-          <div className="text-[10px] text-zinc-400 leading-normal pt-1.5 border-t border-zinc-800/80">
-            💡 Most capability strength originates from Cloud &amp; CEFR {commLevel}, while CI/CD shows active growth.
+          <div className="text-[9.5px] text-zinc-400 leading-normal pt-1 border-t border-zinc-800/80">
+            💡 Strength originates in Cloud &amp; CEFR {commLevel}, while CI/CD shows active growth.
           </div>
         </div>
 
         {/* BOTTOM RIGHT: Promotion Milestones & Gate Verification */}
-        <div className="rounded-2xl p-4 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-2.5">
+        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
               Promotion Milestones
             </h2>
-            <button
-              type="button"
-              onClick={() => onNavigate('assessments')}
-              className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-            >
-              +
-            </button>
+            <div className="flex items-center gap-1">
+              <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+                <Layers size={12} />
+              </div>
+            </div>
           </div>
 
           {/* Segmented Yellow/Gold Progress Bar */}
-          <div className="bg-zinc-900/90 p-2 rounded-xl border border-zinc-800/80 flex items-center justify-between gap-2">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase">Gate Score</span>
+          <div className="bg-zinc-900/90 p-1.5 px-2 rounded-xl border border-zinc-800/80 flex items-center justify-between gap-1.5">
+            <span className="text-[9.5px] font-bold text-zinc-400 uppercase">Gate Score</span>
             <div className="flex items-center gap-0.5">
-              {[...Array(16)].map((_, i) => (
+              {[...Array(14)].map((_, i) => (
                 <div
                   key={i}
-                  className={`w-1 h-3 rounded-xs ${
-                    i < 12 ? 'bg-amber-400 shadow-[0_0_4px_rgba(251,191,36,0.5)]' : 'bg-zinc-800'
+                  className={`w-1 h-2.5 rounded-xs ${
+                    i < 11 ? 'bg-amber-400 shadow-[0_0_3px_rgba(251,191,36,0.5)]' : 'bg-zinc-800'
                   }`}
                 />
               ))}
             </div>
-            <span className="text-xs font-mono font-black text-amber-400">{skillsCompletionPct}%</span>
+            <span className="text-[11px] font-mono font-black text-amber-400">{skillsCompletionPct}%</span>
           </div>
 
           {/* 3 Actionable Gate Items */}
-          <div className="space-y-1.5 text-[11px]">
+          <div className="space-y-1 text-[10.5px]">
             <div className="flex items-center justify-between text-zinc-300">
               <span className="text-zinc-400">Technical Skills</span>
               <span className="inline-flex items-center gap-1 font-bold text-amber-400">
@@ -530,28 +572,28 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             <div className="flex items-center justify-between text-zinc-300">
               <span className="text-zinc-400">CEFR Communication</span>
               <span className="inline-flex items-center gap-1 font-bold text-emerald-400">
-                <CefrLevelBadge level={commLevel as CefrLevelCode} size="sm" />
-                <span className="text-[10px]">Verified</span>
+                <CefrLevelBadge level={commLevel} size="sm" />
+                <span className="text-[9.5px]">Verified</span>
               </span>
             </div>
 
             <div className="flex items-center justify-between text-zinc-300">
               <span className="text-zinc-400">Behavioral Mastery</span>
               <span className="inline-flex items-center gap-1 font-bold text-emerald-400">
-                <BehavioralLevelBadge level={behavLevel as BehavioralLevelCode} size="sm" />
-                <span className="text-[10px]">Verified</span>
+                <BehavioralLevelBadge level={behavLevel} size="sm" />
+                <span className="text-[9.5px]">Verified</span>
               </span>
             </div>
           </div>
 
-          <div className="pt-1.5 border-t border-zinc-800/80 flex items-center justify-between text-[11px]">
+          <div className="pt-1 border-t border-zinc-800/80 flex items-center justify-between text-[10.5px]">
             <button
               type="button"
               onClick={() => onNavigate('assessments')}
               className="font-bold text-zinc-400 hover:text-white inline-flex items-center gap-1 transition-colors"
             >
               <span>View all milestones</span>
-              <ArrowUpRight size={12} />
+              <ArrowUpRight size={11} />
             </button>
           </div>
         </div>
