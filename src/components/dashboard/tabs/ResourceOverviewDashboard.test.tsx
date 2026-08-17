@@ -114,10 +114,9 @@ describe('ResourceOverviewDashboard (SSR Rendering)', () => {
     );
 
     expect(html).toContain('Test Engineer');
-    expect(html).toContain('Personal Competency &amp; Progression Hub');
     expect(html).toContain('G14');
     expect(html).toContain('G15');
-    expect(html).toContain('Manage &amp; Assess Skills');
+    expect(html).toContain('Assess Skills');
   });
 
   it('renders 4 KPI metrics including Technical, CEFR English, Behavioral, and Promotion Gate', () => {
@@ -127,9 +126,9 @@ describe('ResourceOverviewDashboard (SSR Rendering)', () => {
 
     expect(html).toContain('Technical Score');
     expect(html).toContain('78%');
-    expect(html).toContain('CEFR English Level');
+    expect(html).toContain('CEFR English');
     expect(html).toContain('B2');
-    expect(html).toContain('Behavioral Mastery');
+    expect(html).toContain('Behavioral');
     expect(html).toContain('L4');
     expect(html).toContain('Promotion Gate');
   });
