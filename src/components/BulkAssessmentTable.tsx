@@ -1019,11 +1019,11 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       </div>
 
       {!appraisalPeriodsLoading && !hasActivePeriod && (
-        <div className="flex items-start gap-3 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 animate-fade-in my-1">
-          <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 animate-fade-in my-2">
+          <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div className="text-xs leading-relaxed">
-            <span className="font-bold text-amber-300">Assessment Submissions Closed: </span>
-            No active evaluation period is currently open for submissions. Existing skill rows remain visible, but saving new entries or submitting drafts requires an active evaluation cycle. (Administrators can enable an active period under <span className="font-semibold underline">System Config &gt; Evaluation Periods</span>).
+            <strong className="font-bold text-amber-800 dark:text-amber-300">Assessment Submissions Closed: </strong>
+            No active evaluation period is currently open for submissions. Existing skill rows remain visible, but saving new entries or submitting drafts requires an active evaluation cycle. (Administrators can enable an active period under <span className="font-semibold underline cursor-pointer">System Config &gt; Evaluation Periods</span>).
           </div>
         </div>
       )}

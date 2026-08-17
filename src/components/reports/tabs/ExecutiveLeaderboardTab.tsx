@@ -98,21 +98,26 @@ export const ExecutiveLeaderboardTab: React.FC<{ reportFilters?: ReportFilters }
   return (
     <div className="space-y-5">
       {/* Top Banner Card */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/20 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
-        <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+      <div className="rounded-2xl p-5 border shadow-card transition-all"
+           style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full border border-amber-500/30">
-                <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full border"
+                    style={{
+                      backgroundColor: 'rgb(var(--warning-soft))',
+                      borderColor: 'rgb(var(--warning) / 0.3)',
+                      color: 'rgb(var(--warning))',
+                    }}>
+                <Trophy className="w-3.5 h-3.5" />
                 EXECUTIVE LEADERBOARD
               </span>
-              <span className="text-xs text-indigo-300/80">Org Talent Leaderboard & Excellence Matrix</span>
+              <span className="text-xs" style={{ color: 'rgb(var(--text-3))' }}>Org Talent Leaderboard & Excellence Matrix</span>
             </div>
-            <h2 className="text-xl font-black text-white tracking-tight">
+            <h2 className="text-xl font-black tracking-tight" style={{ color: 'rgb(var(--text-1))' }}>
               Top Talent & Department Leaderboard
             </h2>
-            <p className="text-xs text-indigo-200/70 mt-1 max-w-2xl">
+            <p className="text-xs mt-1 max-w-2xl" style={{ color: 'rgb(var(--text-2))' }}>
               Real-time executive ranking of top engineers and managers by technical score, star ratings, CEFR communication benchmarks, and promotion readiness.
             </p>
           </div>
@@ -123,7 +128,12 @@ export const ExecutiveLeaderboardTab: React.FC<{ reportFilters?: ReportFilters }
               <select
                 value={selectedDept}
                 onChange={(e) => setSelectedDept(e.target.value)}
-                className="appearance-none bg-slate-800/80 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 pr-8 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="appearance-none text-xs rounded-xl px-3 py-2 pr-8 font-medium border focus:outline-none focus:ring-2"
+                style={{
+                  backgroundColor: 'rgb(var(--surface-2))',
+                  borderColor: 'rgb(var(--border))',
+                  color: 'rgb(var(--text-1))',
+                }}
               >
                 <option value="all">All Departments</option>
                 {departments.map((d) => (
@@ -132,33 +142,33 @@ export const ExecutiveLeaderboardTab: React.FC<{ reportFilters?: ReportFilters }
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'rgb(var(--text-3))' }} />
             </div>
             <ViewToggle view={view} onChange={setView} />
           </div>
         </div>
 
         {/* Top Summary Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-indigo-500/20">
-          <div className="bg-slate-800/50 backdrop-blur-xs rounded-xl p-3 border border-indigo-500/10">
-            <div className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider">Top Performers</div>
-            <div className="text-xl font-extrabold text-amber-400 mt-0.5">{leaderboard.length}</div>
-            <div className="text-[10px] text-slate-400 mt-0.5">Highest domain scores</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t" style={{ borderColor: 'rgb(var(--border))' }}>
+          <div className="rounded-xl p-3 border transition-all" style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
+            <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgb(var(--text-2))' }}>Top Performers</div>
+            <div className="text-xl font-extrabold text-amber-500 mt-0.5">{leaderboard.length}</div>
+            <div className="text-[10px]" style={{ color: 'rgb(var(--text-3))' }}>Highest domain scores</div>
           </div>
-          <div className="bg-slate-800/50 backdrop-blur-xs rounded-xl p-3 border border-indigo-500/10">
-            <div className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider">Promotion Ready</div>
-            <div className="text-xl font-extrabold text-emerald-400 mt-0.5">{promotionReadyCandidates.length}</div>
-            <div className="text-[10px] text-slate-400 mt-0.5">Tech & CEFR verified</div>
+          <div className="rounded-xl p-3 border transition-all" style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
+            <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgb(var(--text-2))' }}>Promotion Ready</div>
+            <div className="text-xl font-extrabold text-emerald-500 mt-0.5">{promotionReadyCandidates.length}</div>
+            <div className="text-[10px]" style={{ color: 'rgb(var(--text-3))' }}>Tech & CEFR verified</div>
           </div>
-          <div className="bg-slate-800/50 backdrop-blur-xs rounded-xl p-3 border border-indigo-500/10">
-            <div className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider">CEFR Blocked</div>
-            <div className="text-xl font-extrabold text-amber-400 mt-0.5">{cefrGatedCandidates.length}</div>
-            <div className="text-[10px] text-slate-400 mt-0.5">Tech ready, language gated</div>
+          <div className="rounded-xl p-3 border transition-all" style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
+            <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgb(var(--text-2))' }}>CEFR Blocked</div>
+            <div className="text-xl font-extrabold text-rose-500 mt-0.5">{cefrGatedCandidates.length}</div>
+            <div className="text-[10px]" style={{ color: 'rgb(var(--text-3))' }}>Tech ready, language gated</div>
           </div>
-          <div className="bg-slate-800/50 backdrop-blur-xs rounded-xl p-3 border border-indigo-500/10">
-            <div className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider">Top Department</div>
-            <div className="text-xl font-extrabold text-sky-400 mt-0.5 truncate">{deptSummary[0]?.department ?? 'N/A'}</div>
-            <div className="text-[10px] text-slate-400 mt-0.5">{deptSummary[0]?.techPct ?? 0}% Avg Tech Score</div>
+          <div className="rounded-xl p-3 border transition-all" style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
+            <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgb(var(--text-2))' }}>Top Department</div>
+            <div className="text-xl font-extrabold text-sky-500 mt-0.5 truncate">{deptSummary[0]?.department ?? 'N/A'}</div>
+            <div className="text-[10px]" style={{ color: 'rgb(var(--text-3))' }}>{deptSummary[0]?.techPct ?? 0}% Avg Tech Score</div>
           </div>
         </div>
       </div>
@@ -166,14 +176,15 @@ export const ExecutiveLeaderboardTab: React.FC<{ reportFilters?: ReportFilters }
       {view === 'chart' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Individual Top Talent Leaderboard (2 Cols) */}
-          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
+          <div className="lg:col-span-2 rounded-2xl border p-4 shadow-xs"
+               style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: 'rgb(var(--text-1))' }}>
                   <Trophy className="w-4 h-4 text-amber-500" />
                   Individual Top Performers Leaderboard
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs" style={{ color: 'rgb(var(--text-2))' }}>
                   Top engineers and team members ranked by weighted score performance and target grade fit.
                 </p>
               </div>

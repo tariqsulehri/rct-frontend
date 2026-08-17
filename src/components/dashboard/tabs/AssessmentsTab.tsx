@@ -401,15 +401,21 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
       </div>
 
       {/* Clean Segmented 4-Sub-Tab Switcher */}
-      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 w-fit flex-wrap">
+      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl border w-fit flex-wrap"
+           style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
         <button
           type="button"
           onClick={() => setActiveSubTab('overview')}
           className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
             activeSubTab === 'overview'
-              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-zinc-700/80'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              ? 'shadow-2xs border'
+              : 'hover:opacity-80'
           }`}
+          style={{
+            backgroundColor: activeSubTab === 'overview' ? 'rgb(var(--surface))' : 'transparent',
+            borderColor: activeSubTab === 'overview' ? 'rgb(var(--border))' : 'transparent',
+            color: activeSubTab === 'overview' ? 'rgb(var(--accent))' : 'rgb(var(--text-2))',
+          }}
         >
           <BarChart3 size={15} />
           <span>Overview & Radar</span>
@@ -420,9 +426,14 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
           onClick={() => setActiveSubTab('competencies')}
           className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
             activeSubTab === 'competencies'
-              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-zinc-700/80'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              ? 'shadow-2xs border'
+              : 'hover:opacity-80'
           }`}
+          style={{
+            backgroundColor: activeSubTab === 'competencies' ? 'rgb(var(--surface))' : 'transparent',
+            borderColor: activeSubTab === 'competencies' ? 'rgb(var(--border))' : 'transparent',
+            color: activeSubTab === 'competencies' ? 'rgb(var(--accent))' : 'rgb(var(--text-2))',
+          }}
         >
           <ListChecks size={15} />
           <span>Technical Competencies ({competencyRows.length})</span>
@@ -433,9 +444,14 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
           onClick={() => setActiveSubTab('communication')}
           className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
             activeSubTab === 'communication'
-              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-zinc-700/80'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              ? 'shadow-2xs border'
+              : 'hover:opacity-80'
           }`}
+          style={{
+            backgroundColor: activeSubTab === 'communication' ? 'rgb(var(--surface))' : 'transparent',
+            borderColor: activeSubTab === 'communication' ? 'rgb(var(--border))' : 'transparent',
+            color: activeSubTab === 'communication' ? 'rgb(var(--accent))' : 'rgb(var(--text-2))',
+          }}
         >
           <MessageSquareText size={15} />
           <span>CEFR Communication</span>
@@ -446,9 +462,14 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
           onClick={() => setActiveSubTab('behavioral')}
           className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
             activeSubTab === 'behavioral'
-              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-zinc-700/80'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              ? 'shadow-2xs border'
+              : 'hover:opacity-80'
           }`}
+          style={{
+            backgroundColor: activeSubTab === 'behavioral' ? 'rgb(var(--surface))' : 'transparent',
+            borderColor: activeSubTab === 'behavioral' ? 'rgb(var(--border))' : 'transparent',
+            color: activeSubTab === 'behavioral' ? 'rgb(var(--accent))' : 'rgb(var(--text-2))',
+          }}
         >
           <Award size={15} />
           <span>Behavioral Framework</span>

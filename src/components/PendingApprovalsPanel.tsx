@@ -177,14 +177,14 @@ export const PendingApprovalsPanel: React.FC = () => {
                 Pending Approvals
               </h3>
             </div>
-            <p className="text-xs mt-1 max-w-3xl" style={{ color: 'rgb(var(--text-3))' }}>
+            <p className="text-xs mt-1 max-w-3xl" style={{ color: 'rgb(var(--text-2))' }}>
               Review skill rows submitted by engineers. Approved rows count in reports and readiness scores.
             </p>
           </div>
           <button
             type="button"
             onClick={() => refetch()}
-            className="btn-secondary text-xs inline-flex items-center gap-2"
+            className="btn-secondary text-xs h-9 px-3.5 inline-flex items-center gap-2 rounded-lg"
             disabled={isFetching}
           >
             <RefreshCw size={13} className={isFetching ? 'animate-spin' : ''} />
@@ -194,18 +194,22 @@ export const PendingApprovalsPanel: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 items-center">
           <label className="relative block">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgb(var(--text-3))' }} />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgb(var(--text-3))' }} />
             <input
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search person, department, skill, or tool..."
-              className="field w-full h-10 pl-9"
+              className="field w-full h-9.5 pl-10 text-xs sm:text-sm rounded-xl transition-all"
             />
           </label>
           <span
-            className="rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap"
-            style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#f97316' }}
+            className="rounded-xl px-3 py-2 text-xs font-bold whitespace-nowrap border shadow-2xs"
+            style={{
+              backgroundColor: 'rgb(var(--warning-soft))',
+              borderColor: 'rgb(var(--warning) / 0.3)',
+              color: 'rgb(var(--warning))',
+            }}
           >
             {approvals.length} waiting
           </span>
