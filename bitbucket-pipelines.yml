@@ -10,6 +10,7 @@ definitions:
   steps:
     - step: &quality-checks
         name: Frontend Quality Checks
+        max-time: 10
         caches:
           - node
         script:
@@ -24,6 +25,7 @@ definitions:
           - coverage/**
     - step: &sonar-analysis
         name: SonarQube analysis
+        max-time: 5
         caches:
           - sonar
         script:
@@ -35,6 +37,7 @@ definitions:
               EXTRA_ARGS: "-Dsonar.javascript.node.maxspace=2048 -Dsonar.javascript.maxBuffer=1048576"
     - step: &build-staging-image
         name: Build & Push Staging Docker Image
+        max-time: 15
         image: docker:24.0.9
         services:
           - docker
@@ -50,6 +53,7 @@ definitions:
           - docker push tariqsulehri/rct-frontend:staging-$SHORT_SHA
     - step: &build-master-image
         name: Build & Push Production Master Image
+        max-time: 15
         image: docker:24.0.9
         services:
           - docker
@@ -76,6 +80,7 @@ pipelines:
       - step: *sonar-analysis
       - step:
           name: Build & Push Dev Docker Image
+          max-time: 15
           image: docker:24.0.9
           services:
             - docker
@@ -111,6 +116,7 @@ pipelines:
       - step: *sonar-analysis
       - step:
           name: Build & Push Release SemVer Image
+          max-time: 15
           image: docker:24.0.9
           services:
             - docker
