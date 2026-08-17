@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, RefreshCw, BarChart3, ListChecks, MessageSquareText, Award } from 'lucide-react';
+import { Search, RefreshCw, BarChart3, ListChecks, MessageSquareText, Award, Layers } from 'lucide-react';
 import {
   ResponsiveContainer,
   RadarChart,
@@ -15,7 +15,7 @@ import { type User } from '@/store/authStore';
 import { useCompetencyScores, usePromotionReadiness, useGapMatrix } from '@/hooks/useReports';
 import { useLatestCommAssessment } from '@/hooks/useCommunication';
 import { useLatestBehavioralAssessment } from '@/hooks/useBehavioral';
-import { useChartColors, tooltipStyle } from '@/lib/chartColors';
+import { useChartTheme, getChartTooltipStyle } from '@/hooks/useChartTheme';
 import { toPct, formatGrade, formatEmployeeOption } from '@/lib/formatters';
 import { toast } from '@/lib/toast';
 import { hasPermission, isLeaderRole } from '@/types/rbac';
@@ -86,7 +86,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
     }
   }, [refetchComp, refetchPromo, refetchGap]);
 
-  const c = useChartColors();
+  const c = useChartTheme();
   const isPrivileged = isLeaderRole(user?.role);
   const canViewReports = hasPermission(user?.permissions, 'reports.view');
   const [showSkillEditor, setShowSkillEditor] = useState(false);
@@ -376,6 +376,17 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {effectiveEmpCode && (
+              <button
+                type="button"
+                onClick={() => setShowSkillEditor(true)}
+                className="btn-primary flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg shrink-0 shadow-xs"
+                title={isPrivileged ? 'Evaluate and update technical skills' : 'Propose and manage your technical skills'}
+              >
+                <Layers size={13} />
+                <span>{isPrivileged ? 'Manage / Assess Skills' : 'Manage My Skills'}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleRefresh}
@@ -578,11 +589,11 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
           </div>
           <ResponsiveContainer width="100%" height={640}>
             <RadarChart data={radarData} outerRadius="82%" margin={{ top: 76, right: 126, bottom: 76, left: 126 }}>
-              <PolarGrid stroke={c.radarGrid} />
+              <PolarGrid stroke={c.gridColor} />
               <PolarAngleAxis dataKey="fullDomain" tick={<RadarTick />} />
               <PolarRadiusAxis
                 domain={[0, 100]}
-                tick={{ fontSize: 10, fill: c.radarTick }}
+                tick={{ fontSize: 10, fill: c.axisColor }}
                 tickFormatter={(v) => `${v}%`}
                 angle={30}
               />
@@ -609,11 +620,11 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
                   if (!active || !payload?.length) return null;
                   const d = payload[0].payload;
                   return (
-                    <div style={tooltipStyle(c)}>
+                    <div style={getChartTooltipStyle(c)}>
                       <p className="font-semibold text-xs mb-1" style={{ color: c.accent }}>
                         {d.fullDomain ?? d.domain}
                       </p>
-                      <p style={{ color: c.text }}>Score: {d.score}%</p>
+                      <p style={{ color: c.tooltipText }}>Score: {d.score}%</p>
                       {d.threshold > 0 && (
                         <p style={{ color: d.meets ? c.success : c.danger }}>
                           Required: {d.threshold}% ({d.meets ? '✓ Meets' : '✗ Below'})
@@ -627,7 +638,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
                 <Legend
                   iconType="circle"
                   iconSize={10}
-                  formatter={(v) => <span style={{ color: '#d1d5db', fontSize: 12 }}>{v}</span>}
+                  formatter={(v) => <span style={{ color: c.legendColor, fontSize: 12 }}>{v}</span>}
                 />
               )}
             </RadarChart>
@@ -991,7 +1002,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
               </thead>
               <tbody>
                 {filteredCompetencyRows.map((row) => {
-                  const rowColor = row.hasRequirement ? (row.meets ? c.success : c.danger) : c.text;
+                  const rowColor = row.hasRequirement ? (row.meets ? c.success : c.danger) : 'rgb(var(--text-1))';
                   return (
                     <tr key={row.name} className="border-t" style={{ borderColor: 'rgb(var(--border))' }}>
                       <td className="py-3 pr-3 align-top">
