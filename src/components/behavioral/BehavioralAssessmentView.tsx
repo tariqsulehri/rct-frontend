@@ -1,9 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-  Award,
   AlertTriangle,
-  Zap,
-  Star,
   Sparkles,
   ChevronDown,
   ChevronUp,
@@ -18,24 +15,17 @@ import {
   FileText,
 } from 'lucide-react';
 import {
-  ResponsiveContainer,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Tooltip,
-  Legend,
-} from 'recharts';
-import {
   useLatestBehavioralAssessment,
   useBehavioralConfig,
   useCreateBehavioralAssessment,
 } from '@/hooks/useBehavioral';
 import { useTeamRoster } from '@/hooks/useAssessment';
-import { useChartTheme } from '@/hooks/useChartTheme';
 import { toast } from '@/lib/toast';
 import { BehavioralLevelBadge } from './BehavioralLevelBadge';
+import { ProficiencyLadder, LadderStep } from '@/components/ui/assessment/ProficiencyLadder';
+import { MetricKpiCard } from '@/components/ui/assessment/MetricKpiCard';
+import { LevelSelectorBar, LevelOption } from '@/components/ui/assessment/LevelSelectorBar';
+import { AssessmentHeroLayout } from '@/components/ui/assessment/AssessmentHeroLayout';
 import {
   BehavioralLevelCode,
   BehavioralRatingInput,
@@ -71,6 +61,36 @@ const DEFAULT_EXPECTED_MATRIX: Record<string, Record<string, BehavioralLevelCode
   G18: { ownership: 'L5', collaboration: 'L5', customer_business: 'L5', communication: 'L5', adaptability: 'L5', integrity: 'L5', develops_people: 'L5', strategic_thinking: 'L5', drives_change: 'L5', decision_making: 'L5', builds_teams: 'L5' },
 };
 
+const BEHAVIORAL_RADAR_LABELS: Record<string, string> = {
+  ownership: 'Ownership',
+  collaboration: 'Collaboration',
+  customer_business: 'Customer Focus',
+  communication: 'Communication',
+  adaptability: 'Adaptability',
+  integrity: 'Integrity',
+  develops_people: 'Develops People',
+  strategic_thinking: 'Strategic Thinking',
+  drives_change: 'Drives Change',
+  decision_making: 'Decision Making',
+  builds_teams: 'Builds Teams',
+};
+
+const BEHAVIORAL_STEPS: LadderStep[] = [
+  { code: 'L1', weightDec: '0.20', weightNum: 20 },
+  { code: 'L2', weightDec: '0.40', weightNum: 40 },
+  { code: 'L3', weightDec: '0.60', weightNum: 60 },
+  { code: 'L4', weightDec: '0.80', weightNum: 80 },
+  { code: 'L5', weightDec: '1.00', weightNum: 100 },
+];
+
+const BEHAVIORAL_LEVEL_OPTIONS: LevelOption[] = [
+  { code: 'L1', weightDec: '0.20', weightNum: 20 },
+  { code: 'L2', weightDec: '0.40', weightNum: 40 },
+  { code: 'L3', weightDec: '0.60', weightNum: 60 },
+  { code: 'L4', weightDec: '0.80', weightNum: 80 },
+  { code: 'L5', weightDec: '1.00', weightNum: 100 },
+];
+
 export interface BehavioralAssessmentViewProps {
   employeeId: string;
   employeeName?: string;
@@ -84,7 +104,6 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
   gradeCode,
   canAssess = false,
 }) => {
-  const chartTheme = useChartTheme();
   const { data: assessment, isLoading, refetch: refetchLatest } = useLatestBehavioralAssessment(employeeId);
   const { data: config, isLoading: isConfigLoading } = useBehavioralConfig();
   const { data: roster } = useTeamRoster();
@@ -136,7 +155,7 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
     return JSON.stringify(ratings) !== initialRatingsString;
   }, [ratings, initialRatingsString]);
 
-  // Reactive live evaluation calculated in real time (unconditionally available even without saved DB records)
+  // Reactive live evaluation calculated in real time
   const liveEvaluation = useMemo(() => {
     const expMap = expectedMatrix[gradeKey] || {};
     const applicableCompetencies = competencies.filter((c) => expMap[c.key] !== 'NA');
@@ -196,20 +215,6 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
     const behavioralReady = overallGapCw >= 0 && isIntegrityOk;
     const priorities = breakdown.filter((b) => b.status === 'BELOW').map((b) => b.name);
 
-    const BEHAVIORAL_RADAR_LABELS: Record<string, string> = {
-      ownership: 'Ownership',
-      collaboration: 'Collaboration',
-      customer_business: 'Customer Focus',
-      communication: 'Communication',
-      adaptability: 'Adaptability',
-      integrity: 'Integrity',
-      develops_people: 'Develops People',
-      strategic_thinking: 'Strategic Thinking',
-      drives_change: 'Drives Change',
-      decision_making: 'Decision Making',
-      builds_teams: 'Builds Teams',
-    };
-
     const radarData = breakdown.map((item) => {
       const label = BEHAVIORAL_RADAR_LABELS[item.key] || item.name;
       return {
@@ -240,13 +245,13 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
     setIsEditing(true);
   };
 
-  const handleLevelChange = (key: string, level: BehavioralLevelCode) => {
+  const handleLevelChange = (key: string, level: string) => {
     if (!canAssess && !isEditing) return;
     setIsEditing(true);
     setRatings((prev) => ({
       ...prev,
       [key]: {
-        level,
+        level: level as BehavioralLevelCode,
         evidence: prev[key]?.evidence || '',
       },
     }));
@@ -572,250 +577,97 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
           </div>
         )}
 
-        {/* ── UNIFIED HERO SECTION: 5-Tier Ladder + 4 Metric Cards (Left) & 11-Axis Radar Chart (Right) ── */}
+        {/* ── UNIFIED HERO SECTION: Consumes AssessmentHeroLayout Primitive ── */}
         {liveEvaluation && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            
-            {/* Left Column (Span 7/12): Behavioral Proficiency Ladder + 4 Metric Cards + Priorities Callout */}
-            <div className="lg:col-span-7 space-y-4 flex flex-col justify-between">
-              
-              {/* 5-Tier Behavioral Proficiency Ladder */}
-              <div className="p-4 rounded-2xl border space-y-3"
-                   style={{
-                     backgroundColor: 'rgb(var(--surface-2))',
-                     borderColor: 'rgb(var(--border))',
-                   }}>
-                <div className="flex items-center justify-between text-xs font-bold flex-wrap gap-2"
-                     style={{ color: 'rgb(var(--text-1))' }}>
-                  <span className="flex items-center gap-1.5">
-                    <Award size={15} style={{ color: 'rgb(var(--accent))' }} />
-                    <span>Behavioral Proficiency Ladder</span>
-                  </span>
-                  <span className="font-mono text-xs" style={{ color: 'rgb(var(--text-2))' }}>
-                    Benchmark: <strong className="font-bold" style={{ color: 'rgb(var(--warning))' }}>
-                      {liveEvaluation.overallExpectedLevel} ({liveEvaluation.overallExpectedDec})
-                    </strong>
-                  </span>
-                       <div className="grid grid-cols-5 gap-2">
-                  {(['L1', 'L2', 'L3', 'L4', 'L5'] as BehavioralLevelCode[]).map((lvl) => {
-                    const detail = BEHAVIORAL_LEVEL_DETAILS[lvl];
-                    const isEvaluated = liveEvaluation.overallProficiency === lvl;
-                    const isTarget = liveEvaluation.overallExpectedLevel === lvl;
-                    const evalCw = detail.weightCw;
-                    const targetCw = liveEvaluation.overallExpectedCw;
-                    const isEvalBelow = evalCw < targetCw;
-                    const isEvalAbove = evalCw > targetCw;
-
-                    const evaluatedBg = isEvalBelow
-                      ? 'rgb(var(--danger))'
-                      : isEvalAbove
-                      ? 'rgb(var(--success))'
-                      : 'rgb(var(--accent))';
-
-                    return (
-                      <div
-                        key={lvl}
-                        className={`relative h-16 min-h-[64px] p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-center ${
-                          isEvaluated
-                            ? 'text-white shadow-md ring-2 scale-[1.02]'
-                            : isTarget
-                            ? 'border-dashed'
-                            : ''
-                        }`}
-                        style={{
-                          backgroundColor: isEvaluated
-                            ? evaluatedBg
-                            : isTarget
-                            ? 'rgb(var(--warning-soft))'
-                            : 'rgb(var(--surface))',
-                          borderColor: isEvaluated
-                            ? evaluatedBg
-                            : isTarget
-                            ? 'rgb(var(--warning) / 0.5)'
-                            : 'rgb(var(--border))',
-                          color: isEvaluated
-                            ? '#ffffff'
-                            : isTarget
-                            ? 'rgb(var(--warning))'
-                            : 'rgb(var(--text-1))',
-                        }}
-                      >
-                        {isTarget && (
-                          <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 text-white rounded-full p-0.5 shadow-sm"
-                               style={{ backgroundColor: 'rgb(var(--warning))' }}
-                               title="Role Required Benchmark">
-                            <Star size={10} fill="currentColor" />
-                          </div>
-                        )}
-                        <div className="font-extrabold text-sm flex items-center justify-center gap-1">
-                          <span>{lvl}</span>
-                        </div>
-                        <div className="text-[10px] font-mono font-bold mt-0.5"
-                             style={{ color: isEvaluated ? 'rgba(255,255,255,0.9)' : 'rgb(var(--text-3))' }}>
-                          {detail.weightDec}
-                        </div>
-                        {isEvaluated && (
-                          <div className="text-[8px] font-black uppercase tracking-wider mt-0.5 bg-white/20 px-1 rounded text-white">
-                            EVALUATED
-                          </div>
-                        )}
-                        {!isEvaluated && isTarget && (
-                          <div className="text-[8px] font-bold uppercase tracking-wider mt-0.5"
-                               style={{ color: 'rgb(var(--warning))' }}>
-                            TARGET
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>           </div>
-              </div>
-
-              {/* 4 Standardized Metric KPI Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                
+          <AssessmentHeroLayout
+            ladderComponent={
+              <ProficiencyLadder
+                title="Behavioral Proficiency Ladder"
+                icon="award"
+                steps={BEHAVIORAL_STEPS}
+                evaluatedCode={liveEvaluation.overallProficiency}
+                benchmarkCode={liveEvaluation.overallExpectedLevel}
+                benchmarkSubtext={liveEvaluation.overallExpectedDec}
+                gap={liveEvaluation.overallGapCw}
+              />
+            }
+            metricCards={
+              <>
                 {/* Card 1: EVALUATED BAND */}
-                <div className="p-3.5 rounded-2xl border flex flex-col justify-between"
-                     style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: 'rgb(var(--text-3))' }}>
-                    EVALUATED BAND
-                  </span>
-                  <div className="mt-2 space-y-1">
-                    <BehavioralLevelBadge level={liveEvaluation.overallProficiency} size="md" />
-                    <div className="text-[11px] font-mono" style={{ color: 'rgb(var(--text-2))' }}>
-                      Weight: <strong className="font-bold" style={{ color: 'rgb(var(--text-1))' }}>{liveEvaluation.overallDec}</strong>
-                    </div>
-                  </div>
-                </div>
+                <MetricKpiCard
+                  label="EVALUATED BAND"
+                  badgeContent={<BehavioralLevelBadge level={liveEvaluation.overallProficiency} size="md" />}
+                  subtext="Weight"
+                  subtextValue={liveEvaluation.overallDec}
+                />
 
                 {/* Card 2: ROLE BENCHMARK */}
-                <div className="p-3.5 rounded-2xl border flex flex-col justify-between"
-                     style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: 'rgb(var(--text-3))' }}>
-                    ROLE BENCHMARK
-                  </span>
-                  <div className="mt-2 space-y-1">
-                    <span className="text-base font-black font-mono" style={{ color: 'rgb(var(--warning))' }}>
-                      {liveEvaluation.overallExpectedLevel}
-                    </span>
-                    <div className="text-[11px] font-mono" style={{ color: 'rgb(var(--text-2))' }}>
-                      Target: <strong className="font-bold" style={{ color: 'rgb(var(--text-1))' }}>{liveEvaluation.overallExpectedDec}</strong>
-                    </div>
-                  </div>
-                </div>
+                <MetricKpiCard
+                  label="ROLE BENCHMARK"
+                  primaryValue={liveEvaluation.overallExpectedLevel}
+                  statusType="warning"
+                  subtext="Target"
+                  subtextValue={liveEvaluation.overallExpectedDec}
+                />
 
                 {/* Card 3: BENCHMARK GAP */}
-                <div className="p-3.5 rounded-2xl border flex flex-col justify-between"
-                     style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: 'rgb(var(--text-3))' }}>
-                    BENCHMARK GAP
-                  </span>
-                  <div className="mt-2 space-y-1">
-                    <span className="text-base font-black font-mono"
-                          style={{
-                            color: liveEvaluation.overallGapCw >= 0
-                              ? 'rgb(var(--success))'
-                              : 'rgb(var(--danger))',
-                          }}>
-                      {liveEvaluation.overallGapCw > 0 ? `+${liveEvaluation.overallGapCw}cw` : `${liveEvaluation.overallGapCw}cw`}
-                    </span>
-                    <div className="text-[10px] font-bold uppercase" style={{ color: 'rgb(var(--text-3))' }}>
-                      {liveEvaluation.overallGapCw > 0 ? 'ABOVE' : liveEvaluation.overallGapCw === 0 ? 'MEETS' : 'BELOW'}
-                    </div>
-                  </div>
-                </div>
+                <MetricKpiCard
+                  label="BENCHMARK GAP"
+                  primaryValue={
+                    liveEvaluation.overallGapCw > 0
+                      ? `+${liveEvaluation.overallGapCw}cw`
+                      : `${liveEvaluation.overallGapCw}cw`
+                  }
+                  statusType={liveEvaluation.overallGapCw >= 0 ? 'success' : 'danger'}
+                  statusText={
+                    liveEvaluation.overallGapCw > 0
+                      ? 'ABOVE'
+                      : liveEvaluation.overallGapCw === 0
+                      ? 'MEETS'
+                      : 'BELOW'
+                  }
+                />
 
                 {/* Card 4: READINESS */}
-                <div className="p-3.5 rounded-2xl border flex flex-col justify-between"
-                     style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: 'rgb(var(--text-3))' }}>
-                    READINESS
-                  </span>
-                  <div className="mt-2 space-y-1">
-                    {liveEvaluation.behavioralReady ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-black px-2 py-0.5 rounded-md border"
-                            style={{
-                              backgroundColor: 'rgb(var(--success-soft))',
-                              color: 'rgb(var(--success))',
-                              borderColor: 'rgb(var(--success) / 0.3)',
-                            }}>
+                <MetricKpiCard
+                  label="READINESS"
+                  badgeContent={
+                    liveEvaluation.behavioralReady ? (
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] font-black px-2 py-0.5 rounded-md border"
+                        style={{
+                          backgroundColor: 'rgb(var(--success-soft))',
+                          color: 'rgb(var(--success))',
+                          borderColor: 'rgb(var(--success) / 0.3)',
+                        }}
+                      >
                         <CheckCircle2 size={12} />
                         READY
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-black px-2 py-0.5 rounded-md border"
-                            style={{
-                              backgroundColor: 'rgb(var(--danger-soft))',
-                              color: 'rgb(var(--danger))',
-                              borderColor: 'rgb(var(--danger) / 0.3)',
-                            }}>
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] font-black px-2 py-0.5 rounded-md border"
+                        style={{
+                          backgroundColor: 'rgb(var(--danger-soft))',
+                          color: 'rgb(var(--danger))',
+                          borderColor: 'rgb(var(--danger) / 0.3)',
+                        }}
+                      >
                         <AlertTriangle size={12} />
                         GATED
                       </span>
-                    )}
-                    <div className="text-[10px]" style={{ color: 'rgb(var(--text-3))' }}>
-                      {liveEvaluation.isIntegrityOk ? 'Active Gating' : 'Integrity Gate'}
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Priorities Banner Callout */}
-              <div className="p-3 rounded-xl border flex items-start gap-2.5"
-                   style={{
-                     backgroundColor: 'rgb(var(--warning-soft))',
-                     borderColor: 'rgb(var(--warning) / 0.3)',
-                   }}>
-                <Zap size={15} className="shrink-0 mt-0.5" style={{ color: 'rgb(var(--warning))' }} />
-                <div className="text-xs leading-relaxed" style={{ color: 'rgb(var(--warning))' }}>
-                  <span className="font-bold">Priorities for promotion readiness: </span>
-                  {liveEvaluation.priorities.length > 0
-                    ? liveEvaluation.priorities.join(', ') + '.'
-                    : 'All behavioral competencies currently meet or exceed role target benchmarks.'}
-                </div>
-              </div>
-
-            </div>
-
-            {/* Right Column (Span 5/12): 11-Axis Behavioral Competencies Radar Chart */}
-            <div className="lg:col-span-5 p-4 rounded-2xl border flex flex-col justify-between"
-                 style={{
-                   backgroundColor: 'rgb(var(--surface-2))',
-                   borderColor: 'rgb(var(--border))',
-                 }}>
-              <div className="flex items-center justify-between mb-1 px-1">
-                <h4 className="text-xs font-bold" style={{ color: 'rgb(var(--text-1))' }}>
-                  Behavioral Competencies Radar
-                </h4>
-                <span className="text-[10px] font-mono" style={{ color: 'rgb(var(--text-3))' }}>Centi-Weight (cw)</span>
-              </div>
-
-              <div className="w-full h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="64%" data={liveEvaluation.radarData} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
-                    <PolarGrid stroke={chartTheme.gridColor} />
-                    <PolarAngleAxis dataKey="competency" tick={{ fill: chartTheme.axisColor, fontSize: 9.5, fontWeight: 700 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: chartTheme.tooltipBg,
-                        borderColor: chartTheme.tooltipBorder,
-                        color: chartTheme.tooltipText,
-                        borderRadius: '0.75rem',
-                        boxShadow: '0 8px 24px -4px rgba(0,0,0,0.15)',
-                      }}
-                      formatter={(val: any, name: any) => [`${val} cw`, name]}
-                    />
-                    <Legend iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: '4px', color: chartTheme.legendColor }} />
-                    <Radar name="Assessed Level" dataKey="Assessed" stroke={chartTheme.accent} fill={chartTheme.accent} fillOpacity={0.35} />
-                    <Radar name="Role Benchmark" dataKey="Target" stroke={chartTheme.warning} fill={chartTheme.warning} fillOpacity={0.15} strokeDasharray="4 4" />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-          </div>
+                    )
+                  }
+                  subtext="Status"
+                  subtextValue={liveEvaluation.isIntegrityOk ? 'Active Gating' : 'Integrity Gate'}
+                />
+              </>
+            }
+            priorities={liveEvaluation.priorities}
+            radarData={liveEvaluation.radarData}
+            radarTitle="Behavioral Competencies Radar"
+            radarUnit="Centi-Weight (cw)"
+          />
         )}
 
       </div>
@@ -979,82 +831,15 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
                       </div>
                     )}
 
-                    {/* Horizontal 5-Level Pill Buttons with 3-State Semantic Coloring */}
+                    {/* Horizontal 5-Level Selector Bar Component */}
                     {!isNA && (
-                      <div className="grid grid-cols-5 gap-1.5 pt-1">
-                        {(['L1', 'L2', 'L3', 'L4', 'L5'] as BehavioralLevelCode[]).map((lvl) => {
-                          const isSelected = activeRatingLevel === lvl;
-                          const isTarget = expectedLevel === lvl;
-                          const info = BEHAVIORAL_LEVEL_DETAILS[lvl];
-                          const lvlCw = info.weightCw;
-                          const isBelow = lvlCw < expCw;
-                          const isAbove = lvlCw > expCw;
-
-                          const selectedBg = isBelow
-                            ? 'rgb(var(--danger))'
-                            : isAbove
-                            ? 'rgb(var(--success))'
-                            : 'rgb(var(--accent))';
-
-                          return (
-                            <button
-                              key={lvl}
-                              type="button"
-                              disabled={!canAssess}
-                              onClick={() => handleLevelChange(comp.key, lvl)}
-                              title={`${lvl} ${info.label} (${info.weightDec})`}
-                              className={`relative h-14 min-h-[56px] p-1.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center ${
-                                isSelected
-                                  ? 'text-white shadow-md ring-2 scale-[1.03]'
-                                  : isTarget
-                                  ? 'border-dashed'
-                                  : ''
-                              } ${!canAssess ? 'cursor-default' : 'hover:scale-[1.02] cursor-pointer'}`}
-                              style={{
-                                backgroundColor: isSelected
-                                  ? selectedBg
-                                  : isTarget
-                                  ? 'rgb(var(--warning-soft))'
-                                  : 'rgb(var(--surface-2))',
-                                borderColor: isSelected
-                                  ? selectedBg
-                                  : isTarget
-                                  ? 'rgb(var(--warning) / 0.5)'
-                                  : 'rgb(var(--border))',
-                                color: isSelected
-                                  ? '#ffffff'
-                                  : isTarget
-                                  ? 'rgb(var(--warning))'
-                                  : 'rgb(var(--text-2))',
-                              }}
-                            >
-                              {isTarget && (
-                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 text-white rounded-full p-0.5 shadow-xs"
-                                     style={{ backgroundColor: 'rgb(var(--warning))' }}
-                                     title="Role Requirement Benchmark">
-                                  <Star size={9} fill="currentColor" />
-                                </div>
-                              )}
-                              <div className="text-xs font-black">{lvl}</div>
-                              <div className="text-[9px] font-mono font-bold mt-0.5"
-                                   style={{ color: isSelected ? 'rgba(255,255,255,0.9)' : 'rgb(var(--text-3))' }}>
-                                {info.weightDec}
-                              </div>
-                              {isSelected && (
-                                <div className="text-[8px] font-black uppercase tracking-wider mt-0.5 bg-white/20 px-1 rounded text-white">
-                                  ✓ SET
-                                </div>
-                              )}
-                              {!isSelected && isTarget && (
-                                <div className="text-[8px] font-bold uppercase tracking-wider mt-0.5"
-                                     style={{ color: 'rgb(var(--warning))' }}>
-                                  ★ Req
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <LevelSelectorBar
+                        levels={BEHAVIORAL_LEVEL_OPTIONS}
+                        selectedCode={activeRatingLevel}
+                        expectedCode={expectedLevel}
+                        disabled={!canAssess}
+                        onSelectLevel={(code) => handleLevelChange(comp.key, code)}
+                      />
                     )}
 
                     {/* Active Level Summary Box */}
@@ -1063,7 +848,7 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
                            style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
                         <div className="flex items-center justify-between font-bold text-[11px]">
                           <span className="flex items-center gap-1 font-mono" style={{ color: 'rgb(var(--warning))' }}>
-                            <Star size={11} fill="currentColor" /> Req: {expectedLevel} ({expectedDetail.weightDec})
+                            Req: {expectedLevel} ({expectedDetail.weightDec})
                           </span>
                           <span className="font-mono font-bold"
                                 style={{
