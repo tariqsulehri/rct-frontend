@@ -211,10 +211,10 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
 
   // 4. Overall 3-Pillar Competency Donut Data (Technical, Communication, Behavioral)
   const threePillarDonutData = useMemo(() => [
-    { name: 'Technical', value: myScore || 78, required: myRequired || 80, color: '#6366f1' },
-    { name: 'Communication', value: commScorePct, required: commReqPct, color: '#06b6d4' },
-    { name: 'Behavioral', value: behavScorePct, required: behavReqPct, color: '#f59e0b' },
-  ], [myScore, myRequired, commScorePct, commReqPct, behavScorePct, behavReqPct]);
+    { name: 'Technical', value: myScore || 78, required: myRequired || 80, color: chartTheme.primary },
+    { name: 'Communication', value: commScorePct, required: commReqPct, color: chartTheme.secondary },
+    { name: 'Behavioral', value: behavScorePct, required: behavReqPct, color: chartTheme.warning },
+  ], [myScore, myRequired, commScorePct, commReqPct, behavScorePct, behavReqPct, chartTheme]);
 
   const handleCopilotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,48 +226,48 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   };
 
   return (
-    <div className="space-y-2.5 animate-slide-up pb-3 text-zinc-100 font-sans">
+    <div className="space-y-2.5 animate-slide-up pb-3 text-text-1 font-sans">
       {/* ── TOP HEADER RIBBON: GREETING + TRAJECTORY + EVALUATION CYCLE TITLE ──── */}
-      <div className="relative overflow-hidden rounded-2xl px-4 py-2 sm:py-2.5 border border-zinc-800/90 bg-zinc-950/90 shadow-xl backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+      <div className="relative overflow-hidden rounded-2xl px-4 py-2 sm:py-2.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-2.5">
         {/* Left: Greeting & Trajectory & Cycle Badge */}
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex items-center gap-1.5">
-            <Sparkles size={14} className="text-blue-400 shrink-0" />
-            <h1 className="text-sm sm:text-base font-black tracking-tight text-white">
+            <Sparkles size={14} className="text-accent shrink-0" />
+            <h1 className="text-sm sm:text-base font-black tracking-tight text-text-1">
               Welcome back, {displayName}! 👋
             </h1>
           </div>
 
           {/* Grade Trajectory Tag */}
           <div className="flex items-center gap-1 text-xs font-semibold">
-            <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10.5px]">
+            <span className="px-2 py-0.5 rounded-md bg-surface-2 border border-border text-text-2 text-[10px]">
               {formatGrade(currentGrade)}
             </span>
-            <span className="text-blue-400 font-bold">→</span>
-            <span className="px-2 py-0.5 rounded-md bg-blue-600/20 border border-blue-500/30 text-blue-300 text-[10.5px]">
-              Target: <strong className="font-mono text-white">{formatGrade(targetGrade)}</strong>
+            <span className="text-accent font-bold">→</span>
+            <span className="px-2 py-0.5 rounded-md bg-accent-soft border border-accent/30 text-accent-txt text-[10px]">
+              Target: <strong className="font-mono text-text-1">{formatGrade(targetGrade)}</strong>
             </span>
           </div>
 
           {/* Evaluation Cycle Title Badge */}
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-            <CalendarIcon size={12} className="text-indigo-400" />
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-accent-soft text-accent-txt border border-accent/30">
+            <CalendarIcon size={12} className="text-accent" />
             <span>Cycle 2026 (Active)</span>
           </div>
         </div>
 
         {/* Right: Promotion Readiness Pill & CTA */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1.5 bg-zinc-900/90 px-2.5 py-1 rounded-xl border border-zinc-800 text-xs">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Readiness</span>
-            <span className="font-black text-white font-mono text-xs">{skillsCompletionPct}%</span>
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+          <div className="flex items-center gap-1.5 bg-surface-2 px-2.5 py-1 rounded-xl border border-border text-xs">
+            <span className="text-[10px] font-bold text-text-3 uppercase tracking-wider">Readiness</span>
+            <span className="font-black text-text-1 font-mono tabular-nums text-xs">{skillsCompletionPct}%</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
           </div>
 
           <button
             type="button"
             onClick={() => onNavigate('assessments')}
-            className="inline-flex items-center gap-1 px-3 py-1 rounded-xl font-bold text-[10.5px] uppercase tracking-wider text-zinc-950 bg-white hover:bg-zinc-100 shadow-sm transition-all active:scale-95"
+            className="inline-flex items-center gap-1 px-3 py-1 rounded-xl font-bold text-[10px] uppercase tracking-wider bg-accent text-white hover:bg-accent-hover shadow-sm transition-all active:scale-95"
           >
             <span>Assess Skills</span>
             <ArrowUpRight size={12} />
@@ -278,15 +278,15 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
       {/* ── ROW 1 (3-COLUMNS): ALL THREE PRO-LEVEL COMPETENCE GRAPHS ──────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
         {/* GRAPH 1: Technical Mastery (Dual-Tone Composite Bars) */}
-        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
+        <div className="rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Cpu size={13} className="text-indigo-400 shrink-0" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+              <Cpu size={13} className="text-indigo-500 shrink-0" />
+              <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
                 1. Technical Domains
               </h2>
             </div>
-            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400">
+            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
               <TrendingUp size={11} />
               <span>{myScore}% (Target: {myRequired}%)</span>
             </div>
@@ -295,16 +295,16 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           <div className="h-36 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={technicalChartData} margin={{ top: 8, right: 5, left: -30, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridColor} vertical={false} />
                 <XAxis
                   dataKey="label"
-                  stroke="#71717a"
+                  stroke={chartTheme.axisColor}
                   fontSize={9.5}
                   tickLine={false}
-                  axisLine={{ stroke: '#27272a' }}
+                  axisLine={{ stroke: chartTheme.gridColor }}
                 />
                 <YAxis
-                  stroke="#71717a"
+                  stroke={chartTheme.axisColor}
                   fontSize={9.5}
                   tickLine={false}
                   axisLine={false}
@@ -319,12 +319,12 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
                   }
                 />
                 {/* Composite Single Stacked Bar */}
-                <Bar dataKey="baseScore" stackId="tech" name="Required Target" fill="#4f46e5" radius={[0, 0, 4, 4]} maxBarSize={22} />
-                <Bar dataKey="excessScore" stackId="tech" name="Exceeds Benchmark" fill="#818cf8" radius={[4, 4, 0, 0]} maxBarSize={22}>
+                <Bar dataKey="baseScore" stackId="tech" name="Required Target" fill={chartTheme.isDark ? '#4f46e5' : '#6366f1'} radius={[0, 0, 4, 4]} maxBarSize={22} />
+                <Bar dataKey="excessScore" stackId="tech" name="Exceeds Benchmark" fill={chartTheme.isDark ? '#818cf8' : '#4338ca'} radius={[4, 4, 0, 0]} maxBarSize={22}>
                   {technicalChartData.map((entry, index) => (
                     <Cell
                       key={`tech-cell-${index}`}
-                      fill={entry.highlight ? '#6366f1' : '#818cf8'}
+                      fill={entry.highlight ? (chartTheme.isDark ? '#6366f1' : '#4f46e5') : (chartTheme.isDark ? '#818cf8' : '#818cf8')}
                       className={entry.highlight ? 'filter drop-shadow-[0_0_6px_rgba(99,102,241,0.6)]' : ''}
                     />
                   ))}
@@ -333,21 +333,21 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             </ResponsiveContainer>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/80">
+          <div className="flex items-center justify-between text-[10px] text-text-3 pt-1 border-t border-border">
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-indigo-400">
+              <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                 Score ({myScore}%)
               </span>
-              <span className="flex items-center gap-1 text-zinc-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+              <span className="flex items-center gap-1 text-text-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-zinc-500" />
                 Target ({myRequired}%)
               </span>
             </div>
             <button
               type="button"
               onClick={() => onNavigate('assessments')}
-              className="font-bold text-indigo-400 hover:underline inline-flex items-center gap-0.5"
+              className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"
             >
               <span>Skills Grid</span>
               <ArrowUpRight size={10} />
@@ -356,15 +356,15 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
         </div>
 
         {/* GRAPH 2: CEFR English Communication (Single Dual-Tone Composite Stacked Bar) */}
-        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
+        <div className="rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <MessageSquare size={13} className="text-cyan-400 shrink-0" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+              <MessageSquare size={13} className="text-cyan-500 shrink-0" />
+              <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
                 2. CEFR Language
               </h2>
             </div>
-            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-cyan-400">
+            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-cyan-600 dark:text-cyan-400">
               <CefrLevelBadge level={commLevel} size="sm" />
             </div>
           </div>
@@ -372,16 +372,16 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           <div className="h-36 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={commChartData} margin={{ top: 8, right: 5, left: -30, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridColor} vertical={false} />
                 <XAxis
                   dataKey="label"
-                  stroke="#71717a"
+                  stroke={chartTheme.axisColor}
                   fontSize={9.5}
                   tickLine={false}
-                  axisLine={{ stroke: '#27272a' }}
+                  axisLine={{ stroke: chartTheme.gridColor }}
                 />
                 <YAxis
-                  stroke="#71717a"
+                  stroke={chartTheme.axisColor}
                   fontSize={9.5}
                   tickLine={false}
                   axisLine={false}
@@ -403,7 +403,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
                   dataKey="baseRequirement"
                   stackId="cefr"
                   name="Required Benchmark"
-                  fill="#0e7490"
+                  fill={chartTheme.isDark ? '#0e7490' : '#0891b2'}
                   radius={[0, 0, 4, 4]}
                   maxBarSize={22}
                 />
@@ -411,14 +411,14 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
                   dataKey="excessLevel"
                   stackId="cefr"
                   name="Exceeds Level"
-                  fill="#06b6d4"
+                  fill={chartTheme.isDark ? '#06b6d4' : '#22d3ee'}
                   radius={[4, 4, 0, 0]}
                   maxBarSize={22}
                 >
                   {commChartData.map((entry, index) => (
                     <Cell
                       key={`comm-cell-${index}`}
-                      fill={entry.highlight ? '#22d3ee' : '#06b6d4'}
+                      fill={entry.highlight ? (chartTheme.isDark ? '#22d3ee' : '#06b6d4') : (chartTheme.isDark ? '#06b6d4' : '#0891b2')}
                       className={entry.highlight ? 'filter drop-shadow-[0_0_8px_rgba(34,211,238,0.7)]' : ''}
                     />
                   ))}
@@ -427,21 +427,21 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             </ResponsiveContainer>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/80">
+          <div className="flex items-center justify-between text-[10px] text-text-3 pt-1 border-t border-border">
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-cyan-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+              <span className="flex items-center gap-1 text-cyan-600 dark:text-cyan-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
                 Assessed ({commLevel})
               </span>
-              <span className="flex items-center gap-1 text-cyan-800 dark:text-cyan-700">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-800" />
+              <span className="flex items-center gap-1 text-text-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-800 dark:bg-cyan-700" />
                 Required ({commBenchmark})
               </span>
             </div>
             <button
               type="button"
               onClick={() => onNavigate('assessments')}
-              className="font-bold text-cyan-400 hover:underline inline-flex items-center gap-0.5"
+              className="font-bold text-cyan-600 dark:text-cyan-400 hover:underline inline-flex items-center gap-0.5"
             >
               <span>CEFR Rubric</span>
               <ArrowUpRight size={10} />
@@ -450,15 +450,15 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
         </div>
 
         {/* GRAPH 3: Behavioral 11-Item Competencies Radar Chart */}
-        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1">
+        <div className="rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Award size={13} className="text-amber-400 shrink-0" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+              <Award size={13} className="text-amber-500 shrink-0" />
+              <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
                 3. Behavioral Radar (11 Pillars)
               </h2>
             </div>
-            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400">
+            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
               <BehavioralLevelBadge level={behavLevel} size="sm" />
             </div>
           </div>
@@ -467,26 +467,26 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           <div className="h-36 w-full flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={behavRadarData} margin={{ top: 5, right: 12, bottom: 5, left: 12 }}>
-                <PolarGrid stroke="#27272a" />
+                <PolarGrid stroke={chartTheme.gridColor} />
                 <PolarAngleAxis
                   dataKey="name"
-                  stroke="#a1a1aa"
+                  stroke={chartTheme.axisColor}
                   fontSize={7.5}
                   tickLine={false}
                 />
-                <PolarRadiusAxis domain={[0, 100]} stroke="#3f3f46" tick={false} axisLine={false} />
+                <PolarRadiusAxis domain={[0, 100]} stroke={chartTheme.gridColor} tick={false} axisLine={false} />
                 <Radar
                   name="Assessed Level"
                   dataKey="score"
-                  stroke="#a855f7"
-                  fill="#a855f7"
+                  stroke={chartTheme.primary}
+                  fill={chartTheme.primary}
                   fillOpacity={0.4}
                 />
                 <Radar
                   name="Role Benchmark"
                   dataKey="benchmark"
-                  stroke="#f59e0b"
-                  fill="#f59e0b"
+                  stroke={chartTheme.warning}
+                  fill={chartTheme.warning}
                   fillOpacity={0.15}
                   strokeDasharray="2 2"
                 />
@@ -501,13 +501,13 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             </ResponsiveContainer>
           </div>
 
-          <div className="flex items-center justify-between text-[9.5px] text-zinc-400 pt-1 border-t border-zinc-800/80">
+          <div className="flex items-center justify-between text-[10px] text-text-3 pt-1 border-t border-border">
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-purple-400">
+              <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
                 Assessed
               </span>
-              <span className="flex items-center gap-1 text-amber-400">
+              <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                 Benchmark ({behavBenchmark})
               </span>
@@ -515,7 +515,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             <button
               type="button"
               onClick={() => onNavigate('assessments')}
-              className="font-bold text-amber-400 hover:underline inline-flex items-center gap-0.5"
+              className="font-bold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-0.5"
             >
               <span>Matrix</span>
               <ArrowUpRight size={10} />
@@ -527,26 +527,26 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
       {/* ── ROW 2 (3-COLUMNS): AI COPILOT (LEFT) + 3-PILLAR DONUT BREAKDOWN (CENTER) + MILESTONES (RIGHT) ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
         {/* BOTTOM LEFT: AI Career & Capability Copilot */}
-        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-2.5">
+        <div className="rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Sparkles size={14} className="text-blue-400" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+              <Sparkles size={14} className="text-accent" />
+              <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
                 How can I help you?
               </h2>
             </div>
             <button
               type="button"
               onClick={() => onNavigate('assessments')}
-              className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              className="p-1 rounded-lg text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors"
             >
               <ArrowUpRight size={13} />
             </button>
           </div>
 
           <div>
-            <div className="text-[11px] font-bold text-zinc-300">AI Progression Summary</div>
-            <p className="text-[10.5px] text-zinc-400 leading-relaxed mt-0.5 line-clamp-2">
+            <div className="text-xs font-bold text-text-2">AI Progression Summary</div>
+            <p className="text-[11px] text-text-3 leading-relaxed mt-0.5 line-clamp-2">
               {copilotResponse ||
                 `Trajectory for ${formatGrade(currentGrade)} → ${formatGrade(
                   targetGrade
@@ -556,21 +556,21 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
 
           {/* 2 Mini Stat Blocks */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-zinc-900/90 p-1.5 px-2 rounded-xl border border-zinc-800/80">
-              <div className="text-[9.5px] text-zinc-400">Skills Verified</div>
+            <div className="bg-surface-2 p-1.5 px-2 rounded-xl border border-border">
+              <div className="text-[10px] text-text-3">Skills Verified</div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-xs font-black font-mono text-white">{myMeets}</span>
-                <span className="text-[8.5px] font-bold px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">
+                <span className="text-xs font-black font-mono tabular-nums text-text-1">{myMeets}</span>
+                <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-300">
                   Active
                 </span>
               </div>
             </div>
 
-            <div className="bg-zinc-900/90 p-1.5 px-2 rounded-xl border border-zinc-800/80">
-              <div className="text-[9.5px] text-zinc-400">Gate Status</div>
+            <div className="bg-surface-2 p-1.5 px-2 rounded-xl border border-border">
+              <div className="text-[10px] text-text-3">Gate Status</div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-xs font-black font-mono text-white">3/3</span>
-                <span className="text-[8.5px] font-bold px-1 py-0.2 rounded bg-blue-500/20 text-blue-300">
+                <span className="text-xs font-black font-mono tabular-nums text-text-1">3/3</span>
+                <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-accent-soft text-accent-txt">
                   Ready
                 </span>
               </div>
@@ -584,11 +584,11 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
               value={copilotQuery}
               onChange={(e) => setCopilotQuery(e.target.value)}
               placeholder="Ask Career AI anything..."
-              className="w-full bg-zinc-900/90 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500/60 pr-8 transition-colors"
+              className="w-full bg-surface-2 border border-border rounded-xl px-3 py-1.5 text-xs text-text-1 placeholder:text-text-3 focus:outline-none focus:border-accent pr-8 transition-colors"
             />
             <button
               type="submit"
-              className="absolute right-2 top-2 text-zinc-400 hover:text-blue-400 transition-colors"
+              className="absolute right-2 top-2 text-text-3 hover:text-accent transition-colors"
             >
               <Send size={12} />
             </button>
@@ -596,12 +596,12 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
         </div>
 
         {/* BOTTOM CENTER: OVERALL 3-PILLAR REQUIRED VS ACHIEVED DONUT BREAKDOWN */}
-        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
+        <div className="rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+            <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
               Competency Distribution
             </h2>
-            <span className="text-[9.5px] font-bold text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded-md border border-zinc-800">
+            <span className="text-[10px] font-bold text-text-3 bg-surface-2 px-2 py-0.5 rounded-md border border-border">
               Cycle 2026 ▾
             </span>
           </div>
@@ -626,23 +626,23 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute flex flex-col items-center justify-center text-center">
-                <span className="text-xs font-black font-mono text-white">{myScore}%</span>
-                <span className="text-[7.5px] uppercase tracking-wider text-zinc-400">Total</span>
+                <span className="text-xs font-black font-mono tabular-nums text-text-1">{myScore}%</span>
+                <span className="text-[8px] uppercase tracking-wider text-text-3">Total</span>
               </div>
             </div>
 
             {/* Right 3-Pillar Breakdown Rows */}
-            <div className="space-y-1.5 text-[10.5px] flex-1 min-w-0">
+            <div className="space-y-1.5 text-[10px] flex-1 min-w-0">
               {/* Pillar 1: Technical */}
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-1.5 truncate">
                   <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
-                  <span className="text-zinc-300 font-medium truncate">Technical</span>
+                  <span className="text-text-2 font-medium truncate">Technical</span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
-                  <strong className="text-indigo-400">{myScore}%</strong>
-                  <span className="text-zinc-500">/ {myRequired}%</span>
-                  <span className={`px-1 rounded text-[8.5px] font-bold ${technicalReady ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                <div className="flex items-center gap-1 shrink-0 font-mono tabular-nums text-[10px]">
+                  <strong className="text-indigo-600 dark:text-indigo-400">{myScore}%</strong>
+                  <span className="text-text-3">/ {myRequired}%</span>
+                  <span className={`px-1 rounded text-[8.5px] font-bold ${technicalReady ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300' : 'bg-amber-500/20 text-amber-600 dark:text-amber-300'}`}>
                     {technicalReady ? 'Met' : 'Gap'}
                   </span>
                 </div>
@@ -652,12 +652,12 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-1.5 truncate">
                   <span className="w-2 h-2 rounded-full bg-cyan-500 shrink-0" />
-                  <span className="text-zinc-300 font-medium truncate">CEFR Comm</span>
+                  <span className="text-text-2 font-medium truncate">CEFR Comm</span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
-                  <strong className="text-cyan-400">{commLevel}</strong>
-                  <span className="text-zinc-500">/ {commBenchmark}</span>
-                  <span className={`px-1 rounded text-[8.5px] font-bold ${commReady ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                <div className="flex items-center gap-1 shrink-0 font-mono tabular-nums text-[10px]">
+                  <strong className="text-cyan-600 dark:text-cyan-400">{commLevel}</strong>
+                  <span className="text-text-3">/ {commBenchmark}</span>
+                  <span className={`px-1 rounded text-[8.5px] font-bold ${commReady ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300' : 'bg-amber-500/20 text-amber-600 dark:text-amber-300'}`}>
                     {commReady ? 'Met' : 'Gap'}
                   </span>
                 </div>
@@ -667,12 +667,12 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-1.5 truncate">
                   <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                  <span className="text-zinc-300 font-medium truncate">Behavioral</span>
+                  <span className="text-text-2 font-medium truncate">Behavioral</span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
-                  <strong className="text-amber-400">{behavLevel}</strong>
-                  <span className="text-zinc-500">/ {behavBenchmark}</span>
-                  <span className={`px-1 rounded text-[8.5px] font-bold ${behavReady ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                <div className="flex items-center gap-1 shrink-0 font-mono tabular-nums text-[10px]">
+                  <strong className="text-amber-600 dark:text-amber-400">{behavLevel}</strong>
+                  <span className="text-text-3">/ {behavBenchmark}</span>
+                  <span className={`px-1 rounded text-[8.5px] font-bold ${behavReady ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300' : 'bg-amber-500/20 text-amber-600 dark:text-amber-300'}`}>
                     {behavReady ? 'Met' : 'Gap'}
                   </span>
                 </div>
@@ -681,72 +681,72 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           </div>
 
           {/* Bottom Insight Callout */}
-          <div className="text-[9.5px] text-zinc-400 leading-normal pt-1 border-t border-zinc-800/80">
+          <div className="text-[10px] text-text-3 leading-normal pt-1 border-t border-border">
             💡 Overall 3-Pillar Score: Technical ({myScore}%), CEFR ({commLevel}), Behavioral ({behavLevel}) vs Required Target benchmarks.
           </div>
         </div>
 
         {/* BOTTOM RIGHT: Promotion Milestones & Gate Verification */}
-        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-2">
+        <div className="rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+            <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
               Promotion Milestones
             </h2>
             <div className="flex items-center gap-1">
-              <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+              <div className="w-6 h-6 rounded-lg bg-accent-soft text-accent flex items-center justify-center border border-accent/30">
                 <Layers size={12} />
               </div>
             </div>
           </div>
 
           {/* Segmented Yellow/Gold Progress Bar */}
-          <div className="bg-zinc-900/90 p-1.5 px-2 rounded-xl border border-zinc-800/80 flex items-center justify-between gap-1.5">
-            <span className="text-[9.5px] font-bold text-zinc-400 uppercase">Gate Score</span>
+          <div className="bg-surface-2 p-1.5 px-2 rounded-xl border border-border flex items-center justify-between gap-1.5">
+            <span className="text-[10px] font-bold text-text-3 uppercase">Gate Score</span>
             <div className="flex items-center gap-0.5">
               {[...Array(14)].map((_, i) => (
                 <div
                   key={i}
                   className={`w-1 h-2.5 rounded-xs ${
-                    i < 11 ? 'bg-amber-400 shadow-[0_0_3px_rgba(251,191,36,0.5)]' : 'bg-zinc-800'
+                    i < 11 ? 'bg-amber-500 dark:bg-amber-400 shadow-[0_0_3px_rgba(251,191,36,0.5)]' : 'bg-surface border border-border'
                   }`}
                 />
               ))}
             </div>
-            <span className="text-[11px] font-mono font-black text-amber-400">{skillsCompletionPct}%</span>
+            <span className="text-xs font-mono tabular-nums font-black text-amber-600 dark:text-amber-400">{skillsCompletionPct}%</span>
           </div>
 
           {/* 3 Actionable Gate Items */}
-          <div className="space-y-1 text-[10.5px]">
-            <div className="flex items-center justify-between text-zinc-300">
-              <span className="text-zinc-400">Technical Skills</span>
-              <span className="inline-flex items-center gap-1 font-bold text-amber-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <div className="space-y-1 text-xs">
+            <div className="flex items-center justify-between text-text-2">
+              <span className="text-text-3 text-[11px]">Technical Skills</span>
+              <span className="inline-flex items-center gap-1 font-bold text-amber-600 dark:text-amber-400 text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                 {myMeets} / {myTotal} Met
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-zinc-300">
-              <span className="text-zinc-400">CEFR Communication</span>
-              <span className="inline-flex items-center gap-1 font-bold text-emerald-400">
+            <div className="flex items-center justify-between text-text-2">
+              <span className="text-text-3 text-[11px]">CEFR Communication</span>
+              <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
                 <CefrLevelBadge level={commLevel} size="sm" />
-                <span className="text-[9.5px]">Verified</span>
+                <span className="text-[10px]">Verified</span>
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-zinc-300">
-              <span className="text-zinc-400">Behavioral Mastery</span>
-              <span className="inline-flex items-center gap-1 font-bold text-emerald-400">
+            <div className="flex items-center justify-between text-text-2">
+              <span className="text-text-3 text-[11px]">Behavioral Mastery</span>
+              <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
                 <BehavioralLevelBadge level={behavLevel} size="sm" />
-                <span className="text-[9.5px]">Verified</span>
+                <span className="text-[10px]">Verified</span>
               </span>
             </div>
           </div>
 
-          <div className="pt-1 border-t border-zinc-800/80 flex items-center justify-between text-[10.5px]">
+          <div className="pt-1 border-t border-border flex items-center justify-between text-xs">
             <button
               type="button"
               onClick={() => onNavigate('assessments')}
-              className="font-bold text-zinc-400 hover:text-white inline-flex items-center gap-1 transition-colors"
+              className="font-bold text-text-3 hover:text-text-1 inline-flex items-center gap-1 transition-colors"
             >
               <span>View all milestones</span>
               <ArrowUpRight size={11} />
