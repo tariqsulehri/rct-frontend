@@ -82,9 +82,9 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
 
   const scoreBuckets = [
     { range: '0-20', min: 0, max: 20, color: c.danger },
-    { range: '20-40', min: 20, max: 40, color: '#f97316' },
+    { range: '20-40', min: 20, max: 40, color: c.warning },
     { range: '40-60', min: 40, max: 60, color: c.warning },
-    { range: '60-80', min: 60, max: 80, color: '#22c55e' },
+    { range: '60-80', min: 60, max: 80, color: c.accent },
     { range: '80-100', min: 80, max: 101, color: c.success },
   ].map(bucket => ({
     ...bucket,
@@ -559,7 +559,7 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
               badgeStyle = { backgroundColor: 'rgb(var(--success-soft))', color: 'rgb(var(--success))' };
             } else if (isTechReady && isCefrGated) {
               badgeText = '🔒 CEFR Gated';
-              badgeStyle = { backgroundColor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' };
+              badgeStyle = { backgroundColor: 'rgb(var(--warning-soft))', color: 'rgb(var(--warning))' };
             }
 
             return (

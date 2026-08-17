@@ -1060,7 +1060,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
             className="px-3 h-7 text-xs font-medium rounded-md transition-all flex items-center gap-1.5"
             style={{
               backgroundColor: statusFilter === 'pending' ? 'rgb(var(--surface-1))' : 'transparent',
-              color: statusFilter === 'pending' ? '#f97316' : 'rgb(var(--text-2))',
+              color: statusFilter === 'pending' ? 'rgb(var(--warning))' : 'rgb(var(--text-2))',
               boxShadow: statusFilter === 'pending' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
               fontWeight: statusFilter === 'pending' ? 600 : 500,
             }}
@@ -1068,8 +1068,12 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
             Pending Review
             {pendingCount > 0 && (
               <span
-                className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
-                style={{ backgroundColor: 'rgba(251,146,60,0.2)', color: '#f97316' }}
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-bold border"
+                style={{
+                  backgroundColor: 'rgb(var(--warning-soft))',
+                  color: 'rgb(var(--warning))',
+                  borderColor: 'rgb(var(--warning) / 0.3)',
+                }}
               >
                 {pendingCount}
               </span>
@@ -1314,9 +1318,9 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                   : rowEditable
                     ? 'rgba(var(--accent-soft), 0.15)'
                     : isPending
-                      ? 'rgba(251,146,60,0.06)' // subtle orange for pending
+                      ? 'rgb(var(--warning-soft) / 0.15)'
                       : isDraft
-                        ? 'rgba(var(--accent-soft), 0.05)'
+                        ? 'rgb(var(--accent-soft) / 0.15)'
                         : 'transparent';
 
               return (
@@ -1326,11 +1330,11 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                     borderBottom: '1px solid rgb(var(--border))',
                     backgroundColor: rowBg,
                     borderLeft: isApproving
-                      ? '3px solid #f97316'
+                      ? '3px solid rgb(var(--warning))'
                       : rowEditable
                         ? '3px solid rgb(var(--accent))'
                         : isPending
-                          ? '3px solid #f97316'
+                          ? '3px solid rgb(var(--warning))'
                           : isDraft
                             ? '3px solid rgb(var(--accent-soft))'
                             : '3px solid transparent',
@@ -1414,7 +1418,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                     <div className="flex items-center gap-1.5">
 
                       {/* Save (✓) when editing or approving */}
-                      {rowEditable ? (
+                      {rowEditable || isApproving ? (
                         <button
                           onClick={() => handleSaveRow(row.id)}
                           disabled={savingRowIds.has(row.id)}
@@ -1422,8 +1426,8 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                           title={isApproving ? 'Approve and save' : isDraft ? 'Save draft' : 'Save this row'}
                         >
                           {savingRowIds.has(row.id)
-                            ? <span className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: isApproving ? '#f97316' : 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
-                            : <Check size={14} style={{ color: isApproving ? '#f97316' : 'rgb(var(--success))' }} />}
+                            ? <span className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: isApproving ? 'rgb(var(--warning))' : 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
+                            : <Check size={14} style={{ color: isApproving ? 'rgb(var(--warning))' : 'rgb(var(--success))' }} />}
                         </button>
                       ) : isPending && canApprove ? (
                         /* Approve button — manager clicks to enter approval mode */
@@ -1431,7 +1435,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                           onClick={() => setApprovingRowIds((prev) => new Set(prev).add(row.id))}
                           className="btn-ghost w-7 h-7 p-0 rounded-md flex items-center justify-center"
                           title="Approve this skill"
-                          style={{ color: '#f97316' }}
+                          style={{ color: 'rgb(var(--warning))' }}
                         >
                           <ShieldCheck size={15} />
                         </button>
@@ -1463,8 +1467,8 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                       {/* Status badges */}
                       {isDraft && (
                         <span
-                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
-                          style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap border"
+                          style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))', borderColor: 'rgb(var(--accent) / 0.3)' }}
                           title={row.isNew ? 'Unsaved local row' : 'Draft saved in database'}
                         >
                           {row.isNew ? 'Unsaved' : 'Draft'}
@@ -1472,8 +1476,8 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                       )}
                       {isPending && (
                         <span
-                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
-                          style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#f97316' }}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border"
+                          style={{ backgroundColor: 'rgb(var(--warning-soft))', color: 'rgb(var(--warning))', borderColor: 'rgb(var(--warning) / 0.35)' }}
                         >
                           Waiting
                         </span>

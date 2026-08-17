@@ -417,7 +417,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                     }}
                   />
                   {domainRadarData.some((d) => d.required > 0) && (
-                    <Legend formatter={(v) => <span style={{ color: '#d1d5db', fontSize: 12 }}>{v}</span>} />
+                    <Legend formatter={(v) => <span style={{ color: c.radarTick, fontSize: 12 }}>{v}</span>} />
                   )}
                 </RadarChart>
               </ResponsiveContainer>
@@ -439,10 +439,10 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                     color: domainGroups.find((d) => d.domain === c2.domain)?.color ?? c.accent,
                   }))}
                   layout="vertical" margin={{ left: 8, right: 48, top: 4, bottom: 4 }} barCategoryGap="18%">
-                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: c.text }}
                     tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" width={160}
-                    tick={{ fontSize: 10, fill: '#d1d5db' }} axisLine={false} tickLine={false} />
+                    tick={{ fontSize: 10, fill: c.radarTick }} axisLine={false} tickLine={false} />
                   <Tooltip
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null;
@@ -450,7 +450,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                       return (
                         <div style={tooltipStyle(c)}>
                           <p className="font-semibold text-xs mb-1" style={{ color: d.color }}>{d.fullName}</p>
-                          <p style={{ color: '#d1d5db' }}>Team avg: <b>{d.avg}%</b></p>
+                          <p style={{ color: c.text }}>Team avg: <b>{d.avg}%</b></p>
                         </div>
                       );
                     }}
@@ -460,7 +460,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                       <Cell key={i} fill={domainGroups.find((d) => d.domain === entry.domain)?.color ?? c.accent} />
                     ))}
                     <LabelList dataKey="avg" position="right" formatter={(v: number) => `${v}%`}
-                      style={{ fontSize: 10, fill: '#94a3b8' }} />
+                      style={{ fontSize: 10, fill: c.text }} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>

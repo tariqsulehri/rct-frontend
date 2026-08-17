@@ -57,9 +57,11 @@ export const CefrAnalyticsTab: React.FC<{ reportFilters?: ReportFilters }> = ({
 
   if (loading) {
     return (
-      <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-        <div className="w-8 h-8 mx-auto border-3 border-sky-600 border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs text-slate-500 font-medium">Loading CEFR Communication Analytics...</p>
+      <div className="p-8 text-center rounded-2xl border shadow-card transition-all"
+           style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+        <div className="w-8 h-8 mx-auto border-3 border-t-transparent rounded-full animate-spin mb-3"
+             style={{ borderColor: 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
+        <p className="text-xs font-medium" style={{ color: 'rgb(var(--text-2))' }}>Loading CEFR Communication Analytics...</p>
       </div>
     );
   }
@@ -70,49 +72,58 @@ export const CefrAnalyticsTab: React.FC<{ reportFilters?: ReportFilters }> = ({
   return (
     <div className="space-y-4">
       <ContextualHelpCallout title="CEFR Communication & Promotion Gating Matrix">
-        CEFR communication benchmarks serve as mandatory promotion gating criteria across all grade levels. Employees marked as <strong className="text-rose-600">GATED</strong> meet technical competency scores but require communication benchmark certification before final promotion approval.
+        CEFR communication benchmarks serve as mandatory promotion gating criteria across all grade levels. Employees marked as <strong style={{ color: 'rgb(var(--danger))' }}>GATED</strong> meet technical competency scores but require communication benchmark certification before final promotion approval.
       </ContextualHelpCallout>
 
       {/* KPI Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+        <div className="p-3.5 rounded-2xl border shadow-card flex items-center gap-3 transition-all"
+             style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+          <div className="p-2.5 rounded-xl" style={{ backgroundColor: 'rgb(var(--success-soft))', color: 'rgb(var(--success))' }}>
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xl font-black text-slate-900 dark:text-white">{readyCount}</div>
-            <div className="text-xs text-slate-500 font-medium">Fully Ready (Tech + CEFR)</div>
+            <div className="text-xl font-black" style={{ color: 'rgb(var(--text-1))' }}>{readyCount}</div>
+            <div className="text-xs font-medium" style={{ color: 'rgb(var(--text-2))' }}>Fully Ready (Tech + CEFR)</div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 bg-rose-50 text-rose-600 rounded-xl">
+        <div className="p-3.5 rounded-2xl border shadow-card flex items-center gap-3 transition-all"
+             style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+          <div className="p-2.5 rounded-xl" style={{ backgroundColor: 'rgb(var(--danger-soft))', color: 'rgb(var(--danger))' }}>
             <Lock className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xl font-black text-slate-900 dark:text-white">{gatedCount}</div>
-            <div className="text-xs text-slate-500 font-medium">Blocked by CEFR Gating</div>
+            <div className="text-xl font-black" style={{ color: 'rgb(var(--text-1))' }}>{gatedCount}</div>
+            <div className="text-xs font-medium" style={{ color: 'rgb(var(--text-2))' }}>Blocked by CEFR Gating</div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 bg-sky-50 text-sky-600 rounded-xl">
+        <div className="p-3.5 rounded-2xl border shadow-card flex items-center gap-3 transition-all"
+             style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+          <div className="p-2.5 rounded-xl" style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent))' }}>
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xl font-black text-slate-900 dark:text-white">{employees.length}</div>
-            <div className="text-xs text-slate-500 font-medium">Evaluated Resources</div>
+            <div className="text-xl font-black" style={{ color: 'rgb(var(--text-1))' }}>{employees.length}</div>
+            <div className="text-xs font-medium" style={{ color: 'rgb(var(--text-2))' }}>Evaluated Resources</div>
           </div>
         </div>
       </div>
 
       {/* CEFR Employee Matrix */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="p-4 rounded-2xl border shadow-card transition-all"
+           style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-slate-500">
-                <th className="py-2.5 px-3 font-bold">Employee</th>
+              <tr className="border-b"
+                  style={{
+                    borderColor: 'rgb(var(--border))',
+                    backgroundColor: 'rgb(var(--surface-2))',
+                    color: 'rgb(var(--text-2))',
+                  }}>
+                <th className="py-2.5 px-3 font-bold uppercase tracking-wider">Employee</th>
                 <th className="py-2.5 px-3 font-bold">Department</th>
                 <th className="py-2.5 px-3 font-bold">Target Grade</th>
                 <th className="py-2.5 px-3 font-bold">Tech Score</th>

@@ -48,9 +48,11 @@ export const YoYGrowthTab: React.FC<{ reportFilters?: ReportFilters }> = ({
 
   if (loading) {
     return (
-      <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-        <div className="w-8 h-8 mx-auto border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs text-slate-500 font-medium">Calculating Multi-Year YoY Growth Analytics...</p>
+      <div className="p-8 text-center rounded-2xl border shadow-card transition-all"
+           style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+        <div className="w-8 h-8 mx-auto border-3 border-t-transparent rounded-full animate-spin mb-3"
+             style={{ borderColor: 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
+        <p className="text-xs font-medium" style={{ color: 'rgb(var(--text-2))' }}>Calculating Multi-Year YoY Growth Analytics...</p>
       </div>
     );
   }
@@ -60,19 +62,25 @@ export const YoYGrowthTab: React.FC<{ reportFilters?: ReportFilters }> = ({
   return (
     <div className="space-y-4">
       <ContextualHelpCallout title="Multi-Year YoY Growth & Historical Progression">
-        Tracks year-over-year competency score progression across fiscal appraisal periods (<strong className="text-indigo-600">{periodSummaryText}</strong>). Authentically reflects stored database evaluations without simulated metrics.
+        Tracks year-over-year competency score progression across fiscal appraisal periods (<strong style={{ color: 'rgb(var(--accent))' }}>{periodSummaryText}</strong>). Authentically reflects stored database evaluations without simulated metrics.
       </ContextualHelpCallout>
 
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+      <div className="p-4 rounded-2xl border shadow-card space-y-3 transition-all"
+           style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+            <TrendingUp className="w-5 h-5" style={{ color: 'rgb(var(--accent))' }} />
+            <h3 className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>
               Year-over-Year Progression Matrix
             </h3>
           </div>
           {periods.length === 1 && (
-            <span className="text-xs font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full border"
+                  style={{
+                    backgroundColor: 'rgb(var(--warning-soft))',
+                    borderColor: 'rgb(var(--warning) / 0.3)',
+                    color: 'rgb(var(--warning))',
+                  }}>
               Active Evaluation Baseline ({periods[0]} Database Scores)
             </span>
           )}
@@ -81,12 +89,17 @@ export const YoYGrowthTab: React.FC<{ reportFilters?: ReportFilters }> = ({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-slate-500">
-                <th className="py-2.5 px-3 font-bold">Employee</th>
-                <th className="py-2.5 px-3 font-bold">Department</th>
-                <th className="py-2.5 px-3 font-bold">Current Grade</th>
+              <tr className="border-b"
+                  style={{
+                    borderColor: 'rgb(var(--border))',
+                    backgroundColor: 'rgb(var(--surface-2))',
+                    color: 'rgb(var(--text-2))',
+                  }}>
+                <th className="py-2.5 px-3 font-bold uppercase tracking-wider">Employee</th>
+                <th className="py-2.5 px-3 font-bold uppercase tracking-wider">Department</th>
+                <th className="py-2.5 px-3 font-bold uppercase tracking-wider">Current Grade</th>
                 {periods.map((p) => (
-                  <th key={p} className="py-2.5 px-3 font-bold text-center">
+                  <th key={p} className="py-2.5 px-3 font-bold uppercase tracking-wider text-center">
                     <span className="inline-flex items-center gap-1">
                       <Calendar className="w-3 h-3" /> {p}
                     </span>
