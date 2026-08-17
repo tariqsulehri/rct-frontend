@@ -11,17 +11,17 @@
 
   /* ── Light Theme (default) ────────────────────────────────────────────── */
   :root {
-    --bg:           249 250 251;   /* gray-50 */
-    --surface:      255 255 255;   /* white */
-    --surface-2:    243 244 246;   /* gray-100 */
-    --surface-3:    229 231 235;   /* gray-200 */
+    --bg:           248 250 252;   /* slate-50 canvas */
+    --surface:      255 255 255;   /* pure white card */
+    --surface-2:    241 245 249;   /* slate-100 inputs/headers */
+    --surface-3:    226 232 240;   /* slate-200 hover/popover */
 
-    --border:       229 231 235;   /* gray-200 */
-    --border-2:     209 213 219;   /* gray-300 */
+    --border:       226 232 240;   /* slate-200 */
+    --border-2:     203 213 225;   /* slate-300 */
 
-    --text-1:       17 24 39;      /* gray-900 */
-    --text-2:       75 85 99;      /* gray-600 */
-    --text-3:       156 163 175;   /* gray-400 */
+    --text-1:       15 23 42;      /* slate-900 high-contrast */
+    --text-2:       71 85 105;     /* slate-600 */
+    --text-3:       148 163 184;   /* slate-400 */
 
     --accent:       109 40 217;    /* violet-700 */
     --accent-h:     124 58 237;    /* violet-600 hover */
@@ -30,11 +30,11 @@
     --accent-ring:  196 181 253;   /* violet-300 */
 
     --success:      22 163 74;     /* green-600 */
-    --success-soft: 220 252 231;
-    --warning:      217 119 6;     /* amber-600 */
-    --warning-soft: 254 243 199;
+    --success-soft: 220 252 231;   /* green-100 */
+    --warning:      180 83 9;      /* amber-700 (high-contrast >= 4.5:1) */
+    --warning-soft: 254 243 199;   /* amber-100 */
     --danger:       220 38 38;     /* red-600 */
-    --danger-soft:  254 226 226;
+    --danger-soft:  254 226 226;   /* red-100 */
 
     --sidebar-w:    240px;
     --sidebar-w-sm: 64px;
@@ -42,10 +42,10 @@
 
     /* Theme Aliases */
     --bg-1:              255 255 255;
-    --bg-2:              243 244 246;
-    --bg-3:              229 231 235;
+    --bg-2:              241 245 249;
+    --bg-3:              226 232 240;
     --bg-card:           255 255 255;
-    --bg-card-hover:     243 244 246;
+    --bg-card-hover:     241 245 249;
 
     /* Legacy compat (used by old hsl()-based classes) */
     --background:        0 0% 98%;
@@ -62,12 +62,12 @@
 
   /* ── Dark Theme ───────────────────────────────────────────────────────── */
   .dark {
-    --bg:           9 9 11;        /* zinc-950 */
-    --surface:      24 24 27;      /* zinc-900 */
-    --surface-2:    39 39 42;      /* zinc-800 */
-    --surface-3:    63 63 70;      /* zinc-700 */
+    --bg:           9 9 11;        /* zinc-950 canvas */
+    --surface:      24 24 27;      /* zinc-900 card */
+    --surface-2:    39 39 42;      /* zinc-800 input/header */
+    --surface-3:    63 63 70;      /* zinc-700 hover */
 
-    --border:       63 63 70;      /* zinc-700 */
+    --border:       49 49 54;      /* refined zinc border */
     --border-2:     82 82 91;      /* zinc-600 */
 
     --text-1:       250 250 250;   /* zinc-50 */
@@ -81,11 +81,11 @@
     --accent-ring:  109 40 217;    /* violet-700 */
 
     --success:      74 222 128;    /* green-400 */
-    --success-soft: 5 46 22;
+    --success-soft: 5 46 22;       /* dark green */
     --warning:      251 191 36;    /* amber-400 */
-    --warning-soft: 78 45 3;
+    --warning-soft: 69 26 3;       /* dark amber */
     --danger:       248 113 113;   /* red-400 */
-    --danger-soft:  69 10 10;
+    --danger-soft:  69 10 10;      /* dark red */
 
     --bg-1:              24 24 27;
     --bg-2:              39 39 42;
@@ -107,10 +107,10 @@
 
   /* ── Midnight / DevOps Theme ──────────────────────────────────────────── */
   .midnight {
-    --bg:           3 7 18;        /* near-black navy */
-    --surface:      9 14 26;       /* dark navy */
-    --surface-2:    15 23 42;      /* slate-900 */
-    --surface-3:    30 41 59;      /* slate-800 */
+    --bg:           3 7 18;        /* near-black navy canvas */
+    --surface:      11 18 33;      /* slate-900 card */
+    --surface-2:    20 29 48;      /* slate-850 input/header */
+    --surface-3:    30 41 59;      /* slate-800 hover */
 
     --border:       30 41 59;      /* slate-800 */
     --border-2:     51 65 85;      /* slate-700 */
@@ -128,15 +128,15 @@
     --success:      16 185 129;    /* emerald-500 */
     --success-soft: 5 46 22;
     --warning:      245 158 11;    /* amber-500 */
-    --warning-soft: 78 45 3;
+    --warning-soft: 69 26 3;
     --danger:       239 68 68;     /* red-500 */
     --danger-soft:  69 10 10;
 
-    --bg-1:              9 14 26;
-    --bg-2:              15 23 42;
+    --bg-1:              11 18 33;
+    --bg-2:              20 29 48;
     --bg-3:              30 41 59;
-    --bg-card:           9 14 26;
-    --bg-card-hover:     15 23 42;
+    --bg-card:           11 18 33;
+    --bg-card-hover:     20 29 48;
 
     --background:        222 47% 5%;
     --foreground:        210 40% 90%;
@@ -355,11 +355,70 @@ body {
     font-weight: 700;
   }
 
-  /* Glass effect */
+  /* Glass effects */
   .glass {
     backdrop-filter: blur(12px) saturate(150%);
     background-color: rgb(var(--surface) / 0.8);
     border: 1px solid rgb(var(--border) / 0.6);
+  }
+
+  .glass-card {
+    backdrop-filter: blur(12px) saturate(150%);
+    background-color: rgb(var(--surface) / 0.85);
+    border: 1px solid rgb(var(--border) / 0.7);
+    box-shadow: var(--tw-shadow, 0 1px 3px 0 rgb(0 0 0 / 0.07));
+  }
+
+  .glass-header {
+    backdrop-filter: blur(16px) saturate(160%);
+    background-color: rgb(var(--surface) / 0.8);
+    border-bottom: 1px solid rgb(var(--border) / 0.7);
+  }
+
+  /* Numerical & Data Alignment */
+  .tabular-numbers,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* Accessible Alert Boxes */
+  .alert {
+    @apply p-4 rounded-xl border flex items-start gap-3 text-sm leading-relaxed;
+  }
+  .alert-warning {
+    @apply alert;
+    background-color: rgb(var(--warning-soft));
+    border-color: rgb(var(--warning) / 0.35);
+    color: rgb(var(--text-1));
+  }
+  .alert-warning svg {
+    color: rgb(var(--warning));
+  }
+  .alert-danger {
+    @apply alert;
+    background-color: rgb(var(--danger-soft));
+    border-color: rgb(var(--danger) / 0.35);
+    color: rgb(var(--text-1));
+  }
+  .alert-danger svg {
+    color: rgb(var(--danger));
+  }
+  .alert-success {
+    @apply alert;
+    background-color: rgb(var(--success-soft));
+    border-color: rgb(var(--success) / 0.35);
+    color: rgb(var(--text-1));
+  }
+  .alert-success svg {
+    color: rgb(var(--success));
+  }
+
+  /* Focus rings */
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    --tw-ring-color: rgb(var(--accent));
+    --tw-ring-offset-color: rgb(var(--bg));
   }
 }
 

@@ -7,6 +7,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
 
       /* ── Theme-aware color tokens (RGB CSS vars) ─────────────────────── */
@@ -60,11 +61,19 @@ export default {
 
       /* ── Shadows ─────────────────────────────────────────────────────── */
       boxShadow: {
+        subtle:     '0 1px 2px 0 rgb(0 0 0 / 0.04)',
         card:       '0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07)',
         'card-hover':'0 4px 16px 0 rgb(0 0 0 / 0.12), 0 2px 4px -1px rgb(0 0 0 / 0.08)',
         elevated:   '0 8px 24px -4px rgb(0 0 0 / 0.15), 0 2px 8px -2px rgb(0 0 0 / 0.1)',
         glow:       '0 0 20px -4px rgb(var(--accent) / 0.5)',
         'glow-sm':  '0 0 10px -2px rgb(var(--accent) / 0.4)',
+        glass:      '0 8px 32px 0 rgba(0, 0, 0, 0.08)',
+      },
+
+      /* ── Transition Timing Functions ─────────────────────────────────── */
+      transitionTimingFunction: {
+        'smooth': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
 
       /* ── Keyframes & Animations ──────────────────────────────────────── */
@@ -76,10 +85,10 @@ export default {
         shimmer:    { from: { transform: 'translateX(-100%)' }, to: { transform: 'translateX(100%)' } },
       },
       animation: {
-        'fade-in':  'fade-in 0.2s ease-out',
-        'slide-up': 'slide-up 0.25s ease-out',
-        'slide-in': 'slide-in 0.2s ease-out',
-        'scale-in': 'scale-in 0.2s ease-out',
+        'fade-in':  'fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        'slide-up': 'slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+        'slide-in': 'slide-in 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        'scale-in': 'scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         shimmer:    'shimmer 1.5s infinite',
       },
 
