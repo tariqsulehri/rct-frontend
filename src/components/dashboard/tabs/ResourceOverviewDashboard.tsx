@@ -1,13 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   Sparkles,
   TrendingUp,
   Cpu,
   MessageSquare,
   Award,
-  Send,
   ArrowUpRight,
-  Layers,
   Calendar as CalendarIcon,
   CheckCircle2,
   BarChart2,
@@ -84,8 +82,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   onNavigate,
 }) => {
   const chartTheme = useChartTheme();
-  const [copilotQuery, setCopilotQuery] = useState('');
-  const [copilotResponse, setCopilotResponse] = useState<string | null>(null);
+  // No copilot state needed — AI panel removed in favour of expanded graphs
 
   const { data: overviewCompData } = useCompetencyScores();
   const { data: overviewGapData } = useGapMatrix();
@@ -203,21 +200,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
     });
   }, [latestBehav, behavBenchmark, behavLevel]);
 
-  // 4. Overall 3-Pillar Competency Donut Data (Technical, Communication, Behavioral)
-  const threePillarDonutData = useMemo(() => [
-    { name: 'Technical', value: myScore || 78, required: myRequired || 80, color: chartTheme.primary },
-    { name: 'Communication', value: commScorePct, required: commReqPct, color: chartTheme.secondary },
-    { name: 'Behavioral', value: behavScorePct, required: behavReqPct, color: chartTheme.warning },
-  ], [myScore, myRequired, commScorePct, commReqPct, behavScorePct, behavReqPct, chartTheme]);
-
-  const handleCopilotSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!copilotQuery.trim()) return;
-    setCopilotResponse(
-      `Based on your ${formatGrade(currentGrade)} → ${formatGrade(targetGrade)} trajectory: You are on track with ${skillsCompletionPct}% readiness. Recommended immediate focus: Validate SRE & Reliability competency to close your remaining gap.`
-    );
-    setCopilotQuery('');
-  };
+  // 4. [removed — 3-Pillar donut and AI copilot panel replaced by expanded graphs]
 
   return (
     <div className="space-y-3 animate-slide-up pb-4 text-text-1 font-sans">
@@ -429,7 +412,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
         {/* ── GRAPH 1: Technical Domains — Horizontal Progress Bars + Donut ──────── */}
-        <div className="h-[285px] sm:h-[295px] rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-2.5">
+        <div className="min-h-[420px] rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-2.5">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -463,8 +446,8 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             </div>
           </div>
 
-          {/* Horizontal bars — one per domain */}
-          <div className="flex flex-col gap-1.5 flex-1 justify-center">
+          {/* Horizontal bars — one per domain (scrollable if many) */}
+          <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-0.5">
             {technicalChartData.map((d, i) => (
               <div key={i} className="flex items-center gap-2">
                 <span className="text-[8.5px] text-text-3 w-11 truncate shrink-0" title={d.fullLabel}>{d.label}</span>
@@ -500,7 +483,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
         </div>
 
         {/* ── GRAPH 2: CEFR Language — Horizontal Progress Bars + Donut ────────── */}
-        <div className="h-[285px] sm:h-[295px] rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-2.5">
+        <div className="min-h-[420px] rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-2.5">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -532,8 +515,8 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             </div>
           </div>
 
-          {/* Horizontal bars — one per CEFR competency */}
-          <div className="flex flex-col gap-1.5 flex-1 justify-center">
+          {/* Horizontal bars — one per CEFR competency (scrollable) */}
+          <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-0.5">
             {commChartData.map((d, i) => (
               <div key={i} className="flex items-center gap-2">
                 <span className="text-[8.5px] text-text-3 w-11 truncate shrink-0" title={d.fullLabel}>{d.label}</span>
@@ -567,7 +550,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
         </div>
 
         {/* ── GRAPH 3: Behavioral 11-Pillar — Horizontal Progress Bars + Donut ───── */}
-        <div className="h-[285px] sm:h-[295px] rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-2">
+        <div className="min-h-[420px] rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-2">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -646,238 +629,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
 
       </div>
 
-
-
-      {/* ── ROW 2 (3-COLUMNS): AI COPILOT (LEFT) + 3-PILLAR DONUT BREAKDOWN (CENTER) + MILESTONES (RIGHT) (UNIFORM HEIGHT) ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* BOTTOM LEFT: AI Career & Capability Copilot */}
-        <div className="h-[285px] sm:h-[295px] rounded-2xl p-4 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-2.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Sparkles size={15} className="text-accent" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
-                How can I help you?
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => onNavigate('assessments')}
-              className="p-1 rounded-lg text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors"
-            >
-              <ArrowUpRight size={14} />
-            </button>
-          </div>
-
-          <div>
-            <div className="text-xs font-bold text-text-2">AI Progression Summary</div>
-            <p className="text-xs text-text-3 leading-relaxed mt-1 line-clamp-3">
-              {copilotResponse ||
-                `Trajectory for ${formatGrade(currentGrade)} → ${formatGrade(
-                  targetGrade
-                )} is active. Technical is stable at ${myScore}%, CEFR is verified at ${commLevel}, and Behavioral stands at ${behavLevel}.`}
-            </p>
-          </div>
-
-          {/* 2 Mini Stat Blocks */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-surface-2 p-2 rounded-xl border border-border">
-              <div className="text-[10px] text-text-3">Skills Verified</div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-sm font-black font-mono tabular-nums text-text-1">{myMeets}</span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-300">
-                  Active
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-surface-2 p-2 rounded-xl border border-border">
-              <div className="text-[10px] text-text-3">Gate Status</div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-sm font-black font-mono tabular-nums text-text-1">3/3</span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent-soft text-accent-txt">
-                  Ready
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Copilot Input Prompt */}
-          <form onSubmit={handleCopilotSubmit} className="relative">
-            <input
-              type="text"
-              value={copilotQuery}
-              onChange={(e) => setCopilotQuery(e.target.value)}
-              placeholder="Ask Career AI anything..."
-              className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2 text-xs text-text-1 placeholder:text-text-3 focus:outline-none focus:border-accent pr-9 transition-colors"
-            />
-            <button
-              type="submit"
-              className="absolute right-2.5 top-2.5 text-text-3 hover:text-accent transition-colors"
-            >
-              <Send size={13} />
-            </button>
-          </form>
-        </div>
-
-        {/* BOTTOM CENTER: OVERALL 3-PILLAR REQUIRED VS ACHIEVED DONUT BREAKDOWN */}
-        <div className="h-[285px] sm:h-[295px] rounded-2xl p-4 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
-              Competency Distribution
-            </h2>
-            <span className="text-[10px] font-bold text-text-3 bg-surface-2 px-2.5 py-0.5 rounded-md border border-border">
-              Cycle 2026 ▾
-            </span>
-          </div>
-
-          {/* Donut Chart & 3-Pillar Comparative Legend (Achieved vs Required) */}
-          <div className="flex items-center justify-between gap-3 py-1">
-            {/* Left Donut */}
-            <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={threePillarDonutData}
-                    innerRadius={30}
-                    outerRadius={46}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {threePillarDonutData.map((entry, index) => (
-                      <Cell key={`donut-cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute flex flex-col items-center justify-center text-center">
-                <span className="text-sm font-black font-mono tabular-nums text-text-1">{myScore}%</span>
-                <span className="text-[8px] uppercase tracking-wider text-text-3">Total</span>
-              </div>
-            </div>
-
-            {/* Right 3-Pillar Breakdown Rows */}
-            <div className="space-y-2 text-xs flex-1 min-w-0">
-              {/* Pillar 1: Technical */}
-              <div className="flex items-center justify-between gap-1">
-                <div className="flex items-center gap-1.5 truncate">
-                  <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
-                  <span className="text-text-2 font-medium truncate text-[11px]">Technical</span>
-                </div>
-                <div className="flex items-center gap-1 shrink-0 font-mono tabular-nums text-[11px]">
-                  <strong className="text-indigo-600 dark:text-indigo-400">{myScore}%</strong>
-                  <span className="text-text-3 text-[10px]">/ {myRequired}%</span>
-                  <span className={`px-1 py-0.2 rounded text-[9px] font-bold ${technicalReady ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300' : 'bg-amber-500/20 text-amber-600 dark:text-amber-300'}`}>
-                    {technicalReady ? 'Met' : 'Gap'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Pillar 2: CEFR Communication */}
-              <div className="flex items-center justify-between gap-1">
-                <div className="flex items-center gap-1.5 truncate">
-                  <span className="w-2 h-2 rounded-full bg-cyan-500 shrink-0" />
-                  <span className="text-text-2 font-medium truncate text-[11px]">CEFR Comm</span>
-                </div>
-                <div className="flex items-center gap-1 shrink-0 font-mono tabular-nums text-[11px]">
-                  <strong className="text-cyan-600 dark:text-cyan-400">{commLevel}</strong>
-                  <span className="text-text-3 text-[10px]">/ {commBenchmark}</span>
-                  <span className={`px-1 py-0.2 rounded text-[9px] font-bold ${commReady ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300' : 'bg-amber-500/20 text-amber-600 dark:text-amber-300'}`}>
-                    {commReady ? 'Met' : 'Gap'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Pillar 3: Behavioral Leadership */}
-              <div className="flex items-center justify-between gap-1">
-                <div className="flex items-center gap-1.5 truncate">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                  <span className="text-text-2 font-medium truncate text-[11px]">Behavioral</span>
-                </div>
-                <div className="flex items-center gap-1 shrink-0 font-mono tabular-nums text-[11px]">
-                  <strong className="text-amber-600 dark:text-amber-400">{behavLevel}</strong>
-                  <span className="text-text-3 text-[10px]">/ {behavBenchmark}</span>
-                  <span className={`px-1 py-0.2 rounded text-[9px] font-bold ${behavReady ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300' : 'bg-amber-500/20 text-amber-600 dark:text-amber-300'}`}>
-                    {behavReady ? 'Met' : 'Gap'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Insight Callout */}
-          <div className="text-[10.5px] text-text-3 leading-normal pt-2 border-t border-border">
-            💡 Overall 3-Pillar Score: Technical ({myScore}%), CEFR ({commLevel}), Behavioral ({behavLevel}) vs Required Target benchmarks.
-          </div>
-        </div>
-
-        {/* BOTTOM RIGHT: Promotion Milestones & Gate Verification */}
-        <div className="h-[285px] sm:h-[295px] rounded-2xl p-4 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
-              Promotion Milestones
-            </h2>
-            <div className="flex items-center gap-1">
-              <div className="w-6 h-6 rounded-lg bg-accent-soft text-accent flex items-center justify-center border border-accent/30">
-                <Layers size={13} />
-              </div>
-            </div>
-          </div>
-
-          {/* Segmented Yellow/Gold Progress Bar */}
-          <div className="bg-surface-2 p-2 px-2.5 rounded-xl border border-border flex items-center justify-between gap-1.5">
-            <span className="text-[10px] font-bold text-text-3 uppercase tracking-wider">Gate Score</span>
-            <div className="flex items-center gap-0.5">
-              {[...Array(14)].map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-1.5 h-3 rounded-xs ${
-                    i < 11 ? 'bg-amber-500 dark:bg-amber-400 shadow-[0_0_3px_rgba(251,191,36,0.5)]' : 'bg-surface border border-border'
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="text-xs font-mono tabular-nums font-black text-amber-600 dark:text-amber-400">{skillsCompletionPct}%</span>
-          </div>
-
-          {/* 3 Actionable Gate Items */}
-          <div className="space-y-1.5 text-xs">
-            <div className="flex items-center justify-between text-text-2">
-              <span className="text-text-3 text-[11px]">Technical Skills</span>
-              <span className="inline-flex items-center gap-1 font-bold text-amber-600 dark:text-amber-400 text-[11px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                {myMeets} / {myTotal} Met
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between text-text-2">
-              <span className="text-text-3 text-[11px]">CEFR Communication</span>
-              <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
-                <CefrLevelBadge level={commLevel} size="sm" />
-                <span className="text-[10px]">Verified</span>
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between text-text-2">
-              <span className="text-text-3 text-[11px]">Behavioral Mastery</span>
-              <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
-                <BehavioralLevelBadge level={behavLevel} size="sm" />
-                <span className="text-[10px]">Verified</span>
-              </span>
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-border flex items-center justify-between text-xs">
-            <button
-              type="button"
-              onClick={() => onNavigate('assessments')}
-              className="font-bold text-text-3 hover:text-text-1 inline-flex items-center gap-1 transition-colors"
-            >
-              <span>View all milestones</span>
-              <ArrowUpRight size={12} />
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
+

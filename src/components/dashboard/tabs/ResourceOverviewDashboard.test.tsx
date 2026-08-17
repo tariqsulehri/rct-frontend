@@ -143,25 +143,37 @@ describe('ResourceOverviewDashboard (SSR Rendering)', () => {
     expect(html).toContain('Leadership (5)');
   });
 
-  it('renders AI Career Copilot and quick guidance prompts', () => {
+  it('renders KPI stats bar with all 5 focused metrics (replaces removed AI Copilot panel)', () => {
     const html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
 
-    expect(html).toContain('How can I help you?');
-    expect(html).toContain('AI Progression Summary');
-    expect(html).toContain('Ask Career AI anything...');
-    expect(html).toContain('Skills Verified');
+    // KPI stats bar \u2014 must show all 5 KPI tiles
+    expect(html).toContain('Readiness');
+    expect(html).toContain('Technical');
+    expect(html).toContain('CEFR Lang');
+    expect(html).toContain('Behavioral');
+    expect(html).toContain('Skills Gate');
+    // Promotion gate trajectory shown in header
+    expect(html).toContain('Assess Skills');
   });
 
-  it('renders Competency Donut Distribution and Promotion Milestones with segmented score bar', () => {
+  it('renders expanded 3-graph layout with scrollable bars and no bottom card row (Donut/Milestones removed)', () => {
     const html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
 
-    expect(html).toContain('Competency Distribution');
-    expect(html).toContain('Promotion Milestones');
-    expect(html).toContain('Gate Score');
-    expect(html).toContain('View all milestones');
+    // All 3 graph cards must be present with scrollable bars
+    expect(html).toContain('1. Technical Domains');
+    expect(html).toContain('2. CEFR Language');
+    expect(html).toContain('3. Behavioral (11 Pillars)');
+    // Footer legend elements
+    expect(html).toContain('Skills Grid');
+    expect(html).toContain('CEFR Rubric');
+    expect(html).toContain('Core (6)');
+    expect(html).toContain('Leadership (5)');
+    // The removed bottom cards must NOT appear
+    expect(html).not.toContain('Competency Distribution');
+    expect(html).not.toContain('Promotion Milestones');
   });
 });
