@@ -21,6 +21,11 @@ import {
   PieChart,
   Pie,
   Cell,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
 } from 'recharts';
 import { type User } from '@/store/authStore';
 import { useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
@@ -38,6 +43,29 @@ export interface ResourceOverviewDashboardProps {
   user: User | null;
   onNavigate: (t: TabType) => void;
 }
+
+const BEHAVIORAL_11_COMPETENCIES = [
+  { key: 'ownership', name: 'Ownership', fullName: 'Ownership & Accountability', type: 'core' },
+  { key: 'collaboration', name: 'Collaboration', fullName: 'Collaboration & Influence', type: 'core' },
+  { key: 'customer_business', name: 'Customer Focus', fullName: 'Customer & Business Focus', type: 'core' },
+  { key: 'communication', name: 'Communication', fullName: 'Communication', type: 'core' },
+  { key: 'adaptability', name: 'Adaptability', fullName: 'Adaptability & Learning', type: 'core' },
+  { key: 'integrity', name: 'Integrity', fullName: 'Integrity & Judgment', type: 'core' },
+  { key: 'develops_people', name: 'Develops People', fullName: 'Develops People', type: 'leadership' },
+  { key: 'strategic_thinking', name: 'Strategic Thinking', fullName: 'Strategic Thinking', type: 'leadership' },
+  { key: 'drives_change', name: 'Drives Change', fullName: 'Drives Change', type: 'leadership' },
+  { key: 'decision_making', name: 'Decision Making', fullName: 'Decision-Making', type: 'leadership' },
+  { key: 'builds_teams', name: 'Builds Teams', fullName: 'Builds & Leads Teams', type: 'leadership' },
+];
+
+const BEHAVIORAL_LEVEL_NUMERIC: Record<string, number> = {
+  L1: 20,
+  L2: 40,
+  L3: 60,
+  L4: 80,
+  L5: 100,
+  NA: 0,
+};
 
 export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps> = ({
   user,
@@ -123,15 +151,26 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
     { label: 'Culture', fullLabel: 'Cross-Cultural', score: 83, benchmark: 67, highlight: false },
   ], []);
 
-  // 3. Behavioral Leadership Chart Data
-  const behavChartData = useMemo(() => [
-    { label: 'Own', fullLabel: 'Ownership & Accountability', score: 80, benchmark: 60, highlight: true },
-    { label: 'Collab', fullLabel: 'Collaboration', score: 80, benchmark: 60, highlight: false },
-    { label: 'Problem', fullLabel: 'Problem Solving', score: 80, benchmark: 60, highlight: false },
-    { label: 'Mentor', fullLabel: 'Mentorship', score: 60, benchmark: 60, highlight: false },
-    { label: 'Deliver', fullLabel: 'Delivery Excellence', score: 80, benchmark: 60, highlight: false },
-    { label: 'Ethics', fullLabel: 'Ethical Integrity', score: 80, benchmark: 60, highlight: false },
-  ], []);
+  // 3. Behavioral 11-Item Radar Chart Data (6 Core + 5 Leadership)
+  const behavRadarData = useMemo(() => {
+    const defaultBenchmark = BEHAVIORAL_LEVEL_NUMERIC[behavBenchmark] || 60;
+    const defaultAssessed = BEHAVIORAL_LEVEL_NUMERIC[behavLevel] || 80;
+    const perComp = latestBehav?.result?.perCompetency ?? [];
+
+    return BEHAVIORAL_11_COMPETENCIES.map((comp) => {
+      const match = perComp.find((p) => p.competencyKey === comp.key || p.competencyKey.toLowerCase().includes(comp.key.toLowerCase()));
+      const score = match?.level ? BEHAVIORAL_LEVEL_NUMERIC[match.level] || defaultAssessed : defaultAssessed;
+      const benchmark = match?.expectedLevel ? BEHAVIORAL_LEVEL_NUMERIC[match.expectedLevel] || defaultBenchmark : defaultBenchmark;
+
+      return {
+        name: comp.name,
+        fullName: comp.fullName,
+        type: comp.type,
+        score: score,
+        benchmark: benchmark,
+      };
+    });
+  }, [latestBehav, behavBenchmark, behavLevel]);
 
   // 4. Overall 3-Pillar Competency Donut Data (Technical, Communication, Behavioral)
   const threePillarDonutData = useMemo(() => [
@@ -334,13 +373,13 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           </div>
         </div>
 
-        {/* GRAPH 3: Behavioral Leadership Framework */}
-        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
+        {/* GRAPH 3: Behavioral 11-Item Competencies Radar Chart */}
+        <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Award size={13} className="text-amber-400 shrink-0" />
               <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
-                3. Behavioral Pillars
+                3. Behavioral Radar (11 Pillars)
               </h2>
             </div>
             <div className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400">
@@ -348,53 +387,61 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             </div>
           </div>
 
-          <div className="h-36 w-full">
+          {/* 11-Point Radar Chart */}
+          <div className="h-36 w-full flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={behavChartData} margin={{ top: 8, right: 5, left: -30, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  stroke="#71717a"
-                  fontSize={9.5}
+              <RadarChart data={behavRadarData} margin={{ top: 5, right: 12, bottom: 5, left: 12 }}>
+                <PolarGrid stroke="#27272a" />
+                <PolarAngleAxis
+                  dataKey="name"
+                  stroke="#a1a1aa"
+                  fontSize={7.5}
                   tickLine={false}
-                  axisLine={{ stroke: '#27272a' }}
                 />
-                <YAxis
-                  stroke="#71717a"
-                  fontSize={9.5}
-                  tickLine={false}
-                  axisLine={false}
-                  domain={[0, 100]}
-                  tickFormatter={(val) => `${val}%`}
+                <PolarRadiusAxis domain={[0, 100]} stroke="#3f3f46" tick={false} axisLine={false} />
+                <Radar
+                  name="Assessed Level"
+                  dataKey="score"
+                  stroke="#a855f7"
+                  fill="#a855f7"
+                  fillOpacity={0.4}
+                />
+                <Radar
+                  name="Role Benchmark"
+                  dataKey="benchmark"
+                  stroke="#f59e0b"
+                  fill="#f59e0b"
+                  fillOpacity={0.15}
+                  strokeDasharray="2 2"
                 />
                 <Tooltip
                   contentStyle={getChartTooltipStyle(chartTheme)}
                   formatter={(val: number) => [`${val}%`, '']}
                   labelFormatter={(_label, payload) =>
-                    payload?.[0]?.payload?.fullLabel ? `Pillar: ${payload[0].payload.fullLabel}` : 'Pillar'
+                    payload?.[0]?.payload?.fullName ? `Pillar: ${payload[0].payload.fullName}` : 'Pillar'
                   }
                 />
-                <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={20}>
-                  {behavChartData.map((entry, index) => (
-                    <Cell
-                      key={`behav-cell-${index}`}
-                      fill={entry.highlight ? '#f59e0b' : '#3f3f46'}
-                      className={entry.highlight ? 'filter drop-shadow-[0_0_6px_rgba(245,158,11,0.6)]' : ''}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
+              </RadarChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/80">
-            <span>6 Core Pillars (Target: {behavBenchmark})</span>
+          <div className="flex items-center justify-between text-[9.5px] text-zinc-400 pt-1 border-t border-zinc-800/80">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-purple-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                Assessed
+              </span>
+              <span className="flex items-center gap-1 text-amber-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                Benchmark ({behavBenchmark})
+              </span>
+            </div>
             <button
               type="button"
               onClick={() => onNavigate('assessments')}
               className="font-bold text-amber-400 hover:underline inline-flex items-center gap-0.5"
             >
-              <span>Behavior Matrix</span>
+              <span>Matrix</span>
               <ArrowUpRight size={10} />
             </button>
           </div>

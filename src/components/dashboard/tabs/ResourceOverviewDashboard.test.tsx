@@ -128,17 +128,18 @@ describe('ResourceOverviewDashboard (SSR Rendering)', () => {
     expect(html).toContain('Assess Skills');
   });
 
-  it('renders all three graphs simultaneously (Technical, CEFR Language, Behavioral Pillars)', () => {
+  it('renders all three graphs simultaneously (Technical, CEFR Language, Behavioral 11-Item Radar)', () => {
     const html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
 
     expect(html).toContain('1. Technical Domains');
     expect(html).toContain('2. CEFR Language');
-    expect(html).toContain('3. Behavioral Pillars');
+    expect(html).toContain('3. Behavioral Radar (11 Pillars)');
     expect(html).toContain('Skills Grid');
     expect(html).toContain('CEFR Rubric');
-    expect(html).toContain('Behavior Matrix');
+    expect(html).toContain('Assessed');
+    expect(html).toContain('Benchmark');
   });
 
   it('renders AI Career Copilot and quick guidance prompts', () => {
