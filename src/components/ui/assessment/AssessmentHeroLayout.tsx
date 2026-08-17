@@ -113,7 +113,7 @@ export const AssessmentHeroLayout: React.FC<AssessmentHeroLayoutProps> = ({
                   borderRadius: '0.75rem',
                   boxShadow: '0 8px 24px -4px rgba(0,0,0,0.15)',
                 }}
-                formatter={(val: any, name: any) => [`${val}`, name]}
+                formatter={(val: unknown, name: unknown) => [String(val ?? ''), String(name ?? '')]}
               />
               <Legend
                 iconSize={8}

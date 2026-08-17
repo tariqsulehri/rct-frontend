@@ -8,7 +8,8 @@ import {
 import { useAuthStore, type User } from '@/store/authStore';
 import { TeamRoster } from '@/components/TeamRoster';
 import { PendingApprovalsPanel } from '@/components/PendingApprovalsPanel';
-import { ConfigSection, CONFIG_CATEGORIES, type ConfigTab } from '@/components/config/ConfigSection';
+import { ConfigSection } from '@/components/config/ConfigSection';
+import { CONFIG_CATEGORIES, type ConfigTab } from '@/components/config/configCategories';
 import { ReportsSection } from '@/components/reports/ReportsSection';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { queryClient } from '@/lib/queryClient';
@@ -582,7 +583,7 @@ export const DashboardPage: React.FC = () => {
               <div className="animate-slide-up w-full">
                 <ReportsSection
                   activeTab={activeReportTab}
-                  onSelectTab={(tab) => setActiveReportTab(tab)}
+                  onSelectTab={(tab: ReportTabId) => setActiveReportTab(tab)}
                 />
               </div>
             )}
@@ -591,7 +592,7 @@ export const DashboardPage: React.FC = () => {
               <div className="animate-slide-up w-full">
                 <ConfigSection
                   activeTab={activeConfigTab}
-                  onTabChange={(tab) => setActiveConfigTab(tab)}
+                  onTabChange={(tab: ConfigTab) => setActiveConfigTab(tab)}
                 />
               </div>
             )}
