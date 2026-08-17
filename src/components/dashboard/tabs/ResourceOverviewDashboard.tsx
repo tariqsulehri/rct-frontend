@@ -39,8 +39,6 @@ export interface ResourceOverviewDashboardProps {
   onNavigate: (t: TabType) => void;
 }
 
-const DONUT_COLORS = ['#6366f1', '#06b6d4', '#f59e0b', '#10b981', '#a855f7'];
-
 export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps> = ({
   user,
   onNavigate,
@@ -72,14 +70,21 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   const myRequired = myGapRow && myGapRow.overall_threshold > 0 ? toPctNullable(myGapRow.overall_threshold) : 80;
   const myTotal = myGapRow?.total_with_threshold ?? 20;
   const myMeets = myGapRow?.meets_count ?? 18;
+  const technicalReady = myScore !== null && myRequired !== null && myScore >= myRequired;
 
   // CEFR Communication calculations
   const commLevel = (latestComm?.overallCefr as CefrLevelCode) || 'B2';
-  const commBenchmark = latestComm?.org_level_key || 'B2';
+  const commBenchmark = (latestComm?.org_level_key as string) || 'B2';
+  const commScorePct = commLevel === 'C2' ? 100 : commLevel === 'C1' ? 83 : commLevel === 'B2' ? 67 : commLevel === 'B1' ? 50 : commLevel === 'A2' ? 33 : 17;
+  const commReqPct = commBenchmark === 'C2' ? 100 : commBenchmark === 'C1' ? 83 : commBenchmark === 'B2' ? 67 : commBenchmark === 'B1' ? 50 : commBenchmark === 'A2' ? 33 : 17;
+  const commReady = latestComm?.communicationReady ?? (commScorePct >= commReqPct);
 
   // Behavioral calculations
   const behavLevel = (latestBehav?.result?.overallProficiency as BehavioralLevelCode) || 'L4';
-  const behavBenchmark = latestBehav?.gradeKey || 'L3';
+  const behavBenchmark = (latestBehav?.gradeKey as string) || 'L3';
+  const behavScorePct = behavLevel === 'L5' ? 100 : behavLevel === 'L4' ? 80 : behavLevel === 'L3' ? 60 : behavLevel === 'L2' ? 40 : 20;
+  const behavReqPct = behavBenchmark === 'L5' ? 100 : behavBenchmark === 'L4' ? 80 : behavBenchmark === 'L3' ? 60 : behavBenchmark === 'L2' ? 40 : 20;
+  const behavReady = latestBehav?.result?.behavioralReady ?? (behavScorePct >= behavReqPct);
 
   // Grade Information
   const currentGrade = myCompRow?.current_grade || user?.currentGrade || 'G14';
@@ -128,14 +133,12 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
     { label: 'Ethics', fullLabel: 'Ethical Integrity', score: 80, benchmark: 60, highlight: false },
   ], []);
 
-  // 4. Donut Chart Data
-  const donutData = useMemo(() => [
-    { name: 'Cloud & Infra', value: 30 },
-    { name: 'CI/CD & DevOps', value: 25 },
-    { name: 'CEFR English', value: 20 },
-    { name: 'Behavioral', value: 15 },
-    { name: 'SRE & Quality', value: 10 },
-  ], []);
+  // 4. Overall 3-Pillar Competency Donut Data (Technical, Communication, Behavioral)
+  const threePillarDonutData = useMemo(() => [
+    { name: 'Technical', value: myScore || 78, required: myRequired || 80, color: '#6366f1' },
+    { name: 'Communication', value: commScorePct, required: commReqPct, color: '#06b6d4' },
+    { name: 'Behavioral', value: behavScorePct, required: behavReqPct, color: '#f59e0b' },
+  ], [myScore, myRequired, commScorePct, commReqPct, behavScorePct, behavReqPct]);
 
   const handleCopilotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -398,7 +401,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
         </div>
       </div>
 
-      {/* ── ROW 2 (3-COLUMNS): AI COPILOT (LEFT) + DONUT BREAKDOWN (CENTER) + MILESTONES (RIGHT) ── */}
+      {/* ── ROW 2 (3-COLUMNS): AI COPILOT (LEFT) + 3-PILLAR DONUT BREAKDOWN (CENTER) + MILESTONES (RIGHT) ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
         {/* BOTTOM LEFT: AI Career & Capability Copilot */}
         <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-2.5">
@@ -469,7 +472,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           </form>
         </div>
 
-        {/* BOTTOM CENTER: Donut / Multi-Segment Competency Breakdown */}
+        {/* BOTTOM CENTER: OVERALL 3-PILLAR REQUIRED VS ACHIEVED DONUT BREAKDOWN */}
         <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
@@ -480,20 +483,21 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             </span>
           </div>
 
-          {/* Donut Chart & Legend */}
-          <div className="flex items-center justify-between gap-2 py-0.5">
+          {/* Donut Chart & 3-Pillar Comparative Legend (Achieved vs Required) */}
+          <div className="flex items-center justify-between gap-3 py-1">
+            {/* Left Donut */}
             <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={donutData}
+                    data={threePillarDonutData}
                     innerRadius={26}
                     outerRadius={40}
-                    paddingAngle={3}
+                    paddingAngle={4}
                     dataKey="value"
                   >
-                    {donutData.map((_entry, index) => (
-                      <Cell key={`donut-cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                    {threePillarDonutData.map((entry, index) => (
+                      <Cell key={`donut-cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                 </PieChart>
@@ -504,29 +508,58 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
               </div>
             </div>
 
-            <div className="space-y-1 text-[9.5px] text-zinc-400 min-w-0">
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-                <span className="truncate">Cloud &amp; Infra</span>
+            {/* Right 3-Pillar Breakdown Rows */}
+            <div className="space-y-1.5 text-[10.5px] flex-1 min-w-0">
+              {/* Pillar 1: Technical */}
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1.5 truncate">
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                  <span className="text-zinc-300 font-medium truncate">Technical</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
+                  <strong className="text-indigo-400">{myScore}%</strong>
+                  <span className="text-zinc-500">/ {myRequired}%</span>
+                  <span className={`px-1 rounded text-[8.5px] font-bold ${technicalReady ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                    {technicalReady ? 'Met' : 'Gap'}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0" />
-                <span className="truncate">CI/CD &amp; DevOps</span>
+
+              {/* Pillar 2: CEFR Communication */}
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1.5 truncate">
+                  <span className="w-2 h-2 rounded-full bg-cyan-500 shrink-0" />
+                  <span className="text-zinc-300 font-medium truncate">CEFR Comm</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
+                  <strong className="text-cyan-400">{commLevel}</strong>
+                  <span className="text-zinc-500">/ {commBenchmark}</span>
+                  <span className={`px-1 rounded text-[8.5px] font-bold ${commReady ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                    {commReady ? 'Met' : 'Gap'}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                <span className="truncate">CEFR English</span>
-              </div>
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                <span className="truncate">Behavioral</span>
+
+              {/* Pillar 3: Behavioral Leadership */}
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1.5 truncate">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span className="text-zinc-300 font-medium truncate">Behavioral</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
+                  <strong className="text-amber-400">{behavLevel}</strong>
+                  <span className="text-zinc-500">/ {behavBenchmark}</span>
+                  <span className={`px-1 rounded text-[8.5px] font-bold ${behavReady ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                    {behavReady ? 'Met' : 'Gap'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Insight Callout */}
+          {/* Bottom Insight Callout */}
           <div className="text-[9.5px] text-zinc-400 leading-normal pt-1 border-t border-zinc-800/80">
-            💡 Strength originates in Cloud &amp; CEFR {commLevel}, while CI/CD shows active growth.
+            💡 Overall 3-Pillar Score: Technical ({myScore}%), CEFR ({commLevel}), Behavioral ({behavLevel}) vs Required Target benchmarks.
           </div>
         </div>
 
