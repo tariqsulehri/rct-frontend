@@ -309,7 +309,7 @@ export const BehavioralScoreCard: React.FC<BehavioralScoreCardProps> = ({
                 <PolarGrid stroke={c.grid} />
                 <PolarAngleAxis dataKey="competency" tick={{ fill: c.text, fontSize: 10, fontWeight: 600 }} />
                 <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                <Tooltip contentStyle={tooltipStyle(c)} formatter={(val: any, name: any) => [`${val} cw`, name]} />
+                <Tooltip contentStyle={tooltipStyle(c)} formatter={(val: unknown, name: unknown) => [`${val} cw`, String(name ?? '')]} />
                 <Legend iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: '4px' }} />
                 <Radar name="Assessed Level" dataKey="Assessed" stroke="rgb(99, 102, 241)" fill="rgb(99, 102, 241)" fillOpacity={0.4} />
                 <Radar name="Role Benchmark" dataKey="Target" stroke="rgb(245, 158, 11)" fill="rgb(245, 158, 11)" fillOpacity={0.15} strokeDasharray="4 4" />

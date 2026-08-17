@@ -27,6 +27,7 @@ import {
 } from '@/hooks/useCommunication';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 import { CefrLevelBadge } from './CefrLevelBadge';
 import { ProficiencyLadder, LadderStep } from '@/components/ui/assessment/ProficiencyLadder';
 import { MetricKpiCard } from '@/components/ui/assessment/MetricKpiCard';
@@ -207,14 +208,14 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
 
   const [ratings, setRatings] = useState<
     Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }>
-  >({} as any);
+  >({} as unknown as Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }>);
 
   useEffect(() => {
     const competencies: CompetencyKey[] = [
       'written_clarity', 'spoken_fluency', 'presentation', 'active_listening', 'stakeholder_exec', 'cross_cultural',
     ];
 
-    const initial: Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }> = {} as any;
+    const initial: Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }> = {} as unknown as Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }>;
 
     competencies.forEach((key) => {
       const existingRating = latestAssessment?.ratings?.find((r) => r.competency_key === key);
@@ -334,7 +335,7 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
   const handleResetToBenchmark = () => {
     if (!canEdit) return;
     const competencies: CompetencyKey[] = ['written_clarity', 'spoken_fluency', 'presentation', 'active_listening', 'stakeholder_exec', 'cross_cultural'];
-    const benchmarkDefault: Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }> = {} as any;
+    const benchmarkDefault: Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }> = {} as unknown as Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }>;
     competencies.forEach((key) => {
       const benchmark = config?.targetOverrides?.[orgLevelKey]?.[key] ?? config?.orgLevels?.[orgLevelKey]?.benchmarkCefr ?? 'B2';
       benchmarkDefault[key] = { cefr: benchmark as CefrLevelCode, evidence: ratings[key]?.evidence || '' };
@@ -355,8 +356,8 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
       await refetchLatest();
       setInitialRatingsString(JSON.stringify(ratings));
       toast.success(targetStatus === 'approved' ? `Evaluation saved by ${reviewerTitle}!` : 'Assessment saved as draft.', 'Saved');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || err.message, 'Save Failed');
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to save evaluation'), 'Save Failed');
     }
   };
 

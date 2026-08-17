@@ -20,12 +20,9 @@ export interface ChartThemeTokens {
 }
 
 /**
- * Enterprise Recharts Theme Bridge Hook.
- * Resolves theme-synchronized colors for SVG chart rendering based on active application theme.
+ * Pure theme token resolver function (usable in components and test suites).
  */
-export function useChartTheme(): ChartThemeTokens {
-  const { theme } = useThemeStore();
-
+export function getChartThemeTokens(theme: 'light' | 'dark' | 'midnight'): ChartThemeTokens {
   if (theme === 'midnight') {
     return {
       isDark: true,
@@ -87,6 +84,15 @@ export function useChartTheme(): ChartThemeTokens {
     muted: '#94a3b8',
     domains: ['#6d28d9', '#0284c7', '#0d9488', '#16a34a', '#d97706', '#dc2626', '#7c3aed'],
   };
+}
+
+/**
+ * Enterprise Recharts Theme Bridge Hook.
+ * Resolves theme-synchronized colors for SVG chart rendering based on active application theme.
+ */
+export function useChartTheme(): ChartThemeTokens {
+  const theme = useThemeStore((s) => s.theme);
+  return getChartThemeTokens(theme);
 }
 
 /**

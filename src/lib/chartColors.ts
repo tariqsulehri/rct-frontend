@@ -52,11 +52,15 @@ const MIDNIGHT: ChartPalette = {
   domains: ['#22d3ee','#818cf8','#34d399','#a78bfa','#fbbf24','#f87171','#38bdf8'],
 };
 
-export function useChartColors(): ChartPalette {
-  const theme = useThemeStore((s) => s.theme);
+export function getChartPalette(theme: 'light' | 'dark' | 'midnight' | string): ChartPalette {
   if (theme === 'dark')     return DARK;
   if (theme === 'midnight') return MIDNIGHT;
   return LIGHT;
+}
+
+export function useChartColors(): ChartPalette {
+  const theme = useThemeStore((s) => s.theme);
+  return getChartPalette(theme);
 }
 
 /** Tooltip container style that matches the current theme surface */
