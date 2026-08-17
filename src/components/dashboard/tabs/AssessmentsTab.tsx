@@ -764,24 +764,6 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
       {/* ── Sub-Tab 2: Technical Competencies ──────────────────────────────── */}
       {activeSubTab === 'competencies' && (
         <>
-          {/* Engineers: manage their own skill list */}
-          {!isPrivileged && user?.empCode && (
-            <div className="card p-5 flex items-center justify-between gap-4">
-              <div>
-                <p className="font-semibold text-sm" style={{ color: 'rgb(var(--text-1))' }}>
-                  My Skills
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-3))' }}>
-                  Add or update your skills and tools. Your manager will set skill levels. Your saved rows appear as pending
-                  until approved.
-                </p>
-              </div>
-              <button type="button" onClick={() => setShowSkillEditor(true)} className="btn-primary text-xs shrink-0">
-                Manage My Skills
-              </button>
-            </div>
-          )}
-
           {/* Full competency progress */}
           {competencyRows.length > 0 && (
             <div className="card p-5">
