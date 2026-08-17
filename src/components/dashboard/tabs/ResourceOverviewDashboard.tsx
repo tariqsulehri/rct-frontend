@@ -482,27 +482,37 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             </div>
           </div>
 
-          {/* Horizontal bars — one per domain (scrollable if many) */}
-          <div className="flex flex-col gap-2 flex-1 overflow-y-auto pr-0.5">
+          {/* Horizontal bars — label INSIDE bar (pro inline pattern) */}
+          <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-0.5">
             {technicalChartData.map((d, i) => {
               const barColor = BAR_PALETTE[i % BAR_PALETTE.length];
               const txtColor = BAR_PALETTE_TEXT[i % BAR_PALETTE_TEXT.length];
               return (
               <div key={i} className="flex items-center gap-2">
-                <span className="text-[8.5px] text-text-3 w-11 truncate shrink-0" title={d.fullLabel}>{d.label}</span>
-                <div className="flex-1 relative h-4 rounded-full bg-surface-2 overflow-visible">
+                {/* Bar track — full width, label embedded inside */}
+                <div className="flex-1 relative h-5 rounded-full bg-surface-2 overflow-visible">
                   {/* Achieved fill */}
                   <div
                     className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
                     style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
                   />
+                  {/* Inline label — clipped to bar bounds, always readable via text-shadow */}
+                  <div className="absolute inset-0 rounded-full overflow-hidden z-20 pointer-events-none flex items-center">
+                    <span
+                      className="pl-2.5 text-[9px] font-semibold text-white leading-none whitespace-nowrap overflow-hidden"
+                      style={{ textShadow: '0 1px 3px rgba(0,0,0,0.65)' }}
+                    >
+                      {d.fullLabel}
+                    </span>
+                  </div>
                   {/* Required threshold marker */}
                   <div
-                    className="absolute top-[-3px] bottom-[-3px] w-[2.5px] rounded-full bg-white/90 dark:bg-white/70 shadow-md z-10"
+                    className="absolute top-[-3px] bottom-[-3px] w-[2.5px] rounded-full bg-white shadow-lg z-30"
                     style={{ left: `${Math.min(d.benchmark, 98)}%` }}
                   />
                 </div>
-                <span className={`text-[8px] font-mono shrink-0 w-[52px] text-right tabular-nums ${txtColor} font-bold`}>
+                {/* Value metric */}
+                <span className={`text-[8px] font-mono shrink-0 w-[48px] text-right tabular-nums ${txtColor} font-bold`}>
                   {d.score}%<span className="text-text-3 font-normal">/{d.benchmark}%</span>
                 </span>
               </div>
@@ -555,25 +565,32 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             </div>
           </div>
 
-          {/* Horizontal bars — one per CEFR competency (scrollable) */}
-          <div className="flex flex-col gap-2 flex-1 overflow-y-auto pr-0.5">
+          {/* Horizontal bars — label INSIDE bar (pro inline pattern) */}
+          <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-0.5">
             {commChartData.map((d, i) => {
               const barColor = BAR_PALETTE[(i + 6) % BAR_PALETTE.length];
               const txtColor = BAR_PALETTE_TEXT[(i + 6) % BAR_PALETTE_TEXT.length];
               return (
               <div key={i} className="flex items-center gap-2">
-                <span className="text-[8.5px] text-text-3 w-11 truncate shrink-0" title={d.fullLabel}>{d.label}</span>
-                <div className="flex-1 relative h-4 rounded-full bg-surface-2 overflow-visible">
+                <div className="flex-1 relative h-5 rounded-full bg-surface-2 overflow-visible">
                   <div
                     className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
                     style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
                   />
+                  <div className="absolute inset-0 rounded-full overflow-hidden z-20 pointer-events-none flex items-center">
+                    <span
+                      className="pl-2.5 text-[9px] font-semibold text-white leading-none whitespace-nowrap overflow-hidden"
+                      style={{ textShadow: '0 1px 3px rgba(0,0,0,0.65)' }}
+                    >
+                      {d.fullLabel}
+                    </span>
+                  </div>
                   <div
-                    className="absolute top-[-3px] bottom-[-3px] w-[2.5px] rounded-full bg-white/90 dark:bg-white/70 shadow-md z-10"
+                    className="absolute top-[-3px] bottom-[-3px] w-[2.5px] rounded-full bg-white shadow-lg z-30"
                     style={{ left: `${Math.min(d.benchmark, 98)}%` }}
                   />
                 </div>
-                <span className={`text-[8px] font-mono shrink-0 w-[52px] text-right tabular-nums ${txtColor} font-bold`}>
+                <span className={`text-[8px] font-mono shrink-0 w-[48px] text-right tabular-nums ${txtColor} font-bold`}>
                   {d.score}%<span className="text-text-3 font-normal">/{d.benchmark}%</span>
                 </span>
               </div>
@@ -629,26 +646,35 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             </div>
           </div>
 
-          {/* Horizontal bars — all 11 behavioral pillars (compact, scrollable) */}
-          <div className="flex flex-col gap-[5px] flex-1 overflow-y-auto pr-0.5">
+          {/* Horizontal bars — label INSIDE bar (pro inline pattern) with Core/Leadership dot */}
+          <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-0.5">
             {behavRadarData.map((d, i) => {
               const barColor = BAR_PALETTE[i % BAR_PALETTE.length];
               return (
               <div key={i} className="flex items-center gap-1.5">
-                {/* Type indicator dot */}
-                <span className={`w-1 h-1 rounded-full shrink-0 ${d.type === 'core' ? 'bg-amber-400' : 'bg-purple-400'}`} />
-                <span className="text-[7.5px] text-text-3 w-[50px] truncate shrink-0" title={d.fullName}>{d.name}</span>
-                <div className="flex-1 relative h-3.5 rounded-full bg-surface-2 overflow-visible">
+                {/* Core vs Leadership type dot */}
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.type === 'core' ? 'bg-amber-400' : 'bg-purple-400'}`} />
+                {/* Bar track with embedded full name */}
+                <div className="flex-1 relative h-5 rounded-full bg-surface-2 overflow-visible">
                   <div
                     className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
                     style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
                   />
+                  <div className="absolute inset-0 rounded-full overflow-hidden z-20 pointer-events-none flex items-center">
+                    <span
+                      className="pl-2.5 text-[9px] font-semibold text-white leading-none whitespace-nowrap overflow-hidden"
+                      style={{ textShadow: '0 1px 3px rgba(0,0,0,0.65)' }}
+                    >
+                      {d.fullName}
+                    </span>
+                  </div>
                   <div
-                    className="absolute top-[-3px] bottom-[-3px] w-[2.5px] rounded-full bg-white/90 dark:bg-white/70 shadow-md z-10"
+                    className="absolute top-[-3px] bottom-[-3px] w-[2.5px] rounded-full bg-white shadow-lg z-30"
                     style={{ left: `${Math.min(d.benchmark, 98)}%` }}
                   />
                 </div>
-                <span className={`text-[7px] font-bold font-mono shrink-0 tabular-nums w-5 text-right ${d.score >= d.benchmark ? 'text-emerald-400' : 'text-red-400'}`}>
+                {/* Met / Gap indicator */}
+                <span className={`text-[8px] font-bold font-mono shrink-0 tabular-nums w-4 text-right ${d.score >= d.benchmark ? 'text-emerald-400' : 'text-red-400'}`}>
                   {d.score >= d.benchmark ? '✓' : '↑'}
                 </span>
               </div>
