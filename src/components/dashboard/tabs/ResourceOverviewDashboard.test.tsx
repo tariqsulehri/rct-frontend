@@ -116,52 +116,47 @@ describe('ResourceOverviewDashboard (SSR Rendering)', () => {
     targetGradeTitle: 'Senior DevOps Engineer',
   };
 
-  it('renders Hero Progress Banner with greeting, trajectory grades, and quick actions', () => {
+  it('renders Top Capability Analytics Tile with score, trajectory, and stream switchers', () => {
     const html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
 
-    expect(html).toContain('Test Engineer');
+    expect(html).toContain('Capability Mastery');
     expect(html).toContain('G14');
     expect(html).toContain('G15');
-    expect(html).toContain('Assess Skills');
-  });
-
-  it('renders 4 KPI metrics including Technical, CEFR English, Behavioral, and Promotion Gate', () => {
-    const html = renderToString(
-      <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
-    );
-
-    expect(html).toContain('Technical Score');
-    expect(html).toContain('78%');
-    expect(html).toContain('CEFR English');
-    expect(html).toContain('B2');
+    expect(html).toContain('Technical');
+    expect(html).toContain('CEFR');
     expect(html).toContain('Behavioral');
-    expect(html).toContain('L4');
-    expect(html).toContain('Promotion Gate');
   });
 
-  it('renders all 3 graphs simultaneously (Technical, CEFR Language, Behavioral Pillars)', () => {
+  it('renders Evaluation Cycle Calendar widget and Readiness Index', () => {
     const html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
 
-    expect(html).toContain('1. Technical Domains');
-    expect(html).toContain('2. CEFR Language');
-    expect(html).toContain('3. Behavioral Pillars');
-    expect(html).toContain('Skills Grid');
-    expect(html).toContain('CEFR Rubric');
-    expect(html).toContain('Behavior Matrix');
+    expect(html).toContain('Evaluation Cycle 2026');
+    expect(html).toContain('Readiness Index');
   });
 
-  it('renders Milestone Readiness and prerequisite gate status checklist', () => {
+  it('renders AI Career Copilot and quick guidance prompts', () => {
     const html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
 
-    expect(html).toContain('Overall Promotion Gate &amp; Readiness');
-    expect(html).toContain('Technical:');
-    expect(html).toContain('CEFR:');
-    expect(html).toContain('Behavioral:');
+    expect(html).toContain('How can I help you?');
+    expect(html).toContain('AI Progression Summary');
+    expect(html).toContain('Ask Career AI anything...');
+    expect(html).toContain('Skills Verified');
+  });
+
+  it('renders Competency Donut Distribution and Promotion Milestones with segmented score bar', () => {
+    const html = renderToString(
+      <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
+    );
+
+    expect(html).toContain('Competency Distribution');
+    expect(html).toContain('Promotion Milestones');
+    expect(html).toContain('Gate Score');
+    expect(html).toContain('View all milestones');
   });
 });

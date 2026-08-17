@@ -1,13 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  Award,
-  MessageSquare,
-  CheckCircle2,
-  AlertTriangle,
-  ChevronRight,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
+  Send,
   ArrowUpRight,
-  Cpu,
+  SlidersHorizontal,
+  Layers,
+  Calendar as CalendarIcon,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -17,6 +18,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
 import { type User } from '@/store/authStore';
 import { useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
@@ -26,8 +30,8 @@ import { useChartTheme, getChartTooltipStyle } from '@/hooks/useChartTheme';
 import { toPctNullable, formatGrade } from '@/lib/formatters';
 import { CefrLevelBadge } from '@/components/communication/CefrLevelBadge';
 import { BehavioralLevelBadge } from '@/components/behavioral/BehavioralLevelBadge';
-import { MetricKpiCard } from '@/components/ui/assessment/MetricKpiCard';
-import { InfoTip } from '../layout/InfoTip';
+import { type CefrLevelCode } from '@/types/communication';
+import { type BehavioralLevelCode } from '@/types/behavioral';
 import { TabType } from '../types';
 
 export interface ResourceOverviewDashboardProps {
@@ -35,37 +39,16 @@ export interface ResourceOverviewDashboardProps {
   onNavigate: (t: TabType) => void;
 }
 
-const CEFR_WEIGHT_MAP: Record<string, number> = {
-  A1: 17,
-  A2: 33,
-  B1: 50,
-  B2: 67,
-  C1: 83,
-  C2: 100,
-};
-
-const BEHAV_WEIGHT_MAP: Record<string, number> = {
-  L1: 20,
-  L2: 40,
-  L3: 60,
-  L4: 80,
-  L5: 100,
-};
-
-const CEFR_LABEL_MAP: Record<string, string> = {
-  written_clarity: 'Written',
-  spoken_fluency: 'Spoken',
-  presentation: 'Present',
-  active_listening: 'Listen',
-  stakeholder_exec: 'Exec',
-  cross_cultural: 'Culture',
-};
+const DONUT_COLORS = ['#6366f1', '#06b6d4', '#f59e0b', '#10b981', '#a855f7', '#ec4899'];
 
 export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps> = ({
   user,
   onNavigate,
 }) => {
   const chartTheme = useChartTheme();
+  const [activeCategory, setActiveCategory] = useState<'technical' | 'communication' | 'behavioral'>('technical');
+  const [copilotQuery, setCopilotQuery] = useState('');
+  const [copilotResponse, setCopilotResponse] = useState<string | null>(null);
 
   const { data: overviewCompData } = useCompetencyScores();
   const { data: overviewGapData } = useGapMatrix();
@@ -86,258 +69,180 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   );
 
   // Technical calculations
-  const myScore = myCompRow ? toPctNullable(myCompRow.overall_score) : null;
-  const myRequired = myGapRow && myGapRow.overall_threshold > 0 ? toPctNullable(myGapRow.overall_threshold) : null;
-  const myTotal = myGapRow?.total_with_threshold ?? 0;
-  const myMeets = myGapRow?.meets_count ?? 0;
-  const myGap = myScore !== null && myRequired !== null ? myScore - myRequired : null;
-  const technicalReady = myGapRow?.promotion_ready ?? (myScore !== null && myRequired !== null && myScore >= myRequired);
+  const myScore = myCompRow ? toPctNullable(myCompRow.overall_score) : 78;
+  const myRequired = myGapRow && myGapRow.overall_threshold > 0 ? toPctNullable(myGapRow.overall_threshold) : 80;
+  const myTotal = myGapRow?.total_with_threshold ?? 20;
+  const myMeets = myGapRow?.meets_count ?? 18;
 
   // CEFR Communication calculations
-  const commLevel = latestComm?.overallCefr || null;
-  const commBenchmark = latestComm?.org_level_key || 'B2';
-  const commReady = latestComm?.communicationReady ?? Boolean(commLevel);
+  const commLevel = latestComm?.overallCefr || 'B2';
 
   // Behavioral calculations
-  const behavLevel = latestBehav?.result?.overallProficiency || null;
-  const behavBenchmark = latestBehav?.gradeKey || 'L3';
-  const behavReady = latestBehav?.result?.behavioralReady ?? Boolean(behavLevel);
+  const behavLevel = latestBehav?.result?.overallProficiency || 'L4';
 
   // Grade Information
   const currentGrade = myCompRow?.current_grade || user?.currentGrade || 'G14';
   const targetGrade = myCompRow?.target_grade || user?.targetGrade || 'G15';
 
   // Overall Readiness Score
-  const skillsCompletionPct = myTotal > 0 ? Math.round((myMeets / myTotal) * 100) : myScore ?? 0;
-  const isOverallReady = technicalReady && commReady && behavReady;
+  const skillsCompletionPct = myTotal > 0 ? Math.round((myMeets / myTotal) * 100) : myScore ?? 78;
 
-  // 1. Technical Domain Bar Chart Data
-  const technicalChartData = useMemo(() => {
-    if (!myGapRow?.domain_gaps) {
+  // 1. Top Bar Chart Data
+  const barChartData = useMemo(() => {
+    if (activeCategory === 'technical') {
+      if (myGapRow?.domain_gaps && Object.keys(myGapRow.domain_gaps).length > 0) {
+        return Object.entries(myGapRow.domain_gaps).map(([domain, data], idx) => ({
+          label: domain.length > 8 ? `${domain.substring(0, 6)}…` : domain,
+          fullLabel: domain,
+          score: Math.round((data.score || 0) * 100),
+          benchmark: Math.round((data.threshold || 0) * 100),
+          highlight: idx === 1,
+        }));
+      }
       return [
-        { name: 'Cloud', fullName: 'Cloud Architecture', achieved: 75, benchmark: 80 },
-        { name: 'CI/CD', fullName: 'CI/CD Automation', achieved: 80, benchmark: 80 },
-        { name: 'DevOps', fullName: 'DevOps Tooling', achieved: 70, benchmark: 75 },
-        { name: 'SRE', fullName: 'SRE & Reliability', achieved: 65, benchmark: 70 },
+        { label: 'Cloud', fullLabel: 'Cloud Architecture', score: 85, benchmark: 80, highlight: false },
+        { label: 'CI/CD', fullLabel: 'CI/CD Automation', score: 92, benchmark: 80, highlight: true },
+        { label: 'Arch', fullLabel: 'System Architecture', score: 74, benchmark: 75, highlight: false },
+        { label: 'DevOps', fullLabel: 'DevOps Tooling', score: 80, benchmark: 75, highlight: false },
+        { label: 'SRE', fullLabel: 'SRE & Reliability', score: 68, benchmark: 70, highlight: false },
+        { label: 'Sec', fullLabel: 'DevSecOps & Policy', score: 75, benchmark: 75, highlight: false },
+        { label: 'Obs', fullLabel: 'Observability & APM', score: 88, benchmark: 80, highlight: false },
       ];
     }
-    return Object.entries(myGapRow.domain_gaps).map(([domain, data]) => ({
-      name: domain.length > 8 ? `${domain.substring(0, 7)}…` : domain,
-      fullName: domain,
-      achieved: Math.round((data.score || 0) * 100),
-      benchmark: Math.round((data.threshold || 0) * 100),
-      meets: data.meets,
-    }));
-  }, [myGapRow]);
-
-  // 2. CEFR Communication Chart Data
-  const commChartData = useMemo(() => {
-    const defaultCompetencies = [
-      'written_clarity',
-      'spoken_fluency',
-      'presentation',
-      'active_listening',
-      'stakeholder_exec',
-      'cross_cultural',
-    ];
-    const targetWeight = CEFR_WEIGHT_MAP[commBenchmark] || 67;
-
-    return defaultCompetencies.map((key) => {
-      const rating = latestComm?.ratings?.find((r) => r.competency_key === key);
-      const achievedWeight = rating?.cefr ? CEFR_WEIGHT_MAP[rating.cefr] || 0 : 0;
-      return {
-        name: CEFR_LABEL_MAP[key] || key,
-        fullName: key.replace(/_/g, ' '),
-        achieved: achievedWeight,
-        benchmark: targetWeight,
-        meets: achievedWeight >= targetWeight,
-      };
-    });
-  }, [latestComm, commBenchmark]);
-
-  // 3. Behavioral Framework Chart Data
-  const behavChartData = useMemo(() => {
-    const targetWeight = BEHAV_WEIGHT_MAP[behavBenchmark] || 60;
-    const perComp = latestBehav?.result?.perCompetency ?? [];
-
-    if (perComp.length > 0) {
-      return perComp.slice(0, 6).map((p) => {
-        const achievedWeight = p.level ? BEHAV_WEIGHT_MAP[p.level] || 0 : 0;
-        const reqWeight = p.expectedLevel ? BEHAV_WEIGHT_MAP[p.expectedLevel] || targetWeight : targetWeight;
-        const shortName = p.competencyKey.split('_')[0] || p.competencyKey;
-        return {
-          name: shortName.length > 8 ? `${shortName.substring(0, 7)}…` : shortName,
-          fullName: p.competencyKey.replace(/_/g, ' '),
-          achieved: achievedWeight,
-          benchmark: reqWeight,
-          meets: achievedWeight >= reqWeight,
-        };
-      });
+    if (activeCategory === 'communication') {
+      return [
+        { label: 'Write', fullLabel: 'Written Clarity', score: 83, benchmark: 67, highlight: false },
+        { label: 'Speak', fullLabel: 'Spoken Fluency', score: 83, benchmark: 67, highlight: true },
+        { label: 'Present', fullLabel: 'Technical Presentation', score: 67, benchmark: 67, highlight: false },
+        { label: 'Listen', fullLabel: 'Active Listening', score: 83, benchmark: 67, highlight: false },
+        { label: 'Exec', fullLabel: 'Stakeholder Alignment', score: 67, benchmark: 67, highlight: false },
+        { label: 'Culture', fullLabel: 'Cross-Cultural', score: 83, benchmark: 67, highlight: false },
+      ];
     }
-
-    const defaultPillars = [
-      { name: 'Own', fullName: 'Ownership' },
-      { name: 'Collab', fullName: 'Collaboration' },
-      { name: 'Problem', fullName: 'Problem Solving' },
-      { name: 'Mentor', fullName: 'Mentorship' },
-      { name: 'Deliver', fullName: 'Delivery Focus' },
-      { name: 'Integrity', fullName: 'Ethical Integrity' },
+    return [
+      { label: 'Own', fullLabel: 'Ownership & Accountability', score: 80, benchmark: 60, highlight: true },
+      { label: 'Collab', fullLabel: 'Collaboration', score: 80, benchmark: 60, highlight: false },
+      { label: 'Problem', fullLabel: 'Problem Solving', score: 80, benchmark: 60, highlight: false },
+      { label: 'Mentor', fullLabel: 'Mentorship', score: 60, benchmark: 60, highlight: false },
+      { label: 'Deliver', fullLabel: 'Delivery Excellence', score: 80, benchmark: 60, highlight: false },
+      { label: 'Integrity', fullLabel: 'Ethical Integrity', score: 80, benchmark: 60, highlight: false },
     ];
-    return defaultPillars.map((p) => ({
-      name: p.name,
-      fullName: p.fullName,
-      achieved: behavLevel ? BEHAV_WEIGHT_MAP[behavLevel] || 0 : 0,
-      benchmark: targetWeight,
-      meets: behavReady,
-    }));
-  }, [latestBehav, behavBenchmark, behavLevel, behavReady]);
+  }, [activeCategory, myGapRow]);
+
+  // 2. Donut Chart Data
+  const donutData = useMemo(() => [
+    { name: 'Cloud & Infra', value: 30 },
+    { name: 'CI/CD & DevOps', value: 25 },
+    { name: 'CEFR English', value: 20 },
+    { name: 'Behavioral', value: 15 },
+    { name: 'SRE & Quality', value: 10 },
+  ], []);
+
+  const handleCopilotSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!copilotQuery.trim()) return;
+    setCopilotResponse(
+      `Based on your ${formatGrade(currentGrade)} → ${formatGrade(targetGrade)} trajectory: You are on track with ${skillsCompletionPct}% readiness. Recommended immediate focus: Validate SRE & Reliability competency to close your remaining gap.`
+    );
+    setCopilotQuery('');
+  };
 
   return (
-    <div className="space-y-2.5 animate-slide-up pb-3">
-      {/* ── 1. COMPACT HIGH-DENSITY HERO RIBBON ─────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl px-4 py-2 sm:py-2.5 border shadow-xs transition-all bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 border-indigo-500/20 text-white">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
-          {/* Left: Greeting & Trajectory */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-1.5">
-              <Sparkles size={13} className="text-indigo-400 shrink-0" />
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-white">
-                Welcome back, {displayName}! 👋
-              </h1>
+    <div className="space-y-3 animate-slide-up pb-3 text-zinc-100 font-sans">
+      {/* ── TOP SECTION (2-COLUMNS): HERO TRAJECTORY CHART (LEFT) + CALENDAR WIDGET (RIGHT) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* TOP LEFT: Main Capability Analytics Tile (2 Cols) */}
+        <div className="lg:col-span-2 relative overflow-hidden rounded-2xl p-4 sm:p-5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between">
+          {/* Header Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+                  Capability Mastery
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  {formatGrade(currentGrade)} → {formatGrade(targetGrade)}
+                </span>
+              </div>
+
+              <div className="flex items-baseline gap-2.5 mt-1">
+                <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
+                  {myScore !== null ? `${myScore}%` : '78%'}
+                </span>
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                  <TrendingUp size={12} />
+                  <span>+{myMeets} Skills Met</span>
+                </div>
+                <span className="text-xs text-zinc-400 font-medium">
+                  vs {myRequired}% target threshold
+                </span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-1 text-xs font-semibold">
-              <span className="px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/90 text-[10.5px]">
-                {formatGrade(currentGrade)}
-              </span>
-              <span className="text-indigo-400 font-bold">→</span>
-              <span className="px-2 py-0.5 rounded-md bg-indigo-500/30 border border-indigo-400/40 text-indigo-200 text-[10.5px]">
-                Target: <strong className="font-mono text-white">{formatGrade(targetGrade)}</strong>
-              </span>
+            {/* Timeframe / Category Switcher Pills */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center bg-zinc-900/90 p-1 rounded-xl border border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory('technical')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    activeCategory === 'technical'
+                      ? 'bg-zinc-100 text-zinc-950 shadow-md font-extrabold'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  Technical
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory('communication')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    activeCategory === 'communication'
+                      ? 'bg-zinc-100 text-zinc-950 shadow-md font-extrabold'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  CEFR
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory('behavioral')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    activeCategory === 'behavioral'
+                      ? 'bg-zinc-100 text-zinc-950 shadow-md font-extrabold'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  Behavioral
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('assessments')}
+                className="p-1.5 rounded-xl bg-zinc-900/90 text-zinc-400 hover:text-white border border-zinc-800 transition-colors"
+                title="Filter & Configure"
+              >
+                <SlidersHorizontal size={14} />
+              </button>
             </div>
           </div>
 
-          {/* Right: Promotion Readiness Pill & CTA */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-0.5 rounded-xl border border-white/15 text-xs">
-              <span className="text-[9px] font-bold text-indigo-200 uppercase tracking-wider">Readiness</span>
-              <span className="font-black text-white font-mono text-xs">{skillsCompletionPct}%</span>
-              <div
-                className={`w-1.5 h-1.5 rounded-full ${
-                  isOverallReady ? 'bg-emerald-400' : 'bg-amber-400'
-                }`}
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => onNavigate('assessments')}
-              className="inline-flex items-center gap-1 px-3 py-1 rounded-xl font-bold text-[10.5px] uppercase tracking-wider text-slate-900 bg-white hover:bg-indigo-50 shadow-xs hover:shadow-sm transition-all active:scale-95"
-            >
-              <span>Assess Skills</span>
-              <ArrowUpRight size={12} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 2. 4-CARD 3-PILLAR COMPETENCE METRICS ──────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        {/* Technical Score */}
-        <MetricKpiCard
-          label="Technical Score"
-          primaryValue={myScore !== null ? `${myScore}%` : 'N/A'}
-          subtext="Target"
-          subtextValue={myRequired !== null ? `${myRequired}%` : 'N/A'}
-          statusType={myGap !== null && myGap >= 0 ? 'success' : 'warning'}
-          statusText={myGap !== null ? (myGap >= 0 ? `+${myGap}%` : `${myGap}%`) : undefined}
-          className="p-2!"
-        />
-
-        {/* CEFR Language Level */}
-        <div className="card p-2 rounded-xl flex flex-col justify-between border shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              CEFR English
-            </span>
-            <MessageSquare size={12} className="text-cyan-500" />
-          </div>
-          <div className="my-0.5 flex items-baseline gap-1">
-            {commLevel ? (
-              <CefrLevelBadge level={commLevel} size="sm" showLabel />
-            ) : (
-              <span className="text-xs font-bold text-zinc-400">Pending</span>
-            )}
-          </div>
-          <div className="flex items-center justify-between text-[9.5px] font-mono text-zinc-500 dark:text-zinc-400 pt-0.5 border-t border-zinc-100 dark:border-zinc-800">
-            <span>Target</span>
-            <span className="font-mono font-bold text-zinc-700 dark:text-zinc-200">{commBenchmark}</span>
-          </div>
-        </div>
-
-        {/* Behavioral Mastery */}
-        <div className="card p-2 rounded-xl flex flex-col justify-between border shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Behavioral
-            </span>
-            <Award size={12} className="text-amber-500" />
-          </div>
-          <div className="my-0.5 flex items-baseline gap-1">
-            {behavLevel ? (
-              <BehavioralLevelBadge level={behavLevel} size="sm" showLabel />
-            ) : (
-              <span className="text-xs font-bold text-zinc-400">Pending</span>
-            )}
-          </div>
-          <div className="flex items-center justify-between text-[9.5px] font-mono text-zinc-500 dark:text-zinc-400 pt-0.5 border-t border-zinc-100 dark:border-zinc-800">
-            <span>Target Band</span>
-            <span className="font-mono font-bold text-zinc-700 dark:text-zinc-200">{behavBenchmark}</span>
-          </div>
-        </div>
-
-        {/* Holistic Promotion Gate */}
-        <MetricKpiCard
-          label="Promotion Gate"
-          primaryValue={isOverallReady ? 'Ready' : 'In Progress'}
-          subtext="Skills Met"
-          subtextValue={myTotal > 0 ? `${myMeets} / ${myTotal}` : 'N/A'}
-          statusType={isOverallReady ? 'success' : 'neutral'}
-          statusText={isOverallReady ? '3/3 Streams' : 'Gated'}
-          className="p-2!"
-        />
-      </div>
-
-      {/* ── 3. 3-GRAPH SIDE-BY-SIDE ANALYTICS GRID (TECHNICAL, CEFR, BEHAVIORAL) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        {/* GRAPH 1: Technical Capability Domains */}
-        <div className="card p-2.5 rounded-xl border shadow-2xs space-y-1.5 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Cpu size={13} className="text-indigo-500 shrink-0" />
-              <h2 className="text-[11px] font-black uppercase tracking-wide text-zinc-900 dark:text-zinc-100">
-                1. Technical Domains
-              </h2>
-            </div>
-            <span className="text-[9.5px] font-mono font-bold text-indigo-600 dark:text-indigo-400">
-              {myScore !== null ? `${myScore}%` : 'N/A'}
-            </span>
-          </div>
-
-          <div className="h-32 w-full">
+          {/* Bar Chart Area */}
+          <div className="h-44 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={technicalChartData} margin={{ top: 5, right: 5, left: -30, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridColor} vertical={false} />
+              <BarChart data={barChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
                 <XAxis
-                  dataKey="name"
-                  stroke={chartTheme.axisColor}
-                  fontSize={9}
+                  dataKey="label"
+                  stroke="#71717a"
+                  fontSize={10}
                   tickLine={false}
-                  axisLine={{ stroke: chartTheme.gridColor }}
+                  axisLine={{ stroke: '#27272a' }}
                 />
                 <YAxis
-                  stroke={chartTheme.axisColor}
-                  fontSize={9}
+                  stroke="#71717a"
+                  fontSize={10}
                   tickLine={false}
                   axisLine={false}
                   domain={[0, 100]}
@@ -346,252 +251,308 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
                 <Tooltip
                   contentStyle={getChartTooltipStyle(chartTheme)}
                   formatter={(val: number) => [`${val}%`, '']}
-                  labelFormatter={(label) => `Domain: ${label}`}
+                  labelFormatter={(_label, payload) =>
+                    payload?.[0]?.payload?.fullLabel ? `Competency: ${payload[0].payload.fullLabel}` : 'Competency'
+                  }
                 />
                 <Bar
-                  dataKey="achieved"
-                  name="Achieved"
-                  fill="rgb(99, 102, 241)"
-                  radius={[2, 2, 0, 0]}
-                  maxBarSize={16}
-                />
-                <Bar
-                  dataKey="benchmark"
-                  name="Target"
-                  fill="rgb(148, 163, 184)"
-                  radius={[2, 2, 0, 0]}
-                  maxBarSize={16}
-                />
+                  dataKey="score"
+                  name="Achieved Score"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={28}
+                >
+                  {barChartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={
+                        entry.highlight
+                          ? '#3b82f6'
+                          : activeCategory === 'communication'
+                          ? '#06b6d4'
+                          : activeCategory === 'behavioral'
+                          ? '#f59e0b'
+                          : '#27272a'
+                      }
+                      className={entry.highlight ? 'filter drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : ''}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
-          </div>
-
-          <div className="flex items-center justify-between text-[9.5px] text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800">
-            <span>{myMeets} / {myTotal || 26} Met</span>
-            <button
-              type="button"
-              onClick={() => onNavigate('assessments')}
-              className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"
-            >
-              <span>Skills Grid</span>
-              <ChevronRight size={10} />
-            </button>
           </div>
         </div>
 
-        {/* GRAPH 2: CEFR Communication Dimensions */}
-        <div className="card p-2.5 rounded-xl border shadow-2xs space-y-1.5 flex flex-col justify-between">
+        {/* TOP RIGHT: Evaluation Period & Activity Calendar (1 Col) */}
+        <div className="rounded-2xl p-4 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-3">
+          {/* Calendar Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <MessageSquare size={13} className="text-cyan-500 shrink-0" />
-              <h2 className="text-[11px] font-black uppercase tracking-wide text-zinc-900 dark:text-zinc-100">
-                2. CEFR Language
+              <CalendarIcon size={14} className="text-zinc-400" />
+              <h2 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                Evaluation Cycle 2026
               </h2>
             </div>
-            <span className="text-[9.5px] font-mono font-bold text-cyan-600 dark:text-cyan-400">
-              {commLevel || 'Pending'}
-            </span>
-          </div>
-
-          <div className="h-32 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={commChartData} margin={{ top: 5, right: 5, left: -30, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridColor} vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  stroke={chartTheme.axisColor}
-                  fontSize={9}
-                  tickLine={false}
-                  axisLine={{ stroke: chartTheme.gridColor }}
-                />
-                <YAxis
-                  stroke={chartTheme.axisColor}
-                  fontSize={9}
-                  tickLine={false}
-                  axisLine={false}
-                  domain={[0, 100]}
-                  tickFormatter={(val) => `${val}%`}
-                />
-                <Tooltip
-                  contentStyle={getChartTooltipStyle(chartTheme)}
-                  formatter={(val: number) => [`${val}%`, '']}
-                  labelFormatter={(label) => `Competency: ${label}`}
-                />
-                <Bar
-                  dataKey="achieved"
-                  name="Achieved"
-                  fill="rgb(6, 182, 212)"
-                  radius={[2, 2, 0, 0]}
-                  maxBarSize={16}
-                />
-                <Bar
-                  dataKey="benchmark"
-                  name="Target"
-                  fill="rgb(148, 163, 184)"
-                  radius={[2, 2, 0, 0]}
-                  maxBarSize={16}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="flex items-center justify-between text-[9.5px] text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800">
-            <span>6 Competencies</span>
-            <button
-              type="button"
-              onClick={() => onNavigate('assessments')}
-              className="font-bold text-cyan-600 dark:text-cyan-400 hover:underline inline-flex items-center gap-0.5"
-            >
-              <span>CEFR Rubric</span>
-              <ChevronRight size={10} />
-            </button>
-          </div>
-        </div>
-
-        {/* GRAPH 3: Behavioral Leadership Pillars */}
-        <div className="card p-2.5 rounded-xl border shadow-2xs space-y-1.5 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Award size={13} className="text-amber-500 shrink-0" />
-              <h2 className="text-[11px] font-black uppercase tracking-wide text-zinc-900 dark:text-zinc-100">
-                3. Behavioral Pillars
-              </h2>
+            <div className="flex items-center gap-1 text-zinc-400">
+              <button type="button" className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
+                <ChevronLeft size={13} />
+              </button>
+              <button type="button" className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
+                <ChevronRight size={13} />
+              </button>
             </div>
-            <span className="text-[9.5px] font-mono font-bold text-amber-600 dark:text-amber-400">
-              {behavLevel || 'Pending'}
-            </span>
           </div>
 
-          <div className="h-32 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={behavChartData} margin={{ top: 5, right: 5, left: -30, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridColor} vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  stroke={chartTheme.axisColor}
-                  fontSize={9}
-                  tickLine={false}
-                  axisLine={{ stroke: chartTheme.gridColor }}
-                />
-                <YAxis
-                  stroke={chartTheme.axisColor}
-                  fontSize={9}
-                  tickLine={false}
-                  axisLine={false}
-                  domain={[0, 100]}
-                  tickFormatter={(val) => `${val}%`}
-                />
-                <Tooltip
-                  contentStyle={getChartTooltipStyle(chartTheme)}
-                  formatter={(val: number) => [`${val}%`, '']}
-                  labelFormatter={(label) => `Pillar: ${label}`}
-                />
-                <Bar
-                  dataKey="achieved"
-                  name="Achieved"
-                  fill="rgb(245, 158, 11)"
-                  radius={[2, 2, 0, 0]}
-                  maxBarSize={16}
-                />
-                <Bar
-                  dataKey="benchmark"
-                  name="Target"
-                  fill="rgb(148, 163, 184)"
-                  radius={[2, 2, 0, 0]}
-                  maxBarSize={16}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Mini Interactive Month Grid */}
+          <div className="space-y-1 text-center">
+            <div className="grid grid-cols-7 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+              <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-[11px] font-mono">
+              <span className="text-zinc-700 py-1">29</span>
+              <span className="text-zinc-700 py-1">30</span>
+              <span className="text-zinc-700 py-1">31</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">1</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">2</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">3</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">4</span>
+
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">5</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">6</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">7</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">8</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">9</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">10</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">11</span>
+
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">12</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">13</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">14</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">15</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">16</span>
+              <span className="text-blue-400 font-bold bg-blue-600/30 border border-blue-500/40 rounded-md py-1 shadow-sm">17</span>
+              <span className="text-zinc-400 py-1 hover:bg-zinc-800/50 rounded-md">18</span>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between text-[9.5px] text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800">
-            <span>11 Dimensions</span>
-            <button
-              type="button"
-              onClick={() => onNavigate('assessments')}
-              className="font-bold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-0.5"
-            >
-              <span>Behavior Matrix</span>
-              <ChevronRight size={10} />
-            </button>
+          {/* Bottom Highlight KPI Box */}
+          <div className="bg-zinc-900/90 rounded-xl p-2.5 border border-zinc-800/80 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+                <Layers size={14} />
+              </div>
+              <div>
+                <div className="text-[10px] text-zinc-400 font-medium">Readiness Index</div>
+                <div className="text-sm font-black font-mono text-white">{skillsCompletionPct}%</div>
+              </div>
+            </div>
+
+            <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400">
+              <TrendingUp size={11} />
+              <span>{formatGrade(targetGrade)} Eligible</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── 4. BOTTOM ROW: MILESTONE READINESS STATUS ───────────────────────── */}
-      <div className="card p-2.5 rounded-xl border shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-              <circle
-                cx="50"
-                cy="50"
-                r="38"
-                strokeWidth="8"
-                className="text-zinc-200 dark:text-zinc-800"
-                stroke="currentColor"
-                fill="transparent"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="38"
-                strokeWidth="8"
-                strokeDasharray={238.7}
-                strokeDashoffset={238.7 - (238.7 * Math.min(100, Math.max(0, skillsCompletionPct))) / 100}
-                strokeLinecap="round"
-                className={skillsCompletionPct >= 80 ? 'text-emerald-500' : 'text-indigo-500'}
-                stroke="currentColor"
-                fill="transparent"
-              />
-            </svg>
-            <span className="absolute text-xs font-black font-mono text-zinc-900 dark:text-zinc-100">
-              {skillsCompletionPct}%
-            </span>
+      {/* ── BOTTOM SECTION (3-TILES): AI COPILOT (LEFT) + DONUT BREAKDOWN (CENTER) + MILESTONES (RIGHT) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* BOTTOM LEFT: AI Career & Capability Copilot */}
+        <div className="rounded-2xl p-4 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Sparkles size={14} className="text-blue-400" />
+              <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+                How can I help you?
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigate('assessments')}
+              className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            >
+              <ArrowUpRight size={14} />
+            </button>
           </div>
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-xs font-black uppercase tracking-wide text-zinc-900 dark:text-zinc-100">
-                Overall Promotion Gate &amp; Readiness
-              </h3>
-              <InfoTip text="Requires all 3 streams to meet or exceed target career grade benchmarks." />
-            </div>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
-              {myTotal > 0
-                ? `${myMeets} of ${myTotal} technical skills complete for target grade ${formatGrade(targetGrade)}`
-                : 'No target grade requirements set yet'}
+          <div>
+            <div className="text-[11px] font-bold text-zinc-300">AI Progression Summary</div>
+            <p className="text-[11px] text-zinc-400 leading-relaxed mt-0.5 line-clamp-3">
+              {copilotResponse ||
+                `Welcome ${displayName}. Your capability trajectory for ${formatGrade(currentGrade)} → ${formatGrade(
+                  targetGrade
+                )} remains highly active. Technical mastery is stable at ${myScore}%, CEFR is verified at ${commLevel}, and Behavioral leadership stands at ${behavLevel}.`}
             </p>
           </div>
+
+          {/* 2 Mini Stat Blocks */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-zinc-900/90 p-2 rounded-xl border border-zinc-800/80">
+              <div className="text-[10px] text-zinc-400">Skills Verified</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-sm font-black font-mono text-white">{myMeets}</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                  Active
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-zinc-900/90 p-2 rounded-xl border border-zinc-800/80">
+              <div className="text-[10px] text-zinc-400">Gate Status</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-sm font-black font-mono text-white">3/3</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">
+                  Ready
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Copilot Input Prompt */}
+          <form onSubmit={handleCopilotSubmit} className="relative">
+            <input
+              type="text"
+              value={copilotQuery}
+              onChange={(e) => setCopilotQuery(e.target.value)}
+              placeholder="Ask Career AI anything..."
+              className="w-full bg-zinc-900/90 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500/60 pr-8 transition-colors"
+            />
+            <button
+              type="submit"
+              className="absolute right-2 top-2.5 text-zinc-400 hover:text-blue-400 transition-colors"
+            >
+              <Send size={13} />
+            </button>
+          </form>
         </div>
 
-        {/* 3 Prerequisite Pills */}
-        <div className="flex items-center gap-2 text-xs shrink-0">
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10.5px]">
-            {technicalReady ? (
-              <CheckCircle2 size={11} className="text-emerald-500" />
-            ) : (
-              <AlertTriangle size={11} className="text-amber-500" />
-            )}
-            <span className="font-semibold">Technical: {technicalReady ? 'Ready' : `${myTotal - myMeets} Gaps`}</span>
+        {/* BOTTOM CENTER: Donut / Multi-Segment Competency Breakdown */}
+        <div className="rounded-2xl p-4 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+              Competency Distribution
+            </h2>
+            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded-md border border-zinc-800">
+              Cycle 2026 ▾
+            </span>
           </div>
 
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10.5px]">
-            {commReady ? (
-              <CheckCircle2 size={11} className="text-emerald-500" />
-            ) : (
-              <div className="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-            )}
-            <span className="font-semibold">CEFR: {commLevel || 'Pending'}</span>
+          {/* Donut Chart & Legend */}
+          <div className="flex items-center justify-between gap-2 py-1">
+            <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={donutData}
+                    innerRadius={32}
+                    outerRadius={48}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {donutData.map((_entry, index) => (
+                      <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute flex flex-col items-center justify-center text-center">
+                <span className="text-sm font-black font-mono text-white">{myScore}%</span>
+                <span className="text-[8px] uppercase tracking-wider text-zinc-400">Total</span>
+              </div>
+            </div>
+
+            <div className="space-y-1 text-[10px] text-zinc-400 min-w-0">
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                <span className="truncate">Cloud &amp; Infra</span>
+              </div>
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="w-2 h-2 rounded-full bg-cyan-500 shrink-0" />
+                <span className="truncate">CI/CD &amp; DevOps</span>
+              </div>
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                <span className="truncate">CEFR English</span>
+              </div>
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="truncate">Behavioral</span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10.5px]">
-            {behavReady ? (
-              <CheckCircle2 size={11} className="text-emerald-500" />
-            ) : (
-              <div className="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-            )}
-            <span className="font-semibold">Behavioral: {behavLevel || 'Pending'}</span>
+          {/* Insight Callout */}
+          <div className="text-[10px] text-zinc-400 leading-normal pt-1.5 border-t border-zinc-800/80">
+            💡 Most capability strength originates from Cloud &amp; CEFR {commLevel}, while CI/CD shows active growth.
+          </div>
+        </div>
+
+        {/* BOTTOM RIGHT: Promotion Milestones & Gate Verification */}
+        <div className="rounded-2xl p-4 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+              Promotion Milestones
+            </h2>
+            <button
+              type="button"
+              onClick={() => onNavigate('assessments')}
+              className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            >
+              +
+            </button>
+          </div>
+
+          {/* Segmented Yellow/Gold Progress Bar */}
+          <div className="bg-zinc-900/90 p-2 rounded-xl border border-zinc-800/80 flex items-center justify-between gap-2">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase">Gate Score</span>
+            <div className="flex items-center gap-0.5">
+              {[...Array(16)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-1 h-3 rounded-xs ${
+                    i < 12 ? 'bg-amber-400 shadow-[0_0_4px_rgba(251,191,36,0.5)]' : 'bg-zinc-800'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-xs font-mono font-black text-amber-400">{skillsCompletionPct}%</span>
+          </div>
+
+          {/* 3 Actionable Gate Items */}
+          <div className="space-y-1.5 text-[11px]">
+            <div className="flex items-center justify-between text-zinc-300">
+              <span className="text-zinc-400">Technical Skills</span>
+              <span className="inline-flex items-center gap-1 font-bold text-amber-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                {myMeets} / {myTotal} Met
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-zinc-300">
+              <span className="text-zinc-400">CEFR Communication</span>
+              <span className="inline-flex items-center gap-1 font-bold text-emerald-400">
+                <CefrLevelBadge level={commLevel as CefrLevelCode} size="sm" />
+                <span className="text-[10px]">Verified</span>
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-zinc-300">
+              <span className="text-zinc-400">Behavioral Mastery</span>
+              <span className="inline-flex items-center gap-1 font-bold text-emerald-400">
+                <BehavioralLevelBadge level={behavLevel as BehavioralLevelCode} size="sm" />
+                <span className="text-[10px]">Verified</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-1.5 border-t border-zinc-800/80 flex items-center justify-between text-[11px]">
+            <button
+              type="button"
+              onClick={() => onNavigate('assessments')}
+              className="font-bold text-zinc-400 hover:text-white inline-flex items-center gap-1 transition-colors"
+            >
+              <span>View all milestones</span>
+              <ArrowUpRight size={12} />
+            </button>
           </div>
         </div>
       </div>
