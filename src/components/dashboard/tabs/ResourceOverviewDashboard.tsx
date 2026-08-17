@@ -67,6 +67,24 @@ const BEHAVIORAL_LEVEL_NUMERIC: Record<string, number> = {
   NA: 0,
 };
 
+const CEFR_LEVEL_NUMERIC: Record<string, number> = {
+  A1: 17,
+  A2: 33,
+  B1: 50,
+  B2: 67,
+  C1: 83,
+  C2: 100,
+};
+
+const CEFR_6_COMPETENCIES = [
+  { key: 'written_clarity', label: 'Write', fullLabel: 'Written Clarity' },
+  { key: 'spoken_fluency', label: 'Speak', fullLabel: 'Spoken Fluency' },
+  { key: 'presentation', label: 'Present', fullLabel: 'Technical Presentation' },
+  { key: 'active_listening', label: 'Listen', fullLabel: 'Active Listening' },
+  { key: 'stakeholder_exec', label: 'Exec', fullLabel: 'Stakeholder Alignment' },
+  { key: 'cross_cultural', label: 'Culture', fullLabel: 'Cross-Cultural' },
+];
+
 export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps> = ({
   user,
   onNavigate,
@@ -103,15 +121,15 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   // CEFR Communication calculations
   const commLevel = (latestComm?.overallCefr as CefrLevelCode) || 'B2';
   const commBenchmark = (latestComm?.org_level_key as string) || 'B2';
-  const commScorePct = commLevel === 'C2' ? 100 : commLevel === 'C1' ? 83 : commLevel === 'B2' ? 67 : commLevel === 'B1' ? 50 : commLevel === 'A2' ? 33 : 17;
-  const commReqPct = commBenchmark === 'C2' ? 100 : commBenchmark === 'C1' ? 83 : commBenchmark === 'B2' ? 67 : commBenchmark === 'B1' ? 50 : commBenchmark === 'A2' ? 33 : 17;
+  const commScorePct = CEFR_LEVEL_NUMERIC[commLevel] || 67;
+  const commReqPct = CEFR_LEVEL_NUMERIC[commBenchmark] || 67;
   const commReady = latestComm?.communicationReady ?? (commScorePct >= commReqPct);
 
   // Behavioral calculations
   const behavLevel = (latestBehav?.result?.overallProficiency as BehavioralLevelCode) || 'L4';
   const behavBenchmark = (latestBehav?.gradeKey as string) || 'L3';
-  const behavScorePct = behavLevel === 'L5' ? 100 : behavLevel === 'L4' ? 80 : behavLevel === 'L3' ? 60 : behavLevel === 'L2' ? 40 : 20;
-  const behavReqPct = behavBenchmark === 'L5' ? 100 : behavBenchmark === 'L4' ? 80 : behavBenchmark === 'L3' ? 60 : behavBenchmark === 'L2' ? 40 : 20;
+  const behavScorePct = BEHAVIORAL_LEVEL_NUMERIC[behavLevel] || 80;
+  const behavReqPct = BEHAVIORAL_LEVEL_NUMERIC[behavBenchmark] || 60;
   const behavReady = latestBehav?.result?.behavioralReady ?? (behavScorePct >= behavReqPct);
 
   // Grade Information
@@ -141,15 +159,24 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
     ];
   }, [myGapRow]);
 
-  // 2. CEFR Communication Chart Data
-  const commChartData = useMemo(() => [
-    { label: 'Write', fullLabel: 'Written Clarity', score: 83, benchmark: 67, highlight: false },
-    { label: 'Speak', fullLabel: 'Spoken Fluency', score: 83, benchmark: 67, highlight: true },
-    { label: 'Present', fullLabel: 'Technical Presentation', score: 67, benchmark: 67, highlight: false },
-    { label: 'Listen', fullLabel: 'Active Listening', score: 83, benchmark: 67, highlight: false },
-    { label: 'Exec', fullLabel: 'Stakeholder Alignment', score: 67, benchmark: 67, highlight: false },
-    { label: 'Culture', fullLabel: 'Cross-Cultural', score: 83, benchmark: 67, highlight: false },
-  ], []);
+  // 2. CEFR Communication Dual-Bar Chart Data (Assessed vs Required Benchmark)
+  const commChartData = useMemo(() => {
+    const ratings = latestComm?.ratings ?? [];
+    const targetScore = CEFR_LEVEL_NUMERIC[commBenchmark] || 67;
+
+    return CEFR_6_COMPETENCIES.map((comp, idx) => {
+      const match = ratings.find((r) => r.competency_key === comp.key);
+      const score = match?.cefr ? CEFR_LEVEL_NUMERIC[match.cefr] || 67 : (idx % 2 === 0 ? 83 : 67);
+
+      return {
+        label: comp.label,
+        fullLabel: comp.fullLabel,
+        score: score,
+        benchmark: targetScore,
+        highlight: idx === 1,
+      };
+    });
+  }, [latestComm, commBenchmark]);
 
   // 3. Behavioral 11-Item Radar Chart Data (6 Core + 5 Leadership)
   const behavRadarData = useMemo(() => {
@@ -281,21 +308,31 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
                     payload?.[0]?.payload?.fullLabel ? `Domain: ${payload[0].payload.fullLabel}` : 'Domain'
                   }
                 />
-                <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={22}>
+                <Bar dataKey="score" name="Assessed Score" radius={[4, 4, 0, 0]} maxBarSize={14}>
                   {technicalChartData.map((entry, index) => (
                     <Cell
                       key={`tech-cell-${index}`}
-                      fill={entry.highlight ? '#6366f1' : '#3f3f46'}
+                      fill={entry.highlight ? '#6366f1' : '#4f46e5'}
                       className={entry.highlight ? 'filter drop-shadow-[0_0_6px_rgba(99,102,241,0.6)]' : ''}
                     />
                   ))}
                 </Bar>
+                <Bar dataKey="benchmark" name="Required Target" fill="#3f3f46" radius={[4, 4, 0, 0]} maxBarSize={14} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/80">
-            <span>{myMeets} / {myTotal} Skills Met</span>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-indigo-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                Assessed
+              </span>
+              <span className="flex items-center gap-1 text-zinc-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+                Target ({myRequired}%)
+              </span>
+            </div>
             <button
               type="button"
               onClick={() => onNavigate('assessments')}
@@ -307,7 +344,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           </div>
         </div>
 
-        {/* GRAPH 2: CEFR English Communication */}
+        {/* GRAPH 2: CEFR English Communication (Assessed vs Required Benchmark) */}
         <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -342,26 +379,36 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
                 />
                 <Tooltip
                   contentStyle={getChartTooltipStyle(chartTheme)}
-                  formatter={(val: number) => [`${val}%`, '']}
+                  formatter={(val: number, name: string) => [`${val}%`, name]}
                   labelFormatter={(_label, payload) =>
                     payload?.[0]?.payload?.fullLabel ? `Competency: ${payload[0].payload.fullLabel}` : 'Competency'
                   }
                 />
-                <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                <Bar dataKey="score" name="Assessed" radius={[4, 4, 0, 0]} maxBarSize={14}>
                   {commChartData.map((entry, index) => (
                     <Cell
                       key={`comm-cell-${index}`}
-                      fill={entry.highlight ? '#06b6d4' : '#3f3f46'}
+                      fill={entry.highlight ? '#06b6d4' : '#0891b2'}
                       className={entry.highlight ? 'filter drop-shadow-[0_0_6px_rgba(6,182,212,0.6)]' : ''}
                     />
                   ))}
                 </Bar>
+                <Bar dataKey="benchmark" name="Required" fill="#3f3f46" radius={[4, 4, 0, 0]} maxBarSize={14} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/80">
-            <span>6 Competencies (Target: {commBenchmark})</span>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-cyan-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                Assessed ({commLevel})
+              </span>
+              <span className="flex items-center gap-1 text-zinc-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+                Target ({commBenchmark})
+              </span>
+            </div>
             <button
               type="button"
               onClick={() => onNavigate('assessments')}
