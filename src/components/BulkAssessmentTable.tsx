@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { Stars } from '@/components/ui/Stars';
-import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, CheckCheck, ShieldCheck, Info, Copy, Layers, SaveAll, Send, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, CheckCheck, ShieldCheck, Copy, Layers, SaveAll, Send, RefreshCw, AlertTriangle } from 'lucide-react';
 import { CloneColleagueDialog } from './CloneColleagueDialog';
 import { BulkAddDialog, BulkAddTechnologyPayload } from './BulkAddDialog';
 import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
@@ -95,21 +95,11 @@ export const TYPE_OPTIONS = [
   { value: 'Tertiary', label: 'Tertiary - related skill' },
 ] as const;
 
+import { InfoTip } from '@/components/ui/InfoTip';
+
 function createRowId() {
   return `row-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
-
-const InfoTip: React.FC<{ text: string }> = ({ text }) => (
-  <button
-    type="button"
-    className="btn-ghost w-6 h-6 p-0 rounded-lg inline-flex items-center justify-center shrink-0"
-    title={text}
-    aria-label={text}
-    onClick={(event) => event.stopPropagation()}
-  >
-    <Info size={13} />
-  </button>
-);
 
 const SearchableSelect: React.FC<{
   value: string;

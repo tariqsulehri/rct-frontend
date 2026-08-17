@@ -616,6 +616,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
                 />
               )}
               <Tooltip
+                wrapperStyle={{ zIndex: 1000 }}
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null;
                   const d = payload[0].payload;

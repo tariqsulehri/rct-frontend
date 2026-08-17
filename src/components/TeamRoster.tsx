@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Info, Search, RefreshCw, X } from "lucide-react";
+import { Search, RefreshCw, X } from "lucide-react";
 import { useTeamRoster } from "@/hooks/useAssessment";
 import { useAuthStore } from "@/store/authStore";
 import { BulkAssessmentTable } from "@/components/BulkAssessmentTable";
@@ -9,22 +9,13 @@ import { toPctNullable } from "@/lib/formatters";
 import { CefrAssessmentModal } from "@/components/communication/CefrAssessmentModal";
 import { BehavioralAssessmentView } from "@/components/behavioral/BehavioralAssessmentView";
 
+import { InfoTip } from "@/components/ui/InfoTip";
+
 interface AssessmentModalState {
   isOpen: boolean;
   employeeId: string | null;   // emp_code e.g. "1818"
   employeeName: string | null;
 }
-
-const InfoTip: React.FC<{ text: string }> = ({ text }) => (
-  <button
-    type="button"
-    className="btn-ghost w-6 h-6 p-0 rounded-lg inline-flex items-center justify-center shrink-0"
-    title={text}
-    aria-label={text}
-  >
-    <Info size={13} />
-  </button>
-);
 
 const HeaderCell: React.FC<{ label: string; help?: string }> = ({ label, help }) => (
   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "rgb(var(--text-2))" }}>

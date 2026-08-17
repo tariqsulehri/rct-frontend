@@ -105,6 +105,7 @@ export const AssessmentHeroLayout: React.FC<AssessmentHeroLayoutProps> = ({
               />
               <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
               <Tooltip
+                wrapperStyle={{ zIndex: 1000 }}
                 contentStyle={{
                   backgroundColor: chartTheme.tooltipBg,
                   borderColor: chartTheme.tooltipBorder,

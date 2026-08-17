@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table2, PieChart as PieIcon, Info } from 'lucide-react';
+import { Table2, PieChart as PieIcon } from 'lucide-react';
 import { Stars as StarMeter } from '@/components/ui/Stars';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -26,16 +26,8 @@ export function Empty({ msg }: { msg: string }) {
   return <p className="text-sm text-center py-12" style={{ color: 'rgb(var(--text-2))' }}>{msg}</p>;
 }
 
-export const InfoTip: React.FC<{ text: string }> = ({ text }) => (
-  <button
-    type="button"
-    className="btn-ghost w-6 h-6 p-0 rounded-lg inline-flex items-center justify-center shrink-0"
-    title={text}
-    aria-label={text}
-  >
-    <Info size={13} />
-  </button>
-);
+import { InfoTip } from '@/components/ui/InfoTip';
+export { InfoTip };
 
 // ── Table shell ────────────────────────────────────────────────────────────────
 export const DataTable: React.FC<{ headers: string[]; children: React.ReactNode }> = ({ headers, children }) => (
