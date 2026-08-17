@@ -141,25 +141,27 @@ describe('ResourceOverviewDashboard (SSR Rendering)', () => {
     expect(html).toContain('Promotion Gate');
   });
 
-  it('renders 3-Stream comparison switcher and chart controls', () => {
+  it('renders all 3 graphs simultaneously (Technical, CEFR Language, Behavioral Pillars)', () => {
     const html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
 
-    expect(html).toContain('Technical');
-    expect(html).toContain('CEFR Language');
-    expect(html).toContain('Behavioral');
-    expect(html).toContain('Detailed Rubrics');
+    expect(html).toContain('1. Technical Domains');
+    expect(html).toContain('2. CEFR Language');
+    expect(html).toContain('3. Behavioral Pillars');
+    expect(html).toContain('Skills Grid');
+    expect(html).toContain('CEFR Rubric');
+    expect(html).toContain('Behavior Matrix');
   });
 
-  it('renders 3 Dimension Action Cards for direct stream navigation', () => {
+  it('renders Milestone Readiness and prerequisite gate status checklist', () => {
     const html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
 
-    expect(html).toContain('Technical Capabilities');
-    expect(html).toContain('CEFR Communication');
-    expect(html).toContain('Behavioral Leadership');
-    expect(html).toContain('18 / 20');
+    expect(html).toContain('Overall Promotion Gate &amp; Readiness');
+    expect(html).toContain('Technical:');
+    expect(html).toContain('CEFR:');
+    expect(html).toContain('Behavioral:');
   });
 });
