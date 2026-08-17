@@ -139,27 +139,33 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   // Overall Readiness Score
   const skillsCompletionPct = myTotal > 0 ? Math.round((myMeets / myTotal) * 100) : myScore ?? 78;
 
-  // 1. Technical Domain Bar Chart Data
+  // 1. Technical Domain Dual-Tone Stacked Bar Chart Data
   const technicalChartData = useMemo(() => {
     if (myGapRow?.domain_gaps && Object.keys(myGapRow.domain_gaps).length > 0) {
-      return Object.entries(myGapRow.domain_gaps).map(([domain, data], idx) => ({
-        label: domain.length > 7 ? `${domain.substring(0, 6)}…` : domain,
-        fullLabel: domain,
-        score: Math.round((data.score || 0) * 100),
-        benchmark: Math.round((data.threshold || 0) * 100),
-        highlight: idx === 0,
-      }));
+      return Object.entries(myGapRow.domain_gaps).map(([domain, data], idx) => {
+        const score = Math.round((data.score || 0) * 100);
+        const benchmark = Math.round((data.threshold || 0) * 100);
+        return {
+          label: domain.length > 7 ? `${domain.substring(0, 6)}…` : domain,
+          fullLabel: domain,
+          score: score,
+          benchmark: benchmark,
+          baseScore: Math.min(score, benchmark),
+          excessScore: Math.max(0, score - benchmark),
+          highlight: idx === 0,
+        };
+      });
     }
     return [
-      { label: 'Cloud', fullLabel: 'Cloud Architecture', score: 85, benchmark: 80, highlight: true },
-      { label: 'CI/CD', fullLabel: 'CI/CD Automation', score: 92, benchmark: 80, highlight: false },
-      { label: 'Arch', fullLabel: 'System Architecture', score: 74, benchmark: 75, highlight: false },
-      { label: 'DevOps', fullLabel: 'DevOps Tooling', score: 80, benchmark: 75, highlight: false },
-      { label: 'SRE', fullLabel: 'SRE & Reliability', score: 68, benchmark: 70, highlight: false },
+      { label: 'Cloud', fullLabel: 'Cloud Architecture', score: 85, benchmark: 80, baseScore: 80, excessScore: 5, highlight: true },
+      { label: 'CI/CD', fullLabel: 'CI/CD Automation', score: 92, benchmark: 80, baseScore: 80, excessScore: 12, highlight: false },
+      { label: 'Arch', fullLabel: 'System Architecture', score: 74, benchmark: 75, baseScore: 74, excessScore: 0, highlight: false },
+      { label: 'DevOps', fullLabel: 'DevOps Tooling', score: 80, benchmark: 75, baseScore: 75, excessScore: 5, highlight: false },
+      { label: 'SRE', fullLabel: 'SRE & Reliability', score: 68, benchmark: 70, baseScore: 68, excessScore: 0, highlight: false },
     ];
   }, [myGapRow]);
 
-  // 2. CEFR Communication Dual-Bar Chart Data (Assessed vs Required Benchmark)
+  // 2. CEFR Communication Single Dual-Tone Stacked Bar Chart Data (Base Requirement + Exceeding Level)
   const commChartData = useMemo(() => {
     const ratings = latestComm?.ratings ?? [];
     const targetScore = CEFR_LEVEL_NUMERIC[commBenchmark] || 67;
@@ -167,12 +173,16 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
     return CEFR_6_COMPETENCIES.map((comp, idx) => {
       const match = ratings.find((r) => r.competency_key === comp.key);
       const score = match?.cefr ? CEFR_LEVEL_NUMERIC[match.cefr] || 67 : (idx % 2 === 0 ? 83 : 67);
+      const base = Math.min(score, targetScore);
+      const excess = Math.max(0, score - targetScore);
 
       return {
         label: comp.label,
         fullLabel: comp.fullLabel,
         score: score,
         benchmark: targetScore,
+        baseRequirement: base,
+        excessLevel: excess,
         highlight: idx === 1,
       };
     });
@@ -267,7 +277,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
 
       {/* ── ROW 1 (3-COLUMNS): ALL THREE PRO-LEVEL COMPETENCE GRAPHS ──────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-        {/* GRAPH 1: Technical Mastery */}
+        {/* GRAPH 1: Technical Mastery (Dual-Tone Composite Bars) */}
         <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -303,21 +313,22 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
                 />
                 <Tooltip
                   contentStyle={getChartTooltipStyle(chartTheme)}
-                  formatter={(val: number) => [`${val}%`, '']}
+                  formatter={(val: number, name: string) => [`${val}%`, name === 'baseScore' ? 'Target Met' : name === 'excessScore' ? 'Exceeds Target' : name]}
                   labelFormatter={(_label, payload) =>
                     payload?.[0]?.payload?.fullLabel ? `Domain: ${payload[0].payload.fullLabel}` : 'Domain'
                   }
                 />
-                <Bar dataKey="score" name="Assessed Score" radius={[4, 4, 0, 0]} maxBarSize={14}>
+                {/* Composite Single Stacked Bar */}
+                <Bar dataKey="baseScore" stackId="tech" name="Required Target" fill="#4f46e5" radius={[0, 0, 4, 4]} maxBarSize={22} />
+                <Bar dataKey="excessScore" stackId="tech" name="Exceeds Benchmark" fill="#818cf8" radius={[4, 4, 0, 0]} maxBarSize={22}>
                   {technicalChartData.map((entry, index) => (
                     <Cell
                       key={`tech-cell-${index}`}
-                      fill={entry.highlight ? '#6366f1' : '#4f46e5'}
+                      fill={entry.highlight ? '#6366f1' : '#818cf8'}
                       className={entry.highlight ? 'filter drop-shadow-[0_0_6px_rgba(99,102,241,0.6)]' : ''}
                     />
                   ))}
                 </Bar>
-                <Bar dataKey="benchmark" name="Required Target" fill="#3f3f46" radius={[4, 4, 0, 0]} maxBarSize={14} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -326,7 +337,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1 text-indigo-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                Assessed
+                Score ({myScore}%)
               </span>
               <span className="flex items-center gap-1 text-zinc-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
@@ -344,7 +355,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           </div>
         </div>
 
-        {/* GRAPH 2: CEFR English Communication (Assessed vs Required Benchmark) */}
+        {/* GRAPH 2: CEFR English Communication (Single Dual-Tone Composite Stacked Bar) */}
         <div className="rounded-2xl p-3.5 border border-zinc-800/90 bg-zinc-950/90 shadow-2xl backdrop-blur-xl flex flex-col justify-between space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -379,21 +390,39 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
                 />
                 <Tooltip
                   contentStyle={getChartTooltipStyle(chartTheme)}
-                  formatter={(val: number, name: string) => [`${val}%`, name]}
+                  formatter={(val: number, name: string) => [
+                    `${val}%`,
+                    name === 'baseRequirement' ? 'Required Benchmark' : name === 'excessLevel' ? 'Exceeds Target' : name,
+                  ]}
                   labelFormatter={(_label, payload) =>
                     payload?.[0]?.payload?.fullLabel ? `Competency: ${payload[0].payload.fullLabel}` : 'Competency'
                   }
                 />
-                <Bar dataKey="score" name="Assessed" radius={[4, 4, 0, 0]} maxBarSize={14}>
+                {/* Single Composite Stacked Bar with Two-Tone Colors */}
+                <Bar
+                  dataKey="baseRequirement"
+                  stackId="cefr"
+                  name="Required Benchmark"
+                  fill="#0e7490"
+                  radius={[0, 0, 4, 4]}
+                  maxBarSize={22}
+                />
+                <Bar
+                  dataKey="excessLevel"
+                  stackId="cefr"
+                  name="Exceeds Level"
+                  fill="#06b6d4"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={22}
+                >
                   {commChartData.map((entry, index) => (
                     <Cell
                       key={`comm-cell-${index}`}
-                      fill={entry.highlight ? '#06b6d4' : '#0891b2'}
-                      className={entry.highlight ? 'filter drop-shadow-[0_0_6px_rgba(6,182,212,0.6)]' : ''}
+                      fill={entry.highlight ? '#22d3ee' : '#06b6d4'}
+                      className={entry.highlight ? 'filter drop-shadow-[0_0_8px_rgba(34,211,238,0.7)]' : ''}
                     />
                   ))}
                 </Bar>
-                <Bar dataKey="benchmark" name="Required" fill="#3f3f46" radius={[4, 4, 0, 0]} maxBarSize={14} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -401,12 +430,12 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/80">
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1 text-cyan-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
                 Assessed ({commLevel})
               </span>
-              <span className="flex items-center gap-1 text-zinc-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
-                Target ({commBenchmark})
+              <span className="flex items-center gap-1 text-cyan-800 dark:text-cyan-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-800" />
+                Required ({commBenchmark})
               </span>
             </div>
             <button
