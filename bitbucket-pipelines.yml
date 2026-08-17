@@ -9,10 +9,9 @@ definitions:
     sonar: ~/.sonar
   steps:
     - step: &quality-checks
-        name: Frontend Quality Checks & SonarQube Analysis
+        name: Frontend Quality Checks
         caches:
           - node
-          - sonar
         script:
           - rm -rf node_modules
           - npm ci
@@ -20,23 +19,20 @@ definitions:
           - npm run type-check
           - npx vitest run --coverage
           - npm run build
-          - export S_URL="${SONAR_HOST_URL:-${sonar_host_url:-$SONAR_URL}}"
-          - export S_TOKEN="${SONAR_TOKEN:-${sonar_token:-$SONAR_SECRET}}"
-          - |
-            if [ -n "$S_URL" ] && [ -n "$S_TOKEN" ]; then
-              echo "Executing SonarQube analysis for $S_URL..."
-            else
-              echo "WARNING: SONAR_HOST_URL or SONAR_TOKEN is not configured in Bitbucket variables."
-              echo "Please set SONAR_HOST_URL and SONAR_TOKEN under Repository Settings -> Repository variables."
-            fi
-          - pipe: sonarsource/sonarqube-scan:3.0.2
-            variables:
-              SONAR_HOST_URL: ${SONAR_HOST_URL:-${sonar_host_url:-$SONAR_URL}}
-              SONAR_TOKEN: ${SONAR_TOKEN:-${sonar_token:-$SONAR_SECRET}}
-              SONAR_SCANNER_OPTS: "-Xmx2048m"
-              EXTRA_ARGS: "-Dsonar.javascript.maxBuffer=1048576"
         artifacts:
           - dist/**
+          - coverage/**
+    - step: &sonar-analysis
+        name: SonarQube analysis
+        caches:
+          - sonar
+        script:
+          - pipe: sonarsource/sonarqube-scan:3.0.2
+            variables:
+              SONAR_HOST_URL: ${SONAR_HOST_URL}
+              SONAR_TOKEN: ${SONAR_TOKEN}
+              SONAR_SCANNER_OPTS: "-Xmx2048m"
+              EXTRA_ARGS: "-Dsonar.javascript.node.maxspace=2048 -Dsonar.javascript.maxBuffer=1048576"
     - step: &build-staging-image
         name: Build & Push Staging Docker Image
         image: docker:24.0.9
@@ -77,6 +73,7 @@ pipelines:
   branches:
     dev:
       - step: *quality-checks
+      - step: *sonar-analysis
       - step:
           name: Build & Push Dev Docker Image
           image: docker:24.0.9
@@ -95,19 +92,23 @@ pipelines:
 
     staging:
       - step: *quality-checks
+      - step: *sonar-analysis
       - step: *build-staging-image
 
     master:
       - step: *quality-checks
+      - step: *sonar-analysis
       - step: *build-master-image
 
     main:
       - step: *quality-checks
+      - step: *sonar-analysis
       - step: *build-master-image
 
   tags:
     'v*.*.*':
       - step: *quality-checks
+      - step: *sonar-analysis
       - step:
           name: Build & Push Release SemVer Image
           image: docker:24.0.9
@@ -129,3 +130,4 @@ pipelines:
             - docker push tariqsulehri/rct-frontend:$MAJOR_VERSION
             - docker push tariqsulehri/rct-frontend:latest
             - docker push tariqsulehri/rct-frontend:production-$SHORT_SHA
+
