@@ -50,6 +50,10 @@ vi.mock('@/hooks/useCommunication', () => ({
       org_level_key: 'B2',
       status: 'approved',
       communicationReady: true,
+      ratings: [
+        { competency_key: 'written_clarity', cefr: 'B2', evidence: 'Clear RFCs' },
+        { competency_key: 'spoken_fluency', cefr: 'B2', evidence: 'Fluent standups' },
+      ],
     },
     isLoading: false,
   }),
@@ -61,6 +65,10 @@ vi.mock('@/hooks/useBehavioral', () => ({
       result: {
         overallProficiency: 'L4',
         behavioralReady: true,
+        perCompetency: [
+          { competencyKey: 'ownership', level: 'L4', expectedLevel: 'L3', status: 'ABOVE' },
+          { competencyKey: 'collaboration', level: 'L4', expectedLevel: 'L3', status: 'ABOVE' },
+        ],
       },
       gradeKey: 'L3',
     },
@@ -131,6 +139,17 @@ describe('ResourceOverviewDashboard (SSR Rendering)', () => {
     expect(html).toContain('Behavioral');
     expect(html).toContain('L4');
     expect(html).toContain('Promotion Gate');
+  });
+
+  it('renders 3-Stream comparison switcher and chart controls', () => {
+    const html = renderToString(
+      <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
+    );
+
+    expect(html).toContain('Technical');
+    expect(html).toContain('CEFR Language');
+    expect(html).toContain('Behavioral');
+    expect(html).toContain('Detailed Rubrics');
   });
 
   it('renders 3 Dimension Action Cards for direct stream navigation', () => {

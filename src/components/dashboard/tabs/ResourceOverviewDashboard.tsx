@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Award,
   MessageSquare,
@@ -37,11 +37,39 @@ export interface ResourceOverviewDashboardProps {
   onNavigate: (t: TabType) => void;
 }
 
+const CEFR_WEIGHT_MAP: Record<string, number> = {
+  A1: 17,
+  A2: 33,
+  B1: 50,
+  B2: 67,
+  C1: 83,
+  C2: 100,
+};
+
+const BEHAV_WEIGHT_MAP: Record<string, number> = {
+  L1: 20,
+  L2: 40,
+  L3: 60,
+  L4: 80,
+  L5: 100,
+};
+
+const CEFR_LABEL_MAP: Record<string, string> = {
+  written_clarity: 'Written Clarity',
+  spoken_fluency: 'Spoken Fluency',
+  presentation: 'Presentation',
+  active_listening: 'Listening',
+  stakeholder_exec: 'Stakeholder',
+  cross_cultural: 'Cross-Cultural',
+};
+
 export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps> = ({
   user,
   onNavigate,
 }) => {
   const chartTheme = useChartTheme();
+  const [activeStream, setActiveStream] = useState<'technical' | 'communication' | 'behavioral'>('technical');
+
   const { data: overviewCompData } = useCompetencyScores();
   const { data: overviewGapData } = useGapMatrix();
   const { data: latestComm } = useLatestCommAssessment(user?.employeeId);
@@ -86,17 +114,87 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   const skillsCompletionPct = myTotal > 0 ? Math.round((myMeets / myTotal) * 100) : myScore ?? 0;
   const isOverallReady = technicalReady && commReady && behavReady;
 
-  // Domain Bar Chart Data
-  const domainChartData = useMemo(() => {
+  // 1. Technical Domain Bar Chart Data
+  const technicalChartData = useMemo(() => {
     if (!myGapRow?.domain_gaps) return [];
     return Object.entries(myGapRow.domain_gaps).map(([domain, data]) => ({
-      domain: domain.length > 12 ? `${domain.substring(0, 10)}…` : domain,
-      fullDomain: domain,
+      name: domain.length > 12 ? `${domain.substring(0, 10)}…` : domain,
+      fullName: domain,
       achieved: Math.round((data.score || 0) * 100),
       benchmark: Math.round((data.threshold || 0) * 100),
       meets: data.meets,
     }));
   }, [myGapRow]);
+
+  // 2. CEFR Communication Chart Data
+  const commChartData = useMemo(() => {
+    const defaultCompetencies = [
+      'written_clarity',
+      'spoken_fluency',
+      'presentation',
+      'active_listening',
+      'stakeholder_exec',
+      'cross_cultural',
+    ];
+    const targetWeight = CEFR_WEIGHT_MAP[commBenchmark] || 67;
+
+    return defaultCompetencies.map((key) => {
+      const rating = latestComm?.ratings?.find((r) => r.competency_key === key);
+      const achievedWeight = rating?.cefr ? CEFR_WEIGHT_MAP[rating.cefr] || 0 : 0;
+      return {
+        name: CEFR_LABEL_MAP[key] || key,
+        fullName: CEFR_LABEL_MAP[key] || key,
+        achieved: achievedWeight,
+        benchmark: targetWeight,
+        meets: achievedWeight >= targetWeight,
+      };
+    });
+  }, [latestComm, commBenchmark]);
+
+  // 3. Behavioral Framework Chart Data
+  const behavChartData = useMemo(() => {
+    const targetWeight = BEHAV_WEIGHT_MAP[behavBenchmark] || 60;
+    const perComp = latestBehav?.result?.perCompetency ?? [];
+
+    if (perComp.length > 0) {
+      return perComp.map((p) => {
+        const achievedWeight = p.level ? BEHAV_WEIGHT_MAP[p.level] || 0 : 0;
+        const reqWeight = p.expectedLevel ? BEHAV_WEIGHT_MAP[p.expectedLevel] || targetWeight : targetWeight;
+        const name = p.competencyKey.replace(/_/g, ' ');
+        return {
+          name: name.length > 12 ? `${name.substring(0, 10)}…` : name,
+          fullName: name,
+          achieved: achievedWeight,
+          benchmark: reqWeight,
+          meets: achievedWeight >= reqWeight,
+        };
+      });
+    }
+
+    const defaultPillars = [
+      'Ownership',
+      'Collaboration',
+      'Problem Solving',
+      'Mentorship',
+      'Delivery Focus',
+      'Ethical Integrity',
+    ];
+    return defaultPillars.map((name) => ({
+      name: name.length > 12 ? `${name.substring(0, 10)}…` : name,
+      fullName: name,
+      achieved: behavLevel ? BEHAV_WEIGHT_MAP[behavLevel] || 0 : 0,
+      benchmark: targetWeight,
+      meets: behavReady,
+    }));
+  }, [latestBehav, behavBenchmark, behavLevel, behavReady]);
+
+  // Active chart dataset based on selected stream
+  const activeChartData =
+    activeStream === 'technical'
+      ? technicalChartData
+      : activeStream === 'communication'
+      ? commChartData
+      : behavChartData;
 
   return (
     <div className="space-y-3 animate-slide-up pb-4">
@@ -214,42 +312,78 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
         />
       </div>
 
-      {/* ── 3. VISUAL RECHARTS SECTION: DOMAIN GAP & RADIAL READINESS ──────── */}
+      {/* ── 3. VISUAL 3-STREAM RECHARTS ANALYTICS & READINESS GAUGE ─────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* Left: Domain Capability Gap Bar Chart (2 Cols) */}
+        {/* Left: Interactive 3-Stream Benchmark Comparison Chart (2 Cols) */}
         <div className="lg:col-span-2 card p-3.5 rounded-2xl border shadow-2xs space-y-2">
-          <div className="flex items-center justify-between flex-wrap gap-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xs font-black uppercase tracking-wide text-zinc-900 dark:text-zinc-100">
-                Technical Domain Benchmark Comparison
-              </h2>
-              <InfoTip text="Compares your achieved domain scores against required benchmarks for your target career grade." />
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            {/* Stream Selector Buttons */}
+            <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-xl border border-zinc-200 dark:border-zinc-700">
+              <button
+                type="button"
+                onClick={() => setActiveStream('technical')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  activeStream === 'technical'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                }`}
+              >
+                <Cpu size={12} />
+                <span>Technical</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveStream('communication')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  activeStream === 'communication'
+                    ? 'bg-cyan-600 text-white shadow-xs'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                }`}
+              >
+                <MessageSquare size={12} />
+                <span>CEFR Language</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveStream('behavioral')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  activeStream === 'behavioral'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                }`}
+              >
+                <Award size={12} />
+                <span>Behavioral</span>
+              </button>
             </div>
+
             <button
               type="button"
               onClick={() => onNavigate('assessments')}
               className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"
             >
-              <span>Skill Grid</span>
+              <span>Detailed Rubrics</span>
               <ChevronRight size={11} />
             </button>
           </div>
 
-          {domainChartData.length === 0 ? (
+          {activeChartData.length === 0 ? (
             <div className="h-44 flex flex-col items-center justify-center text-center p-4 border border-dashed rounded-xl border-zinc-200 dark:border-zinc-700">
               <Compass size={24} className="text-zinc-400 mb-1" />
-              <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">No Domain Data Available</p>
+              <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">No Assessment Data Available</p>
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400 max-w-xs">
-                Assess skills under Technical Competencies to populate domain gap analysis.
+                Assess skills or complete rubric evaluations to populate comparison metrics.
               </p>
             </div>
           ) : (
             <div className="h-44 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={domainChartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                <BarChart data={activeChartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridColor} vertical={false} />
                   <XAxis
-                    dataKey="domain"
+                    dataKey="name"
                     stroke={chartTheme.axisColor}
                     fontSize={10}
                     tickLine={false}
@@ -266,7 +400,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
                   <Tooltip
                     contentStyle={getChartTooltipStyle(chartTheme)}
                     formatter={(val: number) => [`${val}%`, '']}
-                    labelFormatter={(label) => `Domain: ${label}`}
+                    labelFormatter={(label) => `Metric: ${label}`}
                   />
                   <Legend
                     verticalAlign="top"
@@ -275,17 +409,23 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
                   />
                   <Bar
                     dataKey="achieved"
-                    name="Achieved"
-                    fill="rgb(99, 102, 241)"
+                    name="Achieved Level"
+                    fill={
+                      activeStream === 'communication'
+                        ? 'rgb(6, 182, 212)'
+                        : activeStream === 'behavioral'
+                        ? 'rgb(245, 158, 11)'
+                        : 'rgb(99, 102, 241)'
+                    }
                     radius={[3, 3, 0, 0]}
-                    maxBarSize={24}
+                    maxBarSize={22}
                   />
                   <Bar
                     dataKey="benchmark"
-                    name="Target"
-                    fill="rgb(245, 158, 11)"
+                    name="Target Benchmark"
+                    fill="rgb(148, 163, 184)"
                     radius={[3, 3, 0, 0]}
-                    maxBarSize={24}
+                    maxBarSize={22}
                   />
                 </BarChart>
               </ResponsiveContainer>
