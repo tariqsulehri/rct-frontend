@@ -17,26 +17,15 @@ import {
 } from 'lucide-react';
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
   PieChart,
   Pie,
   Cell,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
 } from 'recharts';
 import { type User } from '@/store/authStore';
 import { useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
 import { useLatestCommAssessment } from '@/hooks/useCommunication';
 import { useLatestBehavioralAssessment } from '@/hooks/useBehavioral';
-import { useChartTheme, getChartTooltipStyle } from '@/hooks/useChartTheme';
+import { useChartTheme } from '@/hooks/useChartTheme';
 import { toPctNullable, formatGrade } from '@/lib/formatters';
 import { CefrLevelBadge } from '@/components/communication/CefrLevelBadge';
 import { BehavioralLevelBadge } from '@/components/behavioral/BehavioralLevelBadge';
@@ -438,252 +427,226 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
 
       {/* ── ROW 1 (3-COLUMNS): ALL THREE PRO-LEVEL COMPETENCE GRAPHS (UNIFORM HEIGHT) ──────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* GRAPH 1: Technical Mastery (Dual-Tone Composite Bars) */}
-        <div className="h-[285px] sm:h-[295px] rounded-2xl p-4 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-2">
+
+        {/* ── GRAPH 1: Technical Domains — Horizontal Progress Bars + Donut ──────── */}
+        <div className="h-[285px] sm:h-[295px] rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-2.5">
+          {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Cpu size={14} className="text-indigo-500 shrink-0" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
-                1. Technical Domains
-              </h2>
+              <Cpu size={13} className="text-indigo-500 shrink-0" />
+              <h2 className="text-[10px] font-black uppercase tracking-wider text-text-1">1. Technical Domains</h2>
             </div>
-            <div className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-              <TrendingUp size={12} />
-              <span>{myScore}% (Target: {myRequired}%)</span>
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${technicalReady ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/15 text-red-600 dark:text-red-400'}`}>
+              {technicalReady ? '✓ Met' : '✗ Gap'}
+            </span>
+          </div>
+
+          {/* Donut summary + overall score */}
+          <div className="flex items-center gap-3">
+            <div className="relative w-16 h-16 shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={[{ v: myScore ?? 0 }, { v: 100 - (myScore ?? 0) }]} dataKey="v" innerRadius={22} outerRadius={30} startAngle={90} endAngle={-270} paddingAngle={2}>
+                    <Cell fill={technicalReady ? '#6366f1' : '#f43f5e'} />
+                    <Cell fill={chartTheme.isDark ? '#27272a' : '#e5e7eb'} />
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-[11px] font-black font-mono text-text-1 leading-none">{myScore}%</span>
+              </div>
+            </div>
+            <div className="text-[9px] text-text-3 leading-relaxed">
+              <div><span className="font-bold text-indigo-500">{myScore}%</span> achieved</div>
+              <div><span className="font-bold text-text-2">{myRequired}%</span> required</div>
+              <div className="mt-0.5 text-[8px]">{myMeets}/{myTotal} skills verified</div>
             </div>
           </div>
 
-          <div className="h-[180px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={technicalChartData} margin={{ top: 12, right: 10, left: -22, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridColor} vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  stroke={chartTheme.axisColor}
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={{ stroke: chartTheme.gridColor }}
-                />
-                <YAxis
-                  stroke={chartTheme.axisColor}
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                  domain={[0, 100]}
-                  tickFormatter={(val) => `${val}%`}
-                />
-                <Tooltip
-                  contentStyle={getChartTooltipStyle(chartTheme)}
-                  formatter={(val: number, name: string) => [`${val}%`, name === 'baseScore' ? 'Target Met' : name === 'excessScore' ? 'Exceeds Target' : name]}
-                  labelFormatter={(_label, payload) =>
-                    payload?.[0]?.payload?.fullLabel ? `Domain: ${payload[0].payload.fullLabel}` : 'Domain'
-                  }
-                />
-                {/* Composite Single Stacked Bar */}
-                <Bar dataKey="baseScore" stackId="tech" name="Required Target" fill={chartTheme.isDark ? '#4f46e5' : '#6366f1'} radius={[0, 0, 4, 4]} maxBarSize={24} />
-                <Bar dataKey="excessScore" stackId="tech" name="Exceeds Benchmark" fill={chartTheme.isDark ? '#818cf8' : '#4338ca'} radius={[4, 4, 0, 0]} maxBarSize={24}>
-                  {technicalChartData.map((entry, index) => (
-                    <Cell
-                      key={`tech-cell-${index}`}
-                      fill={entry.highlight ? (chartTheme.isDark ? '#6366f1' : '#4f46e5') : (chartTheme.isDark ? '#818cf8' : '#818cf8')}
-                      className={entry.highlight ? 'filter drop-shadow-[0_0_6px_rgba(99,102,241,0.6)]' : ''}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Horizontal bars — one per domain */}
+          <div className="flex flex-col gap-1.5 flex-1 justify-center">
+            {technicalChartData.map((d, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="text-[8.5px] text-text-3 w-11 truncate shrink-0" title={d.fullLabel}>{d.label}</span>
+                <div className="flex-1 relative h-2.5 rounded-full bg-surface-2 overflow-visible">
+                  {/* Achieved fill */}
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
+                    style={{ width: `${Math.min(d.score, 100)}%`, background: d.score >= d.benchmark ? 'linear-gradient(90deg,#6366f1,#818cf8)' : 'linear-gradient(90deg,#f43f5e,#fb7185)' }}
+                  />
+                  {/* Required threshold marker */}
+                  <div
+                    className="absolute top-[-2px] bottom-[-2px] w-[2px] rounded-full bg-white/80 dark:bg-white/60 shadow-sm z-10"
+                    style={{ left: `${Math.min(d.benchmark, 98)}%` }}
+                  />
+                </div>
+                <span className="text-[8px] font-mono text-text-3 shrink-0 w-[52px] text-right tabular-nums">
+                  <span className={d.score >= d.benchmark ? 'text-indigo-500' : 'text-red-400'}>{d.score}%</span>/{d.benchmark}%
+                </span>
+              </div>
+            ))}
           </div>
 
-          <div className="flex items-center justify-between text-xs text-text-3 pt-2 border-t border-border">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                Score ({myScore}%)
-              </span>
-              <span className="flex items-center gap-1 text-text-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-zinc-500" />
-                Target ({myRequired}%)
-              </span>
+          {/* Footer legend */}
+          <div className="flex items-center justify-between text-[9px] text-text-3 pt-1.5 border-t border-border">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1"><span className="w-6 h-1.5 rounded-full bg-indigo-500 inline-block" />Achieved</span>
+              <span className="flex items-center gap-1"><span className="w-0.5 h-3 rounded-full bg-white/70 dark:bg-white/50 inline-block border border-border" />Required</span>
             </div>
-            <button
-              type="button"
-              onClick={() => onNavigate('assessments')}
-              className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"
-            >
-              <span>Skills Grid</span>
-              <ArrowUpRight size={11} />
+            <button type="button" onClick={() => onNavigate('assessments')} className="font-bold text-indigo-500 hover:underline inline-flex items-center gap-0.5">
+              Skills Grid <ArrowUpRight size={10} />
             </button>
           </div>
         </div>
 
-        {/* GRAPH 2: CEFR English Communication (Single Dual-Tone Composite Stacked Bar) */}
-        <div className="h-[285px] sm:h-[295px] rounded-2xl p-4 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-2">
+        {/* ── GRAPH 2: CEFR Language — Horizontal Progress Bars + Donut ────────── */}
+        <div className="h-[285px] sm:h-[295px] rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-2.5">
+          {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <MessageSquare size={14} className="text-cyan-500 shrink-0" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
-                2. CEFR Language
-              </h2>
+              <MessageSquare size={13} className="text-cyan-500 shrink-0" />
+              <h2 className="text-[10px] font-black uppercase tracking-wider text-text-1">2. CEFR Language</h2>
             </div>
-            <div className="inline-flex items-center gap-1 text-xs font-bold text-cyan-600 dark:text-cyan-400">
-              <CefrLevelBadge level={commLevel} size="sm" />
+            <CefrLevelBadge level={commLevel} size="sm" />
+          </div>
+
+          {/* Donut summary + level */}
+          <div className="flex items-center gap-3">
+            <div className="relative w-16 h-16 shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={[{ v: commScorePct }, { v: 100 - commScorePct }]} dataKey="v" innerRadius={22} outerRadius={30} startAngle={90} endAngle={-270} paddingAngle={2}>
+                    <Cell fill={commReady ? '#06b6d4' : '#f59e0b'} />
+                    <Cell fill={chartTheme.isDark ? '#27272a' : '#e5e7eb'} />
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-[11px] font-black font-mono text-text-1 leading-none">{commLevel}</span>
+              </div>
+            </div>
+            <div className="text-[9px] text-text-3 leading-relaxed">
+              <div><span className="font-bold text-cyan-500">{commLevel}</span> assessed ({commScorePct}%)</div>
+              <div><span className="font-bold text-text-2">{commBenchmark}</span> required ({commReqPct}%)</div>
+              <div className="mt-0.5 text-[8px]">6-competency framework</div>
             </div>
           </div>
 
-          <div className="h-[180px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={commChartData} margin={{ top: 12, right: 10, left: -22, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridColor} vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  stroke={chartTheme.axisColor}
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={{ stroke: chartTheme.gridColor }}
-                />
-                <YAxis
-                  stroke={chartTheme.axisColor}
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                  domain={[0, 100]}
-                  tickFormatter={(val) => `${val}%`}
-                />
-                <Tooltip
-                  contentStyle={getChartTooltipStyle(chartTheme)}
-                  formatter={(val: number, name: string) => [
-                    `${val}%`,
-                    name === 'baseRequirement' ? 'Required Benchmark' : name === 'excessLevel' ? 'Exceeds Target' : name,
-                  ]}
-                  labelFormatter={(_label, payload) =>
-                    payload?.[0]?.payload?.fullLabel ? `Competency: ${payload[0].payload.fullLabel}` : 'Competency'
-                  }
-                />
-                {/* Single Composite Stacked Bar with Two-Tone Colors */}
-                <Bar
-                  dataKey="baseRequirement"
-                  stackId="cefr"
-                  name="Required Benchmark"
-                  fill={chartTheme.isDark ? '#0e7490' : '#0891b2'}
-                  radius={[0, 0, 4, 4]}
-                  maxBarSize={24}
-                />
-                <Bar
-                  dataKey="excessLevel"
-                  stackId="cefr"
-                  name="Exceeds Level"
-                  fill={chartTheme.isDark ? '#06b6d4' : '#22d3ee'}
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={24}
-                >
-                  {commChartData.map((entry, index) => (
-                    <Cell
-                      key={`comm-cell-${index}`}
-                      fill={entry.highlight ? (chartTheme.isDark ? '#22d3ee' : '#06b6d4') : (chartTheme.isDark ? '#06b6d4' : '#0891b2')}
-                      className={entry.highlight ? 'filter drop-shadow-[0_0_8px_rgba(34,211,238,0.7)]' : ''}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Horizontal bars — one per CEFR competency */}
+          <div className="flex flex-col gap-1.5 flex-1 justify-center">
+            {commChartData.map((d, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="text-[8.5px] text-text-3 w-11 truncate shrink-0" title={d.fullLabel}>{d.label}</span>
+                <div className="flex-1 relative h-2.5 rounded-full bg-surface-2 overflow-visible">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
+                    style={{ width: `${Math.min(d.score, 100)}%`, background: d.score >= d.benchmark ? 'linear-gradient(90deg,#0891b2,#22d3ee)' : 'linear-gradient(90deg,#f59e0b,#fcd34d)' }}
+                  />
+                  <div
+                    className="absolute top-[-2px] bottom-[-2px] w-[2px] rounded-full bg-white/80 dark:bg-white/60 shadow-sm z-10"
+                    style={{ left: `${Math.min(d.benchmark, 98)}%` }}
+                  />
+                </div>
+                <span className="text-[8px] font-mono text-text-3 shrink-0 w-[52px] text-right tabular-nums">
+                  <span className={d.score >= d.benchmark ? 'text-cyan-500' : 'text-amber-400'}>{d.score}%</span>/{d.benchmark}%
+                </span>
+              </div>
+            ))}
           </div>
 
-          <div className="flex items-center justify-between text-xs text-text-3 pt-2 border-t border-border">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-cyan-600 dark:text-cyan-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
-                Assessed ({commLevel})
-              </span>
-              <span className="flex items-center gap-1 text-text-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-800 dark:bg-cyan-700" />
-                Required ({commBenchmark})
-              </span>
+          {/* Footer legend */}
+          <div className="flex items-center justify-between text-[9px] text-text-3 pt-1.5 border-t border-border">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1"><span className="w-6 h-1.5 rounded-full bg-cyan-500 inline-block" />Assessed</span>
+              <span className="flex items-center gap-1"><span className="w-0.5 h-3 rounded-full bg-white/70 dark:bg-white/50 inline-block border border-border" />Required</span>
             </div>
-            <button
-              type="button"
-              onClick={() => onNavigate('assessments')}
-              className="font-bold text-cyan-600 dark:text-cyan-400 hover:underline inline-flex items-center gap-0.5"
-            >
-              <span>CEFR Rubric</span>
-              <ArrowUpRight size={11} />
+            <button type="button" onClick={() => onNavigate('assessments')} className="font-bold text-cyan-500 hover:underline inline-flex items-center gap-0.5">
+              CEFR Rubric <ArrowUpRight size={10} />
             </button>
           </div>
         </div>
 
-        {/* GRAPH 3: Behavioral 11-Item Competencies Radar Chart */}
-        <div className="h-[285px] sm:h-[295px] rounded-2xl p-4 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-1">
+        {/* ── GRAPH 3: Behavioral 11-Pillar — Horizontal Progress Bars + Donut ───── */}
+        <div className="h-[285px] sm:h-[295px] rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-2">
+          {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Award size={14} className="text-amber-500 shrink-0" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
-                3. Behavioral Radar (11 Pillars)
-              </h2>
+              <Award size={13} className="text-amber-500 shrink-0" />
+              <h2 className="text-[10px] font-black uppercase tracking-wider text-text-1">3. Behavioral (11 Pillars)</h2>
             </div>
-            <div className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400">
-              <BehavioralLevelBadge level={behavLevel} size="sm" />
+            <BehavioralLevelBadge level={behavLevel} size="sm" />
+          </div>
+
+          {/* Donut summary + level */}
+          <div className="flex items-center gap-3">
+            <div className="relative w-16 h-16 shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={[{ v: behavScorePct }, { v: 100 - behavScorePct }]} dataKey="v" innerRadius={22} outerRadius={30} startAngle={90} endAngle={-270} paddingAngle={2}>
+                    <Cell fill={behavReady ? '#f59e0b' : '#f43f5e'} />
+                    <Cell fill={chartTheme.isDark ? '#27272a' : '#e5e7eb'} />
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-[11px] font-black font-mono text-text-1 leading-none">{behavLevel}</span>
+              </div>
+            </div>
+            <div className="text-[9px] text-text-3 leading-relaxed">
+              <div>
+                <span className="text-[8px] font-bold text-amber-400 uppercase">Core</span>
+                <span className="text-[8px] font-bold text-purple-400 uppercase ml-1.5">Leadership</span>
+              </div>
+              <div><span className="font-bold text-amber-500">{behavLevel}</span> assessed ({behavScorePct}%)</div>
+              <div><span className="font-bold text-text-2">{behavBenchmark}</span> required ({behavReqPct}%)</div>
             </div>
           </div>
 
-          {/* 11-Point Radar Chart */}
-          <div className="h-[185px] w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={behavRadarData} margin={{ top: 8, right: 18, bottom: 8, left: 18 }}>
-                <PolarGrid stroke={chartTheme.gridColor} />
-                <PolarAngleAxis
-                  dataKey="name"
-                  stroke={chartTheme.axisColor}
-                  fontSize={8}
-                  tickLine={false}
-                />
-                <PolarRadiusAxis domain={[0, 100]} stroke={chartTheme.gridColor} tick={false} axisLine={false} />
-                <Radar
-                  name="Assessed Level"
-                  dataKey="score"
-                  stroke={chartTheme.primary}
-                  fill={chartTheme.primary}
-                  fillOpacity={0.4}
-                />
-                <Radar
-                  name="Role Benchmark"
-                  dataKey="benchmark"
-                  stroke={chartTheme.warning}
-                  fill={chartTheme.warning}
-                  fillOpacity={0.15}
-                  strokeDasharray="2 2"
-                />
-                <Tooltip
-                  contentStyle={getChartTooltipStyle(chartTheme)}
-                  formatter={(val: number) => [`${val}%`, '']}
-                  labelFormatter={(_label, payload) =>
-                    payload?.[0]?.payload?.fullName ? `Pillar: ${payload[0].payload.fullName}` : 'Pillar'
-                  }
-                />
-              </RadarChart>
-            </ResponsiveContainer>
+          {/* Horizontal bars — all 11 behavioral pillars (compact) */}
+          <div className="flex flex-col gap-[4.5px] flex-1 justify-center overflow-hidden">
+            {behavRadarData.map((d, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                {/* Core vs Leadership color dot */}
+                <span className={`w-1 h-1 rounded-full shrink-0 ${d.type === 'core' ? 'bg-amber-400' : 'bg-purple-400'}`} />
+                <span className="text-[7.5px] text-text-3 w-[52px] truncate shrink-0" title={d.fullName}>{d.name}</span>
+                <div className="flex-1 relative h-2 rounded-full bg-surface-2 overflow-visible">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
+                    style={{
+                      width: `${Math.min(d.score, 100)}%`,
+                      background: d.score >= d.benchmark
+                        ? (d.type === 'core' ? 'linear-gradient(90deg,#d97706,#fbbf24)' : 'linear-gradient(90deg,#7c3aed,#a78bfa)')
+                        : 'linear-gradient(90deg,#f43f5e,#fb7185)'
+                    }}
+                  />
+                  <div
+                    className="absolute top-[-2px] bottom-[-2px] w-[2px] rounded-full bg-white/80 dark:bg-white/60 shadow-sm z-10"
+                    style={{ left: `${Math.min(d.benchmark, 98)}%` }}
+                  />
+                </div>
+                <span className={`text-[7px] font-mono shrink-0 tabular-nums ${d.score >= d.benchmark ? 'text-emerald-500' : 'text-red-400'}`}>
+                  {d.score >= d.benchmark ? '✓' : '↑'}
+                </span>
+              </div>
+            ))}
           </div>
 
-          <div className="flex items-center justify-between text-xs text-text-3 pt-2 border-t border-border">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                Assessed
-              </span>
-              <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                Benchmark ({behavBenchmark})
-              </span>
+          {/* Footer legend */}
+          <div className="flex items-center justify-between text-[9px] text-text-3 pt-1.5 border-t border-border">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />Core (6)</span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400 inline-block" />Leadership (5)</span>
+              <span className="flex items-center gap-1"><span className="w-0.5 h-3 rounded-full bg-white/70 dark:bg-white/50 inline-block border border-border" />Required</span>
             </div>
-            <button
-              type="button"
-              onClick={() => onNavigate('assessments')}
-              className="font-bold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-0.5"
-            >
-              <span>Matrix</span>
-              <ArrowUpRight size={11} />
+            <button type="button" onClick={() => onNavigate('assessments')} className="font-bold text-amber-500 hover:underline inline-flex items-center gap-0.5">
+              Matrix <ArrowUpRight size={10} />
             </button>
           </div>
         </div>
+
       </div>
+
+
 
       {/* ── ROW 2 (3-COLUMNS): AI COPILOT (LEFT) + 3-PILLAR DONUT BREAKDOWN (CENTER) + MILESTONES (RIGHT) (UNIFORM HEIGHT) ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
