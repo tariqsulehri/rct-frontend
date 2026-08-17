@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { BarChart2, Table2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell, LabelList, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend } from 'recharts';
 import { useCompetencyMatrix, useGapMatrix, type CompetencyMatrixEmployee, type CompetencyMatrixResult } from '@/hooks/useReports';
-import { useChartColors, tooltipStyle } from '@/lib/chartColors';
+import { useChartTheme, getChartTooltipStyle } from '@/hooks/useChartTheme';
 import { useAuthStore } from '@/store/authStore';
 import { isLeaderRole } from '@/types/rbac';
 import { Empty, InfoTip, Loading } from '../shared';
@@ -47,7 +47,7 @@ interface RadarTickProps {
 export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = ({ reportFilters = DEFAULT_REPORT_FILTERS }) => {
   const { data, isLoading, isError } = useCompetencyMatrix();
   const { data: gapData } = useGapMatrix();
-  const c = useChartColors();
+  const c = useChartTheme();
   const user = useAuthStore((s) => s.user);
   const isManager = isLeaderRole(user?.role);
 
@@ -321,30 +321,30 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
             </p>
             <ResponsiveContainer width="100%" height={Math.max(280, barData.length * 28)}>
               <BarChart data={barData} layout="vertical" margin={{ left: 8, right: 60, top: 4, bottom: 4 }}>
-                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: c.text }}
+                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: c.axisColor }}
                   tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" width={130}
-                  tick={{ fontSize: 10, fill: c.text }} axisLine={false} tickLine={false} />
+                  tick={{ fontSize: 10, fill: c.axisColor }} axisLine={false} tickLine={false} />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
                     const d = payload[0].payload;
                     return (
-                      <div style={tooltipStyle(c)}>
+                      <div style={getChartTooltipStyle(c)}>
                         <p className="font-bold text-xs mb-1" style={{ color: d.color }}>{d.fullName}</p>
-                        <p style={{ color: c.text }}>Skill Area: {d.domain}</p>
-                        <p style={{ color: c.text }}>Team avg: <b style={{ color: d.color }}>{d.avg}%</b></p>
-                        <p style={{ color: c.text }}>Checked: <b>{d.checked}%</b> of people</p>
+                        <p style={{ color: c.tooltipText }}>Skill Area: {d.domain}</p>
+                        <p style={{ color: c.tooltipText }}>Team avg: <b style={{ color: d.color }}>{d.avg}%</b></p>
+                        <p style={{ color: c.tooltipText }}>Checked: <b>{d.checked}%</b> of people</p>
                         {d.is_critical && <p style={{ color: 'rgb(var(--danger))' }}>Important skill</p>}
                       </div>
                     );
                   }}
-                  cursor={{ fill: c.grid, opacity: 0.25 }}
+                  cursor={{ fill: c.gridColor, opacity: 0.25 }}
                 />
                 <Bar dataKey="avg" radius={[0, 5, 5, 0]} maxBarSize={20}>
                   {barData.map((d, i) => <Cell key={i} fill={d.color} />)}
                   <LabelList dataKey="avg" position="right" formatter={(v: number) => v > 0 ? `${v}%` : ''}
-                    style={{ fontSize: 10, fill: c.text }} />
+                    style={{ fontSize: 10, fill: c.axisColor }} />
                 </Bar>
                 <ReferenceLine
                   x={60}
@@ -378,14 +378,14 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                 <RadarChart
                   data={domainRadarData}
                   outerRadius="62%" margin={{ top: 28, right: 90, bottom: 28, left: 90 }}>
-                  <PolarGrid stroke={c.radarGrid} />
+                  <PolarGrid stroke={c.gridColor} />
                   <PolarAngleAxis dataKey="domain"
                     tick={(props: RadarTickProps) => {
                       const { payload, x = 0, y = 0, cx = 0 } = props;
                       const dx = x - cx;
                       const anchor = dx > 10 ? 'start' : dx < -10 ? 'end' : 'middle';
                       const dg = domainGroups.find((d) => d.domain === payload?.value);
-                      const col = dg?.color ?? '#d1d5db';
+                      const col = dg?.color ?? c.axisColor;
                       return (
                         <text x={x} y={y} textAnchor={anchor} dominantBaseline="middle"
                           fontSize={11} fontWeight={600} fill={col}>
@@ -394,7 +394,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                       );
                     }}
                   />
-                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9, fill: c.radarTick }} tickFormatter={(v) => `${v}%`} angle={30} />
+                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9, fill: c.axisColor }} tickFormatter={(v) => `${v}%`} angle={30} />
                   <Radar name="Score" dataKey="score" stroke={c.accent} fill={c.accent} fillOpacity={0.25} strokeWidth={2} />
                   {domainRadarData.some((d) => d.required > 0) && (
                     <Radar name="Required" dataKey="required" stroke={c.warning} fill="none" strokeWidth={1.5} strokeDasharray="5 3" />
@@ -404,9 +404,9 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                       if (!active || !payload?.length) return null;
                       const d = payload[0].payload;
                       return (
-                        <div style={tooltipStyle(c)}>
+                        <div style={getChartTooltipStyle(c)}>
                           <p className="font-semibold text-xs mb-1" style={{ color: d.color }}>{d.domain}</p>
-                          <p style={{ color: c.text }}>Score: <b>{d.score}%</b></p>
+                          <p style={{ color: c.tooltipText }}>Score: <b>{d.score}%</b></p>
                           {d.required > 0 && (
                             <p style={{ color: d.meets ? 'rgb(var(--success))' : 'rgb(var(--danger))' }}>
                               Needed: {d.required}% ({d.meets ? 'Meets' : 'Below'})
@@ -417,7 +417,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                     }}
                   />
                   {domainRadarData.some((d) => d.required > 0) && (
-                    <Legend formatter={(v) => <span style={{ color: c.radarTick, fontSize: 12 }}>{v}</span>} />
+                    <Legend formatter={(v) => <span style={{ color: c.legendColor, fontSize: 12 }}>{v}</span>} />
                   )}
                 </RadarChart>
               </ResponsiveContainer>
@@ -439,18 +439,18 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                     color: domainGroups.find((d) => d.domain === c2.domain)?.color ?? c.accent,
                   }))}
                   layout="vertical" margin={{ left: 8, right: 48, top: 4, bottom: 4 }} barCategoryGap="18%">
-                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: c.text }}
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: c.axisColor }}
                     tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" width={160}
-                    tick={{ fontSize: 10, fill: c.radarTick }} axisLine={false} tickLine={false} />
+                    tick={{ fontSize: 10, fill: c.axisColor }} axisLine={false} tickLine={false} />
                   <Tooltip
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null;
                       const d = payload[0].payload;
                       return (
-                        <div style={tooltipStyle(c)}>
+                        <div style={getChartTooltipStyle(c)}>
                           <p className="font-semibold text-xs mb-1" style={{ color: d.color }}>{d.fullName}</p>
-                          <p style={{ color: c.text }}>Team avg: <b>{d.avg}%</b></p>
+                          <p style={{ color: c.tooltipText }}>Team avg: <b>{d.avg}%</b></p>
                         </div>
                       );
                     }}
@@ -460,7 +460,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                       <Cell key={i} fill={domainGroups.find((d) => d.domain === entry.domain)?.color ?? c.accent} />
                     ))}
                     <LabelList dataKey="avg" position="right" formatter={(v: number) => `${v}%`}
-                      style={{ fontSize: 10, fill: c.text }} />
+                      style={{ fontSize: 10, fill: c.axisColor }} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -498,7 +498,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                   outerRadius="54%"
                   margin={{ top: 36, right: 150, bottom: 36, left: 150 }}
                 >
-                  <PolarGrid stroke={c.radarGrid} />
+                  <PolarGrid stroke={c.gridColor} />
                   <PolarAngleAxis
                     dataKey="comp"
                     tick={(props: RadarTickProps) => {
@@ -572,7 +572,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                   />
                   <PolarRadiusAxis
                     domain={[0, 100]}
-                    tick={{ fontSize: 10, fill: c.radarTick }}
+                    tick={{ fontSize: 10, fill: c.axisColor }}
                     tickFormatter={(v) => `${v}%`}
                     angle={30}
                   />
@@ -588,9 +588,9 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                       if (!active || !payload?.length) return null;
                       const d = payload[0].payload;
                       return (
-                        <div style={tooltipStyle(c)}>
+                        <div style={getChartTooltipStyle(c)}>
                           <p className="font-semibold text-xs mb-1" style={{ color: d.color }}>{d.fullName}</p>
-                          <p style={{ color: c.text }}>Team Avg: <b>{d.team}%</b></p>
+                          <p style={{ color: c.tooltipText }}>Team Avg: <b>{d.team}%</b></p>
                           {d.selected !== undefined && <p style={{ color: c.success }}>Selected: <b>{d.selected}%</b></p>}
                           {d.required > 0 && <p style={{ color: c.warning }}>Required: <b>{d.required}%</b></p>}
                         </div>
@@ -600,7 +600,7 @@ export const CompetencyScoresTab: React.FC<{ reportFilters?: ReportFilters }> = 
                   <Legend
                     wrapperStyle={{ paddingTop: 12 }}
                     formatter={(v) => (
-                      <span style={{ color: c.text, fontSize: 12, paddingRight: 20 }}>
+                      <span style={{ color: c.legendColor, fontSize: 12, paddingRight: 20 }}>
                         {v}
                       </span>
                     )}

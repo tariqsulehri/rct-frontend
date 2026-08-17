@@ -16,6 +16,7 @@ export interface ChartThemeTokens {
   warning: string;
   danger: string;
   muted: string;
+  domains: string[];
 }
 
 /**
@@ -42,6 +43,7 @@ export function useChartTheme(): ChartThemeTokens {
       warning: '#f59e0b',
       danger: '#ef4444',
       muted: '#64748b',
+      domains: ['#06b6d4', '#38bdf8', '#818cf8', '#a78bfa', '#34d399', '#f59e0b', '#f472b6'],
     };
   }
 
@@ -62,6 +64,7 @@ export function useChartTheme(): ChartThemeTokens {
       warning: '#fbbf24',
       danger: '#f87171',
       muted: '#71717a',
+      domains: ['#8b5cf6', '#a78bfa', '#38bdf8', '#34d399', '#fbbf24', '#f87171', '#f472b6'],
     };
   }
 
@@ -82,5 +85,24 @@ export function useChartTheme(): ChartThemeTokens {
     warning: '#b45309',
     danger: '#dc2626',
     muted: '#94a3b8',
+    domains: ['#6d28d9', '#0284c7', '#0d9488', '#16a34a', '#d97706', '#dc2626', '#7c3aed'],
   };
 }
+
+/**
+ * Standardized Chart Tooltip Styling Helper.
+ */
+export function getChartTooltipStyle(theme: ChartThemeTokens): React.CSSProperties {
+  return {
+    backgroundColor: theme.tooltipBg,
+    borderColor: theme.tooltipBorder,
+    color: theme.tooltipText,
+    borderRadius: '0.75rem',
+    boxShadow: '0 8px 24px -4px rgba(0,0,0,0.15)',
+    padding: '8px 12px',
+    fontSize: '11px',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+  };
+}
+
