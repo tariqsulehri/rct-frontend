@@ -155,33 +155,33 @@ export const CefrLanguageCard: React.FC<CefrLanguageCardProps> = ({
             <RadarChart data={chartData} cx="50%" cy="50%" outerRadius="75%">
               <defs>
                 <linearGradient id="colorCefr" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.6}/>
-                  <stop offset="95%" stopColor="#22d3ee" stopOpacity={0.1}/>
+                  <stop offset="5%" stopColor="#0891b2" stopOpacity={0.85}/>
+                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.25}/>
                 </linearGradient>
               </defs>
-              <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3', stroke: chartTheme.isDark ? '#52525b' : '#d4d4d8' }} />
-              <PolarGrid stroke={chartTheme.isDark ? '#3f3f46' : '#e5e7eb'} strokeDasharray="3 3" />
+              <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3', stroke: chartTheme.isDark ? '#71717a' : '#a1a1aa' }} />
+              <PolarGrid stroke={chartTheme.isDark ? '#52525b' : '#d4d4d8'} strokeDasharray="3 3" />
               <PolarAngleAxis
                 dataKey="fullLabel"
-                tick={{ fill: chartTheme.isDark ? '#a1a1aa' : '#71717a', fontSize: 10, fontWeight: 600 }}
+                tick={{ fill: chartTheme.isDark ? '#d4d4d8' : '#52525b', fontSize: 10, fontWeight: 700 }}
               />
               <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
               
               <Radar
                 name="Required"
                 dataKey="benchmark"
-                stroke={chartTheme.isDark ? '#71717a' : '#a1a1aa'}
-                strokeWidth={2}
+                stroke={chartTheme.isDark ? '#a1a1aa' : '#71717a'}
+                strokeWidth={2.5}
                 strokeDasharray="4 4"
                 fill="none"
               />
               <Radar
                 name="Assessed"
                 dataKey="score"
-                stroke="#06b6d4"
+                stroke="#0891b2"
                 fill="url(#colorCefr)"
                 fillOpacity={1}
-                strokeWidth={2.5}
+                strokeWidth={3}
               />
             </RadarChart>
           </ResponsiveContainer>
