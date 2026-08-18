@@ -185,8 +185,8 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   // 2. CEFR Language stats
   const commLevel: CefrLevelCode = (commAss?.evaluation?.overallCefr as CefrLevelCode) || (commAss?.overallCefr as CefrLevelCode) || 'B2';
   const commBenchmark: CefrLevelCode = (commAss?.evaluation?.expectedCefr as CefrLevelCode) || 'B2';
-  const commScorePct = CEFR_LEVEL_NUMERIC[commLevel] || 67;
-  const commReqPct = CEFR_LEVEL_NUMERIC[commBenchmark] || 67;
+  const commScorePct = commAss?.evaluation?.overallScore ? Math.round(commAss.evaluation.overallScore * 100) : (CEFR_LEVEL_NUMERIC[commLevel] || 67);
+  const commReqPct = commAss?.evaluation?.expectedScore ? Math.round(commAss.evaluation.expectedScore * 100) : (CEFR_LEVEL_NUMERIC[commBenchmark] || 67);
   const commReady = commScorePct >= commReqPct;
 
   const commChartData = useMemo(() => {
@@ -209,8 +209,8 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   // 3. Behavioral stats
   const behavLevel: BehavioralLevelCode = (behavAss?.result?.overallProficiency as BehavioralLevelCode) || 'L4';
   const behavBenchmark: BehavioralLevelCode = 'L3';
-  const behavScorePct = BEHAVIORAL_LEVEL_NUMERIC[behavLevel] || 80;
-  const behavReqPct = BEHAVIORAL_LEVEL_NUMERIC[behavBenchmark] || 60;
+  const behavScorePct = behavAss?.result?.overallScore ? Math.round(behavAss.result.overallScore * 100) : (BEHAVIORAL_LEVEL_NUMERIC[behavLevel] || 80);
+  const behavReqPct = behavAss?.result?.expectedScore ? Math.round(behavAss.result.expectedScore * 100) : (BEHAVIORAL_LEVEL_NUMERIC[behavBenchmark] || 60);
   const behavReady = behavScorePct >= behavReqPct;
 
   const behavChartData = useMemo(() => {
