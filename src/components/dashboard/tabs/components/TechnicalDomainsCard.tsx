@@ -171,7 +171,14 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
               <PolarAngleAxis
                 dataKey="fullLabel"
                 tick={(props: any) => {
-                  const { payload, x, y, textAnchor } = props;
+                  const { payload, x, y, cx, cy, textAnchor } = props;
+                  
+                  // Push text outward by 15% from the center to increase gap from the graph
+                  const dx = (x - cx) * 0.15;
+                  const dy = (y - cy) * 0.15;
+                  const adjustedX = x + dx;
+                  const adjustedY = y + dy;
+
                   const words = payload.value.split(' ');
                   let lines = [];
                   if (words.length > 2) {
@@ -184,15 +191,15 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
                   
                   return (
                     <text 
-                      x={x} 
-                      y={y} 
+                      x={adjustedX} 
+                      y={adjustedY} 
                       textAnchor={textAnchor} 
-                      fill={chartTheme.isDark ? '#d4d4d8' : '#52525b'} 
+                      fill={chartTheme.isDark ? '#818cf8' : '#4f46e5'} 
                       fontSize={9} 
-                      fontWeight={700}
+                      fontWeight={800}
                     >
                       {lines.map((line, i) => (
-                        <tspan key={i} x={x} dy={i === 0 ? (lines.length === 1 ? 3 : -4) : 12}>
+                        <tspan key={i} x={adjustedX} dy={i === 0 ? (lines.length === 1 ? 3 : -4) : 12}>
                           {line}
                         </tspan>
                       ))}
