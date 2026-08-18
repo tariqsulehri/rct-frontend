@@ -57,6 +57,23 @@ vi.mock('@/hooks/useCommunication', () => ({
     },
     isLoading: false,
   }),
+  useCommConfig: () => ({
+    data: {
+      cefrLevels: {
+        A1: { weight: 0.17 },
+        A2: { weight: 0.33 },
+        B1: { weight: 0.50 },
+        B2: { weight: 0.67 },
+        C1: { weight: 0.83 },
+        C2: { weight: 1.00 },
+      },
+      competencies: [
+        { key: 'written_clarity', name: 'Written Clarity' },
+        { key: 'spoken_fluency', name: 'Spoken Fluency' },
+      ],
+    },
+    isLoading: false,
+  }),
 }));
 
 vi.mock('@/hooks/useBehavioral', () => ({
@@ -74,7 +91,24 @@ vi.mock('@/hooks/useBehavioral', () => ({
     },
     isLoading: false,
   }),
+  useBehavioralConfig: () => ({
+    data: {
+      levels: [
+        { code: 'L1', centi_weight: 20 },
+        { code: 'L2', centi_weight: 40 },
+        { code: 'L3', centi_weight: 60 },
+        { code: 'L4', centi_weight: 80 },
+        { code: 'L5', centi_weight: 100 },
+      ],
+      competencies: [
+        { key: 'ownership', name: 'Ownership', type: 'core' },
+        { key: 'communication', name: 'Communication', type: 'core' },
+      ],
+    },
+    isLoading: false,
+  }),
 }));
+
 
 vi.mock('@/hooks/useChartTheme', () => ({
   useChartTheme: () => ({

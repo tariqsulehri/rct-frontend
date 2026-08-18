@@ -21,8 +21,8 @@ import {
 } from 'recharts';
 import { type User } from '@/store/authStore';
 import { useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
-import { useLatestCommAssessment } from '@/hooks/useCommunication';
-import { useLatestBehavioralAssessment } from '@/hooks/useBehavioral';
+import { useLatestCommAssessment, useCommConfig } from '@/hooks/useCommunication';
+import { useLatestBehavioralAssessment, useBehavioralConfig } from '@/hooks/useBehavioral';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { formatGrade } from '@/lib/formatters';
 import { CefrLevelBadge } from '@/components/communication/CefrLevelBadge';
@@ -36,46 +36,7 @@ export interface ResourceOverviewDashboardProps {
   onNavigate: (t: TabType) => void;
 }
 
-const BEHAVIORAL_11_COMPETENCIES = [
-  { key: 'ownership', name: 'Ownership', fullName: 'Ownership & Accountability', type: 'core' },
-  { key: 'collaboration', name: 'Collaboration', fullName: 'Collaboration & Influence', type: 'core' },
-  { key: 'customer_business', name: 'Customer Focus', fullName: 'Customer & Business Focus', type: 'core' },
-  { key: 'communication', name: 'Communication', fullName: 'Communication', type: 'core' },
-  { key: 'adaptability', name: 'Adaptability', fullName: 'Adaptability & Learning', type: 'core' },
-  { key: 'integrity', name: 'Integrity', fullName: 'Integrity & Judgment', type: 'core' },
-  { key: 'develops_people', name: 'Develops People', fullName: 'Develops People', type: 'leadership' },
-  { key: 'strategic_thinking', name: 'Strategic Thinking', fullName: 'Strategic Thinking', type: 'leadership' },
-  { key: 'drives_change', name: 'Drives Change', fullName: 'Drives Change', type: 'leadership' },
-  { key: 'decision_making', name: 'Decision Making', fullName: 'Decision-Making', type: 'leadership' },
-  { key: 'builds_teams', name: 'Builds Teams', fullName: 'Builds & Leads Teams', type: 'leadership' },
-];
 
-const BEHAVIORAL_LEVEL_NUMERIC: Record<string, number> = {
-  L1: 20,
-  L2: 40,
-  L3: 60,
-  L4: 80,
-  L5: 100,
-  NA: 0,
-};
-
-const CEFR_LEVEL_NUMERIC: Record<string, number> = {
-  A1: 17,
-  A2: 33,
-  B1: 50,
-  B2: 67,
-  C1: 83,
-  C2: 100,
-};
-
-const CEFR_6_COMPETENCIES = [
-  { key: 'written_clarity', label: 'Write', fullLabel: 'Written Clarity' },
-  { key: 'spoken_fluency', label: 'Speak', fullLabel: 'Spoken Fluency' },
-  { key: 'presentation', label: 'Present', fullLabel: 'Technical Presentation' },
-  { key: 'active_listening', label: 'Listen', fullLabel: 'Active Listening' },
-  { key: 'stakeholder_exec', label: 'Exec', fullLabel: 'Stakeholder Alignment' },
-  { key: 'cross_cultural', label: 'Culture', fullLabel: 'Cross-Cultural' },
-];
 
 /**
  * BAR_PALETTE — 12 visually distinct gradient fills for per-bar nominal color encoding.
@@ -108,6 +69,8 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   const activeUserId = user?.empCode ? String(user.empCode) : undefined;
   const { data: commAss } = useLatestCommAssessment(activeUserId);
   const { data: behavAss } = useLatestBehavioralAssessment(activeUserId);
+  const { data: commConfig } = useCommConfig();
+  const { data: behavConfig } = useBehavioralConfig();
 
   // Grade targets
   const currentGrade = user?.currentGrade || 'G15';
@@ -183,52 +146,58 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   }, [technicalChartData, gapMatrixData, user?.empCode]);
 
   // 2. CEFR Language stats
+  const getCommWeight = (levelCode: string) => Math.round((commConfig?.cefrLevels[levelCode as CefrLevelCode]?.weight || 0) * 100);
+  
   const commLevel: CefrLevelCode = (commAss?.evaluation?.overallCefr as CefrLevelCode) || (commAss?.overallCefr as CefrLevelCode) || 'B2';
   const commBenchmark: CefrLevelCode = (commAss?.evaluation?.expectedCefr as CefrLevelCode) || 'B2';
-  const commScorePct = commAss?.evaluation?.overallScore ? Math.round(commAss.evaluation.overallScore * 100) : (CEFR_LEVEL_NUMERIC[commLevel] || 67);
-  const commReqPct = commAss?.evaluation?.expectedScore ? Math.round(commAss.evaluation.expectedScore * 100) : (CEFR_LEVEL_NUMERIC[commBenchmark] || 67);
+  const commScorePct = commAss?.evaluation?.overallScore ? Math.round(commAss.evaluation.overallScore * 100) : (getCommWeight(commLevel) || 67);
+  const commReqPct = commAss?.evaluation?.expectedScore ? Math.round(commAss.evaluation.expectedScore * 100) : (getCommWeight(commBenchmark) || 67);
   const commReady = commScorePct >= commReqPct;
 
   const commChartData = useMemo(() => {
     const breakdown = commAss?.evaluation?.competencyBreakdown || [];
-    const defaultBenchmark = CEFR_LEVEL_NUMERIC[commBenchmark] || 67;
-    const defaultAssessed = CEFR_LEVEL_NUMERIC[commLevel] || 67;
+    const defaultBenchmark = getCommWeight(commBenchmark) || 67;
+    const defaultAssessed = getCommWeight(commLevel) || 67;
 
-    return CEFR_6_COMPETENCIES.map((comp) => {
+    const competencies = commConfig?.competencies || [];
+    return competencies.map((comp) => {
       const match = breakdown.find(b => b.competencyKey === comp.key);
-      const score = match ? (CEFR_LEVEL_NUMERIC[match.cefr] || defaultAssessed) : defaultAssessed;
+      const score = match ? (getCommWeight(match.cefr) || defaultAssessed) : defaultAssessed;
       return {
-        label: comp.label,
-        fullLabel: comp.fullLabel,
+        label: comp.name.length > 7 ? comp.name.slice(0, 7) : comp.name,
+        fullLabel: comp.name,
         score,
         benchmark: defaultBenchmark,
       };
     });
-  }, [commAss, commLevel, commBenchmark]);
+  }, [commAss, commLevel, commBenchmark, commConfig]);
 
   // 3. Behavioral stats
+  const getBehavWeight = (levelCode: string) => behavConfig?.levels.find(l => l.code === levelCode)?.centi_weight || 0;
+  
   const behavLevel: BehavioralLevelCode = (behavAss?.result?.overallProficiency as BehavioralLevelCode) || 'L4';
   const behavBenchmark: BehavioralLevelCode = 'L3';
-  const behavScorePct = behavAss?.result?.overallCw ? Math.round(behavAss.result.overallCw * 100) : (BEHAVIORAL_LEVEL_NUMERIC[behavLevel] || 80);
-  const behavReqPct = behavAss?.result?.overallExpectedCw ? Math.round(behavAss.result.overallExpectedCw * 100) : (BEHAVIORAL_LEVEL_NUMERIC[behavBenchmark] || 60);
+  const behavScorePct = behavAss?.result?.overallCw ? Math.round(behavAss.result.overallCw * 100) : (getBehavWeight(behavLevel) || 80);
+  const behavReqPct = behavAss?.result?.overallExpectedCw ? Math.round(behavAss.result.overallExpectedCw * 100) : (getBehavWeight(behavBenchmark) || 60);
   const behavReady = behavScorePct >= behavReqPct;
 
   const behavChartData = useMemo(() => {
     const breakdown = behavAss?.result?.perCompetency || [];
-    const defaultBenchmark = BEHAVIORAL_LEVEL_NUMERIC[behavBenchmark] || 60;
-    const defaultAssessed = BEHAVIORAL_LEVEL_NUMERIC[behavLevel] || 80;
+    const defaultBenchmark = getBehavWeight(behavBenchmark) || 60;
+    const defaultAssessed = getBehavWeight(behavLevel) || 80;
 
-    return BEHAVIORAL_11_COMPETENCIES.map((comp) => {
+    const competencies = behavConfig?.competencies || [];
+    return competencies.map((comp) => {
       const match = breakdown.find(
         (c) => c.competencyKey?.toLowerCase() === comp.key.toLowerCase()
       );
-      const score = match?.level ? BEHAVIORAL_LEVEL_NUMERIC[match.level] || defaultAssessed : defaultAssessed;
-      const benchmark = match?.expectedLevel ? BEHAVIORAL_LEVEL_NUMERIC[match.expectedLevel] || defaultBenchmark : defaultBenchmark;
+      const score = match?.level ? getBehavWeight(match.level) || defaultAssessed : defaultAssessed;
+      const benchmark = match?.expectedLevel ? getBehavWeight(match.expectedLevel) || defaultBenchmark : defaultBenchmark;
       const assessedCode = match?.level || (score >= 80 ? 'L4' : score >= 60 ? 'L3' : 'L2');
       const reqCode = match?.expectedLevel || (benchmark >= 80 ? 'L4' : benchmark >= 60 ? 'L3' : 'L2');
       return {
-        name: comp.name,
-        fullName: comp.fullName,
+        name: comp.name.length > 10 ? comp.name.slice(0, 10) : comp.name,
+        fullName: comp.name,
         type: comp.type,
         score,
         benchmark,
@@ -236,7 +205,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
         reqCode,
       };
     });
-  }, [behavAss, behavLevel, behavBenchmark]);
+  }, [behavAss, behavLevel, behavBenchmark, behavConfig]);
 
   // Overall readiness score
   const skillsCompletionPct = useMemo(() => {
