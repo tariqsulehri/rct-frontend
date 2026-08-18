@@ -26,8 +26,8 @@ const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
     const gap = data.score - data.benchmark;
     const isMet = gap >= 0;
     return (
-      <div className="bg-surface/95 backdrop-blur-md border border-border p-3 rounded-lg shadow-xl text-xs min-w-[140px] z-50">
-        <p className="font-bold mb-2 text-text-1 border-b border-border pb-1.5">{data.fullLabel}</p>
+      <div className="bg-gradient-to-br from-indigo-50/95 to-white/95 dark:from-indigo-950/90 dark:to-zinc-900/95 backdrop-blur-md border border-indigo-200/50 dark:border-indigo-800/50 p-3 rounded-lg shadow-xl text-xs min-w-[140px] z-50">
+        <p className="font-bold mb-2 text-indigo-950 dark:text-indigo-100 border-b border-indigo-200/50 dark:border-indigo-800/50 pb-1.5">{data.fullLabel}</p>
         <div className="flex items-center justify-between gap-4 mb-1.5">
           <span className="text-text-2">Achieved:</span>
           <span className="font-bold text-indigo-500 text-[13px]">{data.score}%</span>
