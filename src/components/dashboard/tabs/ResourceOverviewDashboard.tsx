@@ -183,7 +183,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   }, [technicalChartData, gapMatrixData, user?.empCode]);
 
   // 2. CEFR Language stats
-  const commLevel: CefrLevelCode = (commAss?.overallCefr as CefrLevelCode) || 'B2';
+  const commLevel: CefrLevelCode = (commAss?.evaluation?.overallCefr as CefrLevelCode) || (commAss?.overallCefr as CefrLevelCode) || 'B2';
   const commBenchmark: CefrLevelCode = (commAss?.evaluation?.expectedCefr as CefrLevelCode) || 'B2';
   const commScorePct = CEFR_LEVEL_NUMERIC[commLevel] || 67;
   const commReqPct = CEFR_LEVEL_NUMERIC[commBenchmark] || 67;
