@@ -636,12 +636,17 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
         toast.success('Skill assessment approved successfully!', 'Approved');
       } else if (row.existingAssessmentId) {
         // Regular update
-        await updateAssessment.mutateAsync({
+        const saved = await updateAssessment.mutateAsync({
           id: row.existingAssessmentId,
           data: { type: row.type, projects: row.projects, level: row.level as any },
         });
+        setRows((prev) => prev.map((r) =>
+          r.id === rowId
+            ? { ...r, status: saved.status as 'draft' | 'pending' | 'approved', error: undefined }
+            : r
+        ));
         setEditingRowIds((prev) => { const next = new Set(prev); next.delete(rowId); return next; });
-        toast.success('Skill assessment updated successfully!', 'Saved');
+        toast.success(readOnlyLevel ? 'Skill updated as draft.' : 'Skill assessment updated successfully!', 'Saved');
       } else {
         // Create new assessment
         const initialStatus = readOnlyLevel ? 'draft' : 'approved';
