@@ -220,7 +220,7 @@ export const CommunicationScoreCard: React.FC<CommunicationScoreCardProps> = ({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">
-                      {item.name}
+                      {config?.competencies.find(c => c.key === item.competencyKey)?.name || item.competencyKey}
                     </span>
                     <span
                       className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
@@ -238,7 +238,7 @@ export const CommunicationScoreCard: React.FC<CommunicationScoreCardProps> = ({
                   <div className="flex items-center justify-between text-xs pt-1 border-t border-zinc-100 dark:border-zinc-800/60">
                     <div className="flex items-center gap-1.5">
                       <span className="text-zinc-500">Rated:</span>
-                      <CefrLevelBadge level={item.givenCefr} size="sm" />
+                      <CefrLevelBadge level={item.cefr} size="sm" />
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-zinc-500">Target:</span>
