@@ -100,15 +100,11 @@ export interface CefrEngineConfig {
 
 export interface CompetencyEvaluation {
   competencyKey: CompetencyKey;
-  name: string;
-  category: 'core_language' | 'professional_application';
-  givenCefr: CefrLevelCode;
-  givenWeight: number;
+  cefr: CefrLevelCode;
   expectedCefr: CefrLevelCode;
-  expectedWeight: number;
   gap: number;
   status: 'MEETS' | 'BELOW' | 'ABOVE';
-  evidence: string | null;
+  evidence?: string | null;
 }
 
 export interface CefrAssessmentResult {

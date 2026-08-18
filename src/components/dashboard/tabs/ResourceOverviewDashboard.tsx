@@ -195,8 +195,8 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
     const defaultAssessed = CEFR_LEVEL_NUMERIC[commLevel] || 67;
 
     return CEFR_6_COMPETENCIES.map((comp) => {
-      const match = breakdown.find(b => b.competencyKey === comp.key || b.name.toLowerCase().includes(comp.label.toLowerCase()));
-      const score = match ? (CEFR_LEVEL_NUMERIC[match.givenCefr] || defaultAssessed) : defaultAssessed;
+      const match = breakdown.find(b => b.competencyKey === comp.key);
+      const score = match ? (CEFR_LEVEL_NUMERIC[match.cefr] || defaultAssessed) : defaultAssessed;
       return {
         label: comp.label,
         fullLabel: comp.fullLabel,
