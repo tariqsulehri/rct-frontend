@@ -29,6 +29,7 @@ import {
 import { useChartColors } from '@/lib/chartColors';
 import { hasPermission } from '@/types/rbac';
 import { SkillAreaNameFilterSelect } from '@/components/filters/TaxonomyFilterSelects';
+import { formatPct } from '@/lib/formatters';
 import { InfoTip } from '../layout/InfoTip';
 import { TabType } from '../types';
 
@@ -702,7 +703,7 @@ export const AIInsightsTab: React.FC<AIInsightsTabProps> = ({ user, onNavigate }
                   },
                   {
                     label: 'Average Score',
-                    value: `${analysis.kpis.avgAchievedPct}%`,
+                    value: formatPct(analysis.kpis.avgAchievedPct),
                     color: c.accent,
                     help: 'The average current skill achievement across the selected people and assessed skills.',
                   },
@@ -912,14 +913,14 @@ export const AIInsightsTab: React.FC<AIInsightsTabProps> = ({ user, onNavigate }
             {[
               {
                 label: 'Avg Score',
-                value: `${analysis.kpis.avgAchievedPct}%`,
+                value: formatPct(analysis.kpis.avgAchievedPct),
                 detail: 'Current score',
                 color: c.accent,
                 help: 'The average current assessment score. Think of it as where the team stands today.',
               },
               {
                 label: 'Avg Required',
-                value: analysis.kpis.avgRequiredPct > 0 ? `${analysis.kpis.avgRequiredPct}%` : 'N/A',
+                value: formatPct(analysis.kpis.avgRequiredPct),
                 detail: 'Needed score',
                 color: c.warning,
                 help: 'The average target score people need for their next grade or expected capability level.',

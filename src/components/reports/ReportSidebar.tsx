@@ -155,12 +155,19 @@ export const ReportSidebar: React.FC<ReportSidebarProps> = ({ activeTab, onSelec
   };
 
   return (
-    <aside className="w-full lg:w-[310px] shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-xs">
-      <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-2.5 flex items-center justify-between">
-        <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+    <aside className="w-full lg:w-76 xl:w-80 shrink-0 rounded-2xl p-3 border shadow-card transition-all"
+           style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+      <div className="px-3 py-2 border-b mb-2.5 flex items-center justify-between"
+           style={{ borderColor: 'rgb(var(--border))' }}>
+        <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'rgb(var(--text-2))' }}>
           Analytics Segment
         </h3>
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-200/50">
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border"
+              style={{
+                backgroundColor: 'rgb(var(--accent-soft))',
+                color: 'rgb(var(--accent-txt))',
+                borderColor: 'rgb(var(--accent) / 0.3)',
+              }}>
           Pro Suite
         </span>
       </div>
@@ -176,7 +183,12 @@ export const ReportSidebar: React.FC<ReportSidebarProps> = ({ activeTab, onSelec
               <button
                 type="button"
                 onClick={() => toggleCategoryCollapse(category.id)}
-                className="w-full text-left px-3 py-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 font-bold text-[11px] uppercase tracking-wider hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/60 transition-colors flex items-center justify-between cursor-pointer"
+                className="w-full text-left px-3 py-2 rounded-xl font-bold text-xs uppercase tracking-wider border transition-colors flex items-center justify-between cursor-pointer"
+                style={{
+                  backgroundColor: 'rgb(var(--surface-2))',
+                  borderColor: 'rgb(var(--border))',
+                  color: 'rgb(var(--text-1))',
+                }}
               >
                 <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100 tracking-wider flex items-center gap-2 truncate">
                   <CategoryIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />

@@ -38,18 +38,18 @@ export const ContextualHelpCallout: React.FC<ContextualHelpCalloutProps> = ({
           <div className="min-w-0 flex-1 space-y-1">
             <div className="font-extrabold text-sky-950 dark:text-sky-100 text-xs flex items-center gap-2">
               <span>{title}</span>
-              <span className="text-[9.5px] font-mono font-bold px-2 py-0.2 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30 uppercase tracking-wider">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30 uppercase tracking-wider">
                 Help & Guidance
               </span>
             </div>
 
             {description && (
-              <p className="text-[11.5px] text-sky-800 dark:text-sky-300 leading-relaxed font-medium">
+              <p className="text-xs text-sky-800 dark:text-sky-300 leading-relaxed font-medium">
                 {description}
               </p>
             )}
 
-            {isOpen && children && <div className="pt-2 text-[11.5px]">{children}</div>}
+            {isOpen && children && <div className="pt-2 text-xs">{children}</div>}
           </div>
         </div>
 

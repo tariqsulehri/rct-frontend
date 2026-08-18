@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, RefreshCw, BarChart3, ListChecks, MessageSquareText, Award } from 'lucide-react';
+import { Search, RefreshCw, BarChart3, ListChecks, MessageSquareText, Award, Layers } from 'lucide-react';
 import {
   ResponsiveContainer,
   RadarChart,
@@ -15,7 +15,7 @@ import { type User } from '@/store/authStore';
 import { useCompetencyScores, usePromotionReadiness, useGapMatrix } from '@/hooks/useReports';
 import { useLatestCommAssessment } from '@/hooks/useCommunication';
 import { useLatestBehavioralAssessment } from '@/hooks/useBehavioral';
-import { useChartColors, tooltipStyle } from '@/lib/chartColors';
+import { useChartTheme, getChartTooltipStyle } from '@/hooks/useChartTheme';
 import { toPct, formatGrade, formatEmployeeOption } from '@/lib/formatters';
 import { toast } from '@/lib/toast';
 import { hasPermission, isLeaderRole } from '@/types/rbac';
@@ -86,7 +86,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
     }
   }, [refetchComp, refetchPromo, refetchGap]);
 
-  const c = useChartColors();
+  const c = useChartTheme();
   const isPrivileged = isLeaderRole(user?.role);
   const canViewReports = hasPermission(user?.permissions, 'reports.view');
   const [showSkillEditor, setShowSkillEditor] = useState(false);
@@ -376,6 +376,17 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {effectiveEmpCode && (
+              <button
+                type="button"
+                onClick={() => setShowSkillEditor(true)}
+                className="btn-primary flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg shrink-0 shadow-xs"
+                title={isPrivileged ? 'Evaluate and update technical skills' : 'Propose and manage your technical skills'}
+              >
+                <Layers size={13} />
+                <span>{isPrivileged ? 'Manage / Assess Skills' : 'Manage My Skills'}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleRefresh}
@@ -401,15 +412,21 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
       </div>
 
       {/* Clean Segmented 4-Sub-Tab Switcher */}
-      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 w-fit flex-wrap">
+      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl border w-fit flex-wrap"
+           style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
         <button
           type="button"
           onClick={() => setActiveSubTab('overview')}
           className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
             activeSubTab === 'overview'
-              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-zinc-700/80'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              ? 'shadow-2xs border'
+              : 'hover:opacity-80'
           }`}
+          style={{
+            backgroundColor: activeSubTab === 'overview' ? 'rgb(var(--surface))' : 'transparent',
+            borderColor: activeSubTab === 'overview' ? 'rgb(var(--border))' : 'transparent',
+            color: activeSubTab === 'overview' ? 'rgb(var(--accent))' : 'rgb(var(--text-2))',
+          }}
         >
           <BarChart3 size={15} />
           <span>Overview & Radar</span>
@@ -420,9 +437,14 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
           onClick={() => setActiveSubTab('competencies')}
           className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
             activeSubTab === 'competencies'
-              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-zinc-700/80'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              ? 'shadow-2xs border'
+              : 'hover:opacity-80'
           }`}
+          style={{
+            backgroundColor: activeSubTab === 'competencies' ? 'rgb(var(--surface))' : 'transparent',
+            borderColor: activeSubTab === 'competencies' ? 'rgb(var(--border))' : 'transparent',
+            color: activeSubTab === 'competencies' ? 'rgb(var(--accent))' : 'rgb(var(--text-2))',
+          }}
         >
           <ListChecks size={15} />
           <span>Technical Competencies ({competencyRows.length})</span>
@@ -433,9 +455,14 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
           onClick={() => setActiveSubTab('communication')}
           className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
             activeSubTab === 'communication'
-              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-zinc-700/80'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              ? 'shadow-2xs border'
+              : 'hover:opacity-80'
           }`}
+          style={{
+            backgroundColor: activeSubTab === 'communication' ? 'rgb(var(--surface))' : 'transparent',
+            borderColor: activeSubTab === 'communication' ? 'rgb(var(--border))' : 'transparent',
+            color: activeSubTab === 'communication' ? 'rgb(var(--accent))' : 'rgb(var(--text-2))',
+          }}
         >
           <MessageSquareText size={15} />
           <span>CEFR Communication</span>
@@ -446,9 +473,14 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
           onClick={() => setActiveSubTab('behavioral')}
           className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
             activeSubTab === 'behavioral'
-              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/80 dark:border-zinc-700/80'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              ? 'shadow-2xs border'
+              : 'hover:opacity-80'
           }`}
+          style={{
+            backgroundColor: activeSubTab === 'behavioral' ? 'rgb(var(--surface))' : 'transparent',
+            borderColor: activeSubTab === 'behavioral' ? 'rgb(var(--border))' : 'transparent',
+            color: activeSubTab === 'behavioral' ? 'rgb(var(--accent))' : 'rgb(var(--text-2))',
+          }}
         >
           <Award size={15} />
           <span>Behavioral Framework</span>
@@ -557,11 +589,11 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
           </div>
           <ResponsiveContainer width="100%" height={640}>
             <RadarChart data={radarData} outerRadius="82%" margin={{ top: 76, right: 126, bottom: 76, left: 126 }}>
-              <PolarGrid stroke={c.radarGrid} />
+              <PolarGrid stroke={c.gridColor} />
               <PolarAngleAxis dataKey="fullDomain" tick={<RadarTick />} />
               <PolarRadiusAxis
                 domain={[0, 100]}
-                tick={{ fontSize: 10, fill: c.radarTick }}
+                tick={{ fontSize: 10, fill: c.axisColor }}
                 tickFormatter={(v) => `${v}%`}
                 angle={30}
               />
@@ -584,15 +616,16 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
                 />
               )}
               <Tooltip
+                wrapperStyle={{ zIndex: 1000 }}
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null;
                   const d = payload[0].payload;
                   return (
-                    <div style={tooltipStyle(c)}>
+                    <div style={getChartTooltipStyle(c)}>
                       <p className="font-semibold text-xs mb-1" style={{ color: c.accent }}>
                         {d.fullDomain ?? d.domain}
                       </p>
-                      <p style={{ color: c.text }}>Score: {d.score}%</p>
+                      <p style={{ color: c.tooltipText }}>Score: {d.score}%</p>
                       {d.threshold > 0 && (
                         <p style={{ color: d.meets ? c.success : c.danger }}>
                           Required: {d.threshold}% ({d.meets ? '✓ Meets' : '✗ Below'})
@@ -606,7 +639,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
                 <Legend
                   iconType="circle"
                   iconSize={10}
-                  formatter={(v) => <span style={{ color: '#d1d5db', fontSize: 12 }}>{v}</span>}
+                  formatter={(v) => <span style={{ color: c.legendColor, fontSize: 12 }}>{v}</span>}
                 />
               )}
             </RadarChart>
@@ -732,24 +765,6 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
       {/* ── Sub-Tab 2: Technical Competencies ──────────────────────────────── */}
       {activeSubTab === 'competencies' && (
         <>
-          {/* Engineers: manage their own skill list */}
-          {!isPrivileged && user?.empCode && (
-            <div className="card p-5 flex items-center justify-between gap-4">
-              <div>
-                <p className="font-semibold text-sm" style={{ color: 'rgb(var(--text-1))' }}>
-                  My Skills
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-3))' }}>
-                  Add or update your skills and tools. Your manager will set skill levels. Your saved rows appear as pending
-                  until approved.
-                </p>
-              </div>
-              <button type="button" onClick={() => setShowSkillEditor(true)} className="btn-primary text-xs shrink-0">
-                Manage My Skills
-              </button>
-            </div>
-          )}
-
           {/* Full competency progress */}
           {competencyRows.length > 0 && (
             <div className="card p-5">
@@ -970,7 +985,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
               </thead>
               <tbody>
                 {filteredCompetencyRows.map((row) => {
-                  const rowColor = row.hasRequirement ? (row.meets ? c.success : c.danger) : c.text;
+                  const rowColor = row.hasRequirement ? (row.meets ? c.success : c.danger) : 'rgb(var(--text-1))';
                   return (
                     <tr key={row.name} className="border-t" style={{ borderColor: 'rgb(var(--border))' }}>
                       <td className="py-3 pr-3 align-top">

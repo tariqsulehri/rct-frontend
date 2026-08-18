@@ -157,10 +157,11 @@ export const BulkAssessmentTableRow: React.FC<BulkAssessmentTableRowProps> = ({
         </div>
       </td>
 
-      <td className="px-2.5 py-1.5 align-middle">
-        <div className="flex items-center gap-1.5">
-          {/* Save (✓) when editing or approving */}
-          {isEditable ? (
+      {/* Actions */}
+      <td className="px-2.5 py-2 align-middle">
+        <div className="flex items-center gap-1">
+          {/* Save (when row is dirty/editable/approving) */}
+          {(isEditable || isApproving) ? (
             <button
               onClick={() => onSaveRow(row.id)}
               disabled={isSaving}
@@ -168,15 +169,15 @@ export const BulkAssessmentTableRow: React.FC<BulkAssessmentTableRowProps> = ({
               title={isApproving ? 'Approve and save' : isDraft ? 'Save draft' : 'Save this row'}
             >
               {isSaving
-                ? <span className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: isApproving ? '#f97316' : 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
-                : <Check size={14} style={{ color: isApproving ? '#f97316' : 'rgb(var(--success))' }} />}
+                ? <span className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: isApproving ? 'rgb(var(--warning))' : 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
+                : <Check size={14} style={{ color: isApproving ? 'rgb(var(--warning))' : 'rgb(var(--success))' }} />}
             </button>
           ) : isPending && canApprove ? (
             <button
               onClick={() => onSetApproving(row.id)}
               className="btn-ghost w-7 h-7 p-0 rounded-md flex items-center justify-center"
               title="Approve this skill"
-              style={{ color: '#f97316' }}
+              style={{ color: 'rgb(var(--warning))' }}
             >
               <ShieldCheck size={15} />
             </button>
@@ -206,8 +207,12 @@ export const BulkAssessmentTableRow: React.FC<BulkAssessmentTableRowProps> = ({
           {/* Status badges */}
           {isDraft && (
             <span
-              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
-              style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap border"
+              style={{
+                backgroundColor: 'rgb(var(--accent-soft))',
+                color: 'rgb(var(--accent-txt))',
+                borderColor: 'rgb(var(--accent) / 0.3)',
+              }}
               title={row.isNew ? 'Unsaved local row' : 'Draft saved in database'}
             >
               {row.isNew ? 'Unsaved' : 'Draft'}
@@ -215,8 +220,12 @@ export const BulkAssessmentTableRow: React.FC<BulkAssessmentTableRowProps> = ({
           )}
           {isPending && (
             <span
-              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
-              style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#f97316' }}
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border"
+              style={{
+                backgroundColor: 'rgb(var(--warning-soft))',
+                color: 'rgb(var(--warning))',
+                borderColor: 'rgb(var(--warning) / 0.35)',
+              }}
             >
               Waiting
             </span>

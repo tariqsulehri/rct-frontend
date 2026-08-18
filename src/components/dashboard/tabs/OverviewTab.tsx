@@ -13,6 +13,7 @@ import { hasPermission, isLeaderRole, type PermissionCode, type RoleCode } from 
 import { toPctNullable } from '@/lib/formatters';
 import { InfoTip } from '../layout/InfoTip';
 import { TeamHealthCharts } from './TeamHealthCharts';
+import { ResourceOverviewDashboard } from './ResourceOverviewDashboard';
 import { TabType, LEADERS } from '../types';
 
 export interface OverviewTabProps {
@@ -21,10 +22,16 @@ export interface OverviewTabProps {
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) => {
+  const isLeader = isLeaderRole(user?.role);
   const { data: overviewPromoData } = usePromotionReadiness();
   const { data: overviewCompData } = useCompetencyScores();
   const { data: overviewGapData } = useGapMatrix();
-  const isLeader = isLeaderRole(user?.role);
+
+  // For individual resources / engineers, render the Pro-Level Resource Competence Dashboard
+  if (!isLeader) {
+    return <ResourceOverviewDashboard user={user} onNavigate={onNavigate} />;
+  }
+
   const canViewReports = hasPermission(user?.permissions, 'reports.view');
   const displayName = user?.employeeName || user?.username || 'there';
 

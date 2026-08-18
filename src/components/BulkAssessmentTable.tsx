@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { Stars } from '@/components/ui/Stars';
-import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, CheckCheck, ShieldCheck, Info, Copy, Layers, SaveAll, Send, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ChevronUp, ChevronDown, Edit3, Plus, Trash2, X, Check, CheckCheck, ShieldCheck, Copy, Layers, SaveAll, Send, RefreshCw, AlertTriangle } from 'lucide-react';
 import { CloneColleagueDialog } from './CloneColleagueDialog';
 import { BulkAddDialog, BulkAddTechnologyPayload } from './BulkAddDialog';
 import { computeAssessmentScorePreview } from '@/lib/scoringPreview';
@@ -70,12 +70,12 @@ const LEVEL_RANKS: Record<string, number> = {
 export const LEVEL_COLORS: Record<AssessmentLevel, string> = {
   Unset:       'rgb(var(--text-3))',
   Expert:      'rgb(var(--success))',
-  Advanced:    '#22d3ee',
-  Proficient:  'rgb(var(--warning))',
-  Intermediate:'#f97316',
-  Foundational:'#f97316',
-  Beginner:    '#f97316',
-  Awareness:   '#a855f7',
+  Advanced:    'rgb(var(--accent))',
+  Proficient:  'rgb(var(--accent))',
+  Intermediate:'rgb(var(--warning))',
+  Foundational:'rgb(var(--warning))',
+  Beginner:    'rgb(var(--warning))',
+  Awareness:   'rgb(var(--text-3))',
 };
 
 export const LEVEL_LABELS: Record<AssessmentLevel, string> = {
@@ -95,21 +95,11 @@ export const TYPE_OPTIONS = [
   { value: 'Tertiary', label: 'Tertiary - related skill' },
 ] as const;
 
+import { InfoTip } from '@/components/ui/InfoTip';
+
 function createRowId() {
   return `row-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
-
-const InfoTip: React.FC<{ text: string }> = ({ text }) => (
-  <button
-    type="button"
-    className="btn-ghost w-6 h-6 p-0 rounded-lg inline-flex items-center justify-center shrink-0"
-    title={text}
-    aria-label={text}
-    onClick={(event) => event.stopPropagation()}
-  >
-    <Info size={13} />
-  </button>
-);
 
 const SearchableSelect: React.FC<{
   value: string;
@@ -1019,11 +1009,11 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
       </div>
 
       {!appraisalPeriodsLoading && !hasActivePeriod && (
-        <div className="flex items-start gap-3 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 animate-fade-in my-1">
-          <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 animate-fade-in my-2">
+          <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div className="text-xs leading-relaxed">
-            <span className="font-bold text-amber-300">Assessment Submissions Closed: </span>
-            No active evaluation period is currently open for submissions. Existing skill rows remain visible, but saving new entries or submitting drafts requires an active evaluation cycle. (Administrators can enable an active period under <span className="font-semibold underline">System Config &gt; Evaluation Periods</span>).
+            <strong className="font-bold text-amber-800 dark:text-amber-300">Assessment Submissions Closed: </strong>
+            No active evaluation period is currently open for submissions. Existing skill rows remain visible, but saving new entries or submitting drafts requires an active evaluation cycle. (Administrators can enable an active period under <span className="font-semibold underline cursor-pointer">System Config &gt; Evaluation Periods</span>).
           </div>
         </div>
       )}
@@ -1060,7 +1050,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
             className="px-3 h-7 text-xs font-medium rounded-md transition-all flex items-center gap-1.5"
             style={{
               backgroundColor: statusFilter === 'pending' ? 'rgb(var(--surface-1))' : 'transparent',
-              color: statusFilter === 'pending' ? '#f97316' : 'rgb(var(--text-2))',
+              color: statusFilter === 'pending' ? 'rgb(var(--warning))' : 'rgb(var(--text-2))',
               boxShadow: statusFilter === 'pending' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
               fontWeight: statusFilter === 'pending' ? 600 : 500,
             }}
@@ -1068,8 +1058,12 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
             Pending Review
             {pendingCount > 0 && (
               <span
-                className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
-                style={{ backgroundColor: 'rgba(251,146,60,0.2)', color: '#f97316' }}
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-bold border"
+                style={{
+                  backgroundColor: 'rgb(var(--warning-soft))',
+                  color: 'rgb(var(--warning))',
+                  borderColor: 'rgb(var(--warning) / 0.3)',
+                }}
               >
                 {pendingCount}
               </span>
@@ -1314,9 +1308,9 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                   : rowEditable
                     ? 'rgba(var(--accent-soft), 0.15)'
                     : isPending
-                      ? 'rgba(251,146,60,0.06)' // subtle orange for pending
+                      ? 'rgb(var(--warning-soft) / 0.15)'
                       : isDraft
-                        ? 'rgba(var(--accent-soft), 0.05)'
+                        ? 'rgb(var(--accent-soft) / 0.15)'
                         : 'transparent';
 
               return (
@@ -1326,11 +1320,11 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                     borderBottom: '1px solid rgb(var(--border))',
                     backgroundColor: rowBg,
                     borderLeft: isApproving
-                      ? '3px solid #f97316'
+                      ? '3px solid rgb(var(--warning))'
                       : rowEditable
                         ? '3px solid rgb(var(--accent))'
                         : isPending
-                          ? '3px solid #f97316'
+                          ? '3px solid rgb(var(--warning))'
                           : isDraft
                             ? '3px solid rgb(var(--accent-soft))'
                             : '3px solid transparent',
@@ -1414,7 +1408,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                     <div className="flex items-center gap-1.5">
 
                       {/* Save (✓) when editing or approving */}
-                      {rowEditable ? (
+                      {rowEditable || isApproving ? (
                         <button
                           onClick={() => handleSaveRow(row.id)}
                           disabled={savingRowIds.has(row.id)}
@@ -1422,8 +1416,8 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                           title={isApproving ? 'Approve and save' : isDraft ? 'Save draft' : 'Save this row'}
                         >
                           {savingRowIds.has(row.id)
-                            ? <span className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: isApproving ? '#f97316' : 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
-                            : <Check size={14} style={{ color: isApproving ? '#f97316' : 'rgb(var(--success))' }} />}
+                            ? <span className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: isApproving ? 'rgb(var(--warning))' : 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
+                            : <Check size={14} style={{ color: isApproving ? 'rgb(var(--warning))' : 'rgb(var(--success))' }} />}
                         </button>
                       ) : isPending && canApprove ? (
                         /* Approve button — manager clicks to enter approval mode */
@@ -1431,7 +1425,7 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                           onClick={() => setApprovingRowIds((prev) => new Set(prev).add(row.id))}
                           className="btn-ghost w-7 h-7 p-0 rounded-md flex items-center justify-center"
                           title="Approve this skill"
-                          style={{ color: '#f97316' }}
+                          style={{ color: 'rgb(var(--warning))' }}
                         >
                           <ShieldCheck size={15} />
                         </button>
@@ -1463,8 +1457,8 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                       {/* Status badges */}
                       {isDraft && (
                         <span
-                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
-                          style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap border"
+                          style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))', borderColor: 'rgb(var(--accent) / 0.3)' }}
                           title={row.isNew ? 'Unsaved local row' : 'Draft saved in database'}
                         >
                           {row.isNew ? 'Unsaved' : 'Draft'}
@@ -1472,8 +1466,8 @@ const validateAndEnrichRow = useCallback((row: BulkRow): BulkRow => {
                       )}
                       {isPending && (
                         <span
-                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
-                          style={{ backgroundColor: 'rgba(251,146,60,0.15)', color: '#f97316' }}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border"
+                          style={{ backgroundColor: 'rgb(var(--warning-soft))', color: 'rgb(var(--warning))', borderColor: 'rgb(var(--warning) / 0.35)' }}
                         >
                           Waiting
                         </span>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell, LabelList, PieChart, Pie, Legend, ComposedChart, Line } from 'recharts';
 import type { LabelProps } from 'recharts';
 import { usePromotionReadiness } from '@/hooks/useReports';
-import { useChartColors, tooltipStyle } from '@/lib/chartColors';
+import { useChartTheme, getChartTooltipStyle } from '@/hooks/useChartTheme';
 import { DataTable, Empty, InfoTip, Loading, PromotionRow, Stars, TR, View, ViewToggle } from '../shared';
 import { DEFAULT_REPORT_FILTERS, type ReportFilters } from '../reportFilters';
 
@@ -24,7 +24,7 @@ interface ScoreBarTooltipProps {
 
 export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> = ({ reportFilters = DEFAULT_REPORT_FILTERS }) => {
   const { data, isLoading, isError } = usePromotionReadiness();
-  const c = useChartColors();
+  const c = useChartTheme();
   const [view, setView] = useState<View>('chart');
   const allRows: PromotionRow[] = data ?? [];
   const q = reportFilters.search.trim().toLowerCase();
@@ -82,9 +82,9 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
 
   const scoreBuckets = [
     { range: '0-20', min: 0, max: 20, color: c.danger },
-    { range: '20-40', min: 20, max: 40, color: '#f97316' },
+    { range: '20-40', min: 20, max: 40, color: c.warning },
     { range: '40-60', min: 40, max: 60, color: c.warning },
-    { range: '60-80', min: 60, max: 80, color: '#22c55e' },
+    { range: '60-80', min: 60, max: 80, color: c.accent },
     { range: '80-100', min: 80, max: 101, color: c.success },
   ].map(bucket => ({
     ...bucket,
@@ -141,10 +141,10 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
     if (!active || !payload?.length) return null;
     const d = payload[0].payload;
     return (
-      <div style={tooltipStyle(c)}>
+      <div style={getChartTooltipStyle(c)}>
         <p className="font-semibold text-xs mb-1" style={{ color: d.ready ? c.success : c.warning }}>{d.fullName}</p>
-        <p style={{ color: c.text }}>Grade: {d.grade}</p>
-        <p style={{ color: c.text }}>Meets: {d.meets}</p>
+        <p style={{ color: c.tooltipText }}>Grade: {d.grade}</p>
+        <p style={{ color: c.tooltipText }}>Meets: {d.meets}</p>
         <p className="font-bold" style={{ color: d.ready ? c.success : c.warning }}>{d.score}%</p>
       </div>
     );
@@ -165,7 +165,7 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
         textAnchor={closeToNeeded ? 'end' : 'start'}
         fontSize={10}
         fontWeight={700}
-        fill={closeToNeeded ? '#111827' : c.text}
+        fill={closeToNeeded ? '#111827' : c.axisColor}
       >
         {score}%
       </text>
@@ -244,7 +244,6 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
           </div>
         ))}
 
-        {/* Avg Score — Achieved / Needed */}
         <div
           className="rounded-xl p-3 border min-h-[154px] flex flex-col"
           style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--accent-soft))' }}
@@ -259,22 +258,27 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
               style={{ color: avgNeeded > 0 ? (avgScore >= avgNeeded ? 'rgb(var(--success))' : 'rgb(var(--danger))') : 'rgb(var(--accent))' }}>
               {avgScore}%
             </span>
-            <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-3))' }}>/</span>
-            <span className="text-sm font-semibold" style={{ color: 'rgb(var(--text-2))' }}>
-              {avgNeeded > 0 ? `${avgNeeded}%` : 'N/A'}
-            </span>
+            {avgNeeded > 0 && (
+              <span className="text-sm font-semibold" style={{ color: 'rgb(var(--text-3))' }}>
+                / {avgNeeded}%
+              </span>
+            )}
           </div>
           <p className="text-xs mt-3 leading-snug" style={{ color: 'rgb(var(--text-2))' }}>
-            Current is the team average today. Needed is the average target for the next grade.
+            Current average compared with the target threshold.
           </p>
           <p className="text-[11px] mt-auto pt-2 leading-snug" style={{ color: 'rgb(var(--text-3))' }}>
-            If current is lower than needed, the group is below promotion target.
+            {avgNeeded > 0
+              ? avgScore >= avgNeeded
+                ? 'Average score meets the next grade expectation.'
+                : 'Average score is still below the next grade expectation.'
+              : 'No minimum threshold configured for this group.'}
           </p>
         </div>
       </div>
 
       {view === 'chart' ? (
-        <>
+        <div className="space-y-5">
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
             <div className="xl:col-span-2 rounded-xl border p-4" style={{ borderColor: 'rgb(var(--border))' }}>
               <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'rgb(var(--text-2))' }}>
@@ -292,9 +296,9 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
               </div>
               <ResponsiveContainer width="100%" height={Math.max(340, scoreBarData.length * 28)}>
                 <BarChart data={scoreBarData} layout="vertical" margin={{ left: 6, right: 64, top: 4, bottom: 4 }}>
-                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: c.text }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10, fill: c.text }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<ScoreBarTooltip />} cursor={{ fill: c.grid, opacity: 0.25 }} />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: c.axisColor }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10, fill: c.axisColor }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<ScoreBarTooltip />} cursor={{ fill: c.gridColor, opacity: 0.25 }} />
                   {avgNeeded > 0 && (
                     <ReferenceLine
                       x={avgNeeded}
@@ -321,15 +325,15 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
                     <Pie data={donutData} cx="50%" cy="50%" innerRadius={58} outerRadius={86} paddingAngle={3} dataKey="value">
                       {donutData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                     </Pie>
-                  <Tooltip formatter={(value: number, name: string) => [`${value} people`, name]} contentStyle={tooltipStyle(c)} />
-                    <Legend iconType="circle" iconSize={8} formatter={(value) => <span style={{ color: c.text, fontSize: 11 }}>{value}</span>} />
+                    <Tooltip formatter={(value: number, name: string) => [`${value} people`, name]} contentStyle={getChartTooltipStyle(c)} />
+                    <Legend iconType="circle" iconSize={8} formatter={(value) => <span style={{ color: c.legendColor, fontSize: 11 }}>{value}</span>} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="rounded-lg p-2" style={{ backgroundColor: 'rgb(var(--surface-2))', color: c.text }}>
+                  <div className="rounded-lg p-2" style={{ backgroundColor: 'rgb(var(--surface-2))', color: c.legendColor }}>
                     <span className="font-semibold">Near Ready:</span> {nearReadyCount}
                   </div>
-                  <div className="rounded-lg p-2" style={{ backgroundColor: 'rgb(var(--surface-2))', color: c.text }}>
+                  <div className="rounded-lg p-2" style={{ backgroundColor: 'rgb(var(--surface-2))', color: c.legendColor }}>
                     <span className="font-semibold">Meets Rate:</span> {meetsRate}%
                   </div>
                 </div>
@@ -351,7 +355,7 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
                       <div key={r.employee_id}>
                         <div className="flex items-center justify-between text-xs mb-1">
                           <span className="truncate pr-2" style={{ color: 'rgb(var(--text-1))' }}>{shortName(r.full_name)}</span>
-                          <span style={{ color: scorePct >= avgNeeded ? 'rgb(var(--success))' : c.text }}>{scorePct}%{avgNeeded > 0 ? ` / ${avgNeeded}%` : ''}</span>
+                          <span style={{ color: scorePct >= avgNeeded ? 'rgb(var(--success))' : c.axisColor }}>{scorePct}%{avgNeeded > 0 ? ` / ${avgNeeded}%` : ''}</span>
                         </div>
                         <div className="h-2 rounded-full relative" style={{ backgroundColor: 'rgb(var(--surface-3))' }}>
                           <div
@@ -394,18 +398,18 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
               </div>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={scoreBuckets} margin={{ top: 12, right: 10, bottom: 0, left: -12 }} barCategoryGap="34%">
-                  <XAxis dataKey="range" tick={{ fontSize: 10, fill: c.text }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: c.text }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <XAxis dataKey="range" tick={{ fontSize: 10, fill: c.axisColor }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: c.axisColor }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip
-                    cursor={{ fill: c.grid, opacity: 0.2 }}
+                    cursor={{ fill: c.gridColor, opacity: 0.2 }}
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null;
                       const d = payload[0].payload;
                       return (
-                        <div style={tooltipStyle(c)}>
+                        <div style={getChartTooltipStyle(c)}>
                           <p className="font-semibold text-xs" style={{ color: d.color }}>{d.range}%</p>
-                          <p style={{ color: c.text }}>{d.employees} people</p>
-                          <p style={{ color: c.text }}>{d.share}% of team</p>
+                          <p style={{ color: c.tooltipText }}>{d.employees} people</p>
+                          <p style={{ color: c.tooltipText }}>{d.share}% of team</p>
                           {d.containsTarget && <p style={{ color: c.warning }}>Needed target band</p>}
                         </div>
                       );
@@ -420,7 +424,7 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
                         strokeWidth={b.containsTarget ? 2 : 0}
                       />
                     ))}
-                    <LabelList dataKey="employees" position="top" style={{ fontSize: 10, fill: c.text }} />
+                    <LabelList dataKey="employees" position="top" style={{ fontSize: 10, fill: c.axisColor }} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -435,28 +439,28 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
                   </p>
                   <ResponsiveContainer width="100%" height={220}>
                 <ComposedChart data={gradeSummary} margin={{ top: 12, right: 14, bottom: 42, left: -12 }} barCategoryGap="36%">
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: c.text }} angle={-25} textAnchor="end" height={48} interval={0} axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="count" tick={{ fontSize: 10, fill: c.text }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <YAxis yAxisId="rate" orientation="right" domain={[0, 100]} tick={{ fontSize: 10, fill: c.text }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: c.axisColor }} angle={-25} textAnchor="end" height={48} interval={0} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="count" tick={{ fontSize: 10, fill: c.axisColor }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <YAxis yAxisId="rate" orientation="right" domain={[0, 100]} tick={{ fontSize: 10, fill: c.axisColor }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
                   <Tooltip
-                    cursor={{ fill: c.grid, opacity: 0.2 }}
+                    cursor={{ fill: c.gridColor, opacity: 0.2 }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       const d = gradeSummary.find(g => g.label === label);
                       return (
-                        <div style={tooltipStyle(c)}>
+                        <div style={getChartTooltipStyle(c)}>
                           <p className="font-semibold text-xs mb-1" style={{ color: c.accent }}>{d?.department ?? 'Department'}</p>
-                          <p style={{ color: c.text }}>Grade: {d?.grade ?? label}</p>
+                          <p style={{ color: c.tooltipText }}>Grade: {d?.grade ?? label}</p>
                           <p style={{ color: c.success }}>Ready: {d?.ready ?? 0}</p>
                           <p style={{ color: c.warning }}>Not Ready: {d?.notReady ?? 0}</p>
-                          <p style={{ color: c.text }}>Readiness: {d?.readinessRate ?? 0}%</p>
-                          <p style={{ color: c.text }}>Avg Score: {d?.avgScore ?? 0}%</p>
+                          <p style={{ color: c.tooltipText }}>Readiness: {d?.readinessRate ?? 0}%</p>
+                          <p style={{ color: c.tooltipText }}>Avg Score: {d?.avgScore ?? 0}%</p>
                           <p style={{ color: c.warning }}>Avg Needed: {d?.avgNeeded ?? 0}%</p>
                         </div>
                       );
                     }}
                   />
-                  <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: c.text, fontSize: 11 }}>{v === 'readinessRate' ? 'Readiness %' : v}</span>} />
+                  <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: c.legendColor, fontSize: 11 }}>{v === 'readinessRate' ? 'Readiness %' : v}</span>} />
                   <Bar yAxisId="count" dataKey="ready" stackId="grade" name="Ready" fill={c.success} radius={[0, 0, 0, 0]} maxBarSize={28} />
                   <Bar yAxisId="count" dataKey="notReady" stackId="grade" name="Not Ready" fill={c.warning} radius={[4, 4, 0, 0]} maxBarSize={28} />
                   <Line yAxisId="rate" type="monotone" dataKey="readinessRate" name="readinessRate" stroke={c.accent} strokeWidth={2} dot={{ r: 3, fill: c.accent }} />
@@ -475,27 +479,27 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
               </p>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={starReadiness} margin={{ top: 12, right: 10, bottom: 0, left: -12 }} barCategoryGap="36%">
-                  <XAxis dataKey="star" tick={{ fontSize: 10, fill: c.text }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: c.text }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <XAxis dataKey="star" tick={{ fontSize: 10, fill: c.axisColor }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: c.axisColor }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip
-                    cursor={{ fill: c.grid, opacity: 0.2 }}
+                    cursor={{ fill: c.gridColor, opacity: 0.2 }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       const d = starReadiness.find(s => s.star === label);
                       return (
-                        <div style={tooltipStyle(c)}>
+                        <div style={getChartTooltipStyle(c)}>
                           <p className="font-semibold text-xs mb-1" style={{ color: c.accent }}>{label}</p>
                           <p style={{ color: c.success }}>Ready: {d?.ready ?? 0}</p>
                           <p style={{ color: c.warning }}>Not Ready: {d?.notReady ?? 0}</p>
-                          <p style={{ color: c.text }}>Readiness: {d?.readinessRate ?? 0}%</p>
+                          <p style={{ color: c.tooltipText }}>Readiness: {d?.readinessRate ?? 0}%</p>
                         </div>
                       );
                     }}
                   />
-                  <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: c.text, fontSize: 11 }}>{v}</span>} />
+                  <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: c.legendColor, fontSize: 11 }}>{v}</span>} />
                   <Bar dataKey="ready" name="Ready" stackId="star" fill={c.success} radius={[0, 0, 0, 0]} maxBarSize={28} />
                   <Bar dataKey="notReady" name="Not Ready" stackId="star" fill={c.warning} radius={[4, 4, 0, 0]} maxBarSize={28}>
-                    <LabelList dataKey="total" position="top" style={{ fontSize: 10, fill: c.text }} />
+                    <LabelList dataKey="total" position="top" style={{ fontSize: 10, fill: c.axisColor }} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -510,36 +514,36 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
               </p>
               <ResponsiveContainer width="100%" height={220}>
                 <ComposedChart data={gradeSummary} margin={{ top: 12, right: 14, bottom: 42, left: -12 }} barCategoryGap="36%">
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: c.text }} angle={-25} textAnchor="end" height={48} interval={0} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: c.text }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: c.axisColor }} angle={-25} textAnchor="end" height={48} interval={0} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: c.axisColor }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} />
                   <Tooltip
-                    cursor={{ fill: c.grid, opacity: 0.2 }}
+                    cursor={{ fill: c.gridColor, opacity: 0.2 }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       const d = gradeSummary.find(g => g.label === label);
                       const gap = (d?.avgScore ?? 0) - (d?.avgNeeded ?? 0);
                       return (
-                        <div style={tooltipStyle(c)}>
+                        <div style={getChartTooltipStyle(c)}>
                           <p className="font-semibold text-xs mb-1" style={{ color: c.accent }}>{d?.department ?? 'Department'}</p>
-                          <p style={{ color: c.text }}>Grade: {d?.grade ?? label}</p>
-                          <p style={{ color: c.text }}>Avg Current: {d?.avgScore ?? 0}%</p>
+                          <p style={{ color: c.tooltipText }}>Grade: {d?.grade ?? label}</p>
+                          <p style={{ color: c.tooltipText }}>Avg Current: {d?.avgScore ?? 0}%</p>
                           <p style={{ color: c.warning }}>Avg Needed: {d?.avgNeeded ?? 0}%</p>
                           <p style={{ color: gap >= 0 ? c.success : c.danger }}>Gap: {gap >= 0 ? '+' : ''}{gap}%</p>
-                          <p style={{ color: c.text }}>People: {d?.total ?? 0}</p>
+                          <p style={{ color: c.tooltipText }}>People: {d?.total ?? 0}</p>
                         </div>
                       );
                     }}
                   />
-                  <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: c.text, fontSize: 11 }}>{v}</span>} />
+                  <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: c.legendColor, fontSize: 11 }}>{v}</span>} />
                   <Bar dataKey="avgScore" name="Avg Current" fill={c.accent} radius={[4, 4, 0, 0]} maxBarSize={28}>
-                    <LabelList dataKey="avgScore" position="top" formatter={(v: number) => `${v}%`} style={{ fontSize: 10, fill: c.text }} />
+                    <LabelList dataKey="avgScore" position="top" formatter={(v: number) => `${v}%`} style={{ fontSize: 10, fill: c.axisColor }} />
                   </Bar>
                   <Line type="monotone" dataKey="avgNeeded" name="Avg Needed" stroke={c.warning} strokeWidth={2} dot={{ r: 3, fill: c.warning }} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
-        </>
+        </div>
       ) : (
         <DataTable headers={['Name', 'Code', 'Grade', 'Achieved', 'Required', 'Gap', 'Meets', 'Rating', 'CEFR Level', 'Status']}>
           {sortedRows.map(r => {
@@ -559,7 +563,7 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
               badgeStyle = { backgroundColor: 'rgb(var(--success-soft))', color: 'rgb(var(--success))' };
             } else if (isTechReady && isCefrGated) {
               badgeText = '🔒 CEFR Gated';
-              badgeStyle = { backgroundColor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' };
+              badgeStyle = { backgroundColor: 'rgb(var(--warning-soft))', color: 'rgb(var(--warning))' };
             }
 
             return (

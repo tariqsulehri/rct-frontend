@@ -4,9 +4,6 @@ import {
   AlertTriangle,
   Save,
   History,
-  Zap,
-  Star,
-  Target,
   Sparkles,
   ChevronDown,
   ChevronUp,
@@ -16,16 +13,6 @@ import {
   LayoutGrid,
   List,
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Tooltip,
-  Legend,
-} from 'recharts';
 import {
   CefrLevelCode,
   CompetencyKey,
@@ -39,11 +26,32 @@ import {
   useCreateCommAssessment,
 } from '@/hooks/useCommunication';
 import { useAuthStore } from '@/store/authStore';
-import { useChartColors, tooltipStyle } from '@/lib/chartColors';
 import { toast } from '@/lib/toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 import { CefrLevelBadge } from './CefrLevelBadge';
+import { ProficiencyLadder, LadderStep } from '@/components/ui/assessment/ProficiencyLadder';
+import { MetricKpiCard } from '@/components/ui/assessment/MetricKpiCard';
+import { LevelSelectorBar, LevelOption } from '@/components/ui/assessment/LevelSelectorBar';
+import { AssessmentHeroLayout, AssessmentRadarItem } from '@/components/ui/assessment/AssessmentHeroLayout';
 
-const CEFR_LEVELS: CefrLevelCode[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+const CEFR_STEPS: LadderStep[] = [
+  { code: 'A1', weightDec: '0.17', weightNum: 17 },
+  { code: 'A2', weightDec: '0.33', weightNum: 33 },
+  { code: 'B1', weightDec: '0.50', weightNum: 50 },
+  { code: 'B2', weightDec: '0.67', weightNum: 67 },
+  { code: 'C1', weightDec: '0.83', weightNum: 83 },
+  { code: 'C2', weightDec: '1.00', weightNum: 100 },
+];
+
+const CEFR_LEVEL_OPTIONS: LevelOption[] = [
+  { code: 'A1', weightDec: '0.17', weightNum: 17 },
+  { code: 'A2', weightDec: '0.33', weightNum: 33 },
+  { code: 'B1', weightDec: '0.50', weightNum: 50 },
+  { code: 'B2', weightDec: '0.67', weightNum: 67 },
+  { code: 'C1', weightDec: '0.83', weightNum: 83 },
+  { code: 'C2', weightDec: '1.00', weightNum: 100 },
+];
+
 const LEVEL_WEIGHTS: Record<CefrLevelCode, number> = {
   A1: 0.17,
   A2: 0.33,
@@ -163,7 +171,6 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
   currentGradeTitle,
 }) => {
   const { user } = useAuthStore();
-  const chartColors = useChartColors();
   const { data: config, isLoading: isConfigLoading } = useCommConfig();
   const { data: latestAssessment, isLoading: isAssessmentLoading, refetch: refetchLatest } =
     useLatestCommAssessment(employeeId);
@@ -201,14 +208,14 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
 
   const [ratings, setRatings] = useState<
     Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }>
-  >({} as any);
+  >({} as unknown as Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }>);
 
   useEffect(() => {
     const competencies: CompetencyKey[] = [
       'written_clarity', 'spoken_fluency', 'presentation', 'active_listening', 'stakeholder_exec', 'cross_cultural',
     ];
 
-    const initial: Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }> = {} as any;
+    const initial: Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }> = {} as unknown as Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }>;
 
     competencies.forEach((key) => {
       const existingRating = latestAssessment?.ratings?.find((r) => r.competency_key === key);
@@ -274,7 +281,7 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
     return { averageWeight, band, orgBenchmark, orgExpectedScore, overallGap, overallStatus, isGated, isReady, priorities, breakdown };
   }, [ratings, config, orgLevelKey, currentGradeLevel]);
 
-  const radarChartData = useMemo(() => {
+  const radarChartData: AssessmentRadarItem[] = useMemo(() => {
     if (!liveEvaluation) return [];
     const shortNames: Record<CompetencyKey, string> = {
       written_clarity: 'Written Clarity',
@@ -285,15 +292,16 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
       cross_cultural: 'Global Collab',
     };
     return liveEvaluation.breakdown.map((item) => ({
-      subject: shortNames[item.key] || item.key,
-      assessed: Math.round(item.givenWeight * 100),
-      benchmark: Math.round(item.expectedWeight * 100),
+      competency: shortNames[item.key] || item.key,
+      fullName: COMPETENCY_TITLES[item.key] || item.key,
+      Assessed: Math.round(item.givenWeight * 100),
+      Target: Math.round(item.expectedWeight * 100),
     }));
   }, [liveEvaluation]);
 
-  const handleRatingChange = (key: CompetencyKey, cefr: CefrLevelCode) => {
+  const handleRatingChange = (key: CompetencyKey, cefr: string) => {
     if (!canEdit) return;
-    setRatings((prev) => ({ ...prev, [key]: { ...prev[key], cefr } }));
+    setRatings((prev) => ({ ...prev, [key]: { ...prev[key], cefr: cefr as CefrLevelCode } }));
   };
 
   const handleEvidenceChange = (key: CompetencyKey, evidence: string) => {
@@ -327,7 +335,7 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
   const handleResetToBenchmark = () => {
     if (!canEdit) return;
     const competencies: CompetencyKey[] = ['written_clarity', 'spoken_fluency', 'presentation', 'active_listening', 'stakeholder_exec', 'cross_cultural'];
-    const benchmarkDefault: Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }> = {} as any;
+    const benchmarkDefault: Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }> = {} as unknown as Record<CompetencyKey, { cefr: CefrLevelCode; evidence: string }>;
     competencies.forEach((key) => {
       const benchmark = config?.targetOverrides?.[orgLevelKey]?.[key] ?? config?.orgLevels?.[orgLevelKey]?.benchmarkCefr ?? 'B2';
       benchmarkDefault[key] = { cefr: benchmark as CefrLevelCode, evidence: ratings[key]?.evidence || '' };
@@ -348,8 +356,8 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
       await refetchLatest();
       setInitialRatingsString(JSON.stringify(ratings));
       toast.success(targetStatus === 'approved' ? `Evaluation saved by ${reviewerTitle}!` : 'Assessment saved as draft.', 'Saved');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || err.message, 'Save Failed');
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Failed to save evaluation'), 'Save Failed');
     }
   };
 
@@ -363,179 +371,307 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
   ];
 
   if (isConfigLoading || isAssessmentLoading) {
-    return <div className="card p-8 text-center animate-pulse space-y-4"><div className="h-6 w-48 bg-zinc-200 dark:bg-zinc-800 rounded mx-auto"></div><div className="h-48 bg-zinc-100 dark:bg-zinc-800/50 rounded-2xl"></div></div>;
+    return (
+      <div className="p-8 text-center rounded-2xl border shadow-card space-y-4"
+           style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+        <div className="w-8 h-8 mx-auto border-3 border-t-transparent rounded-full animate-spin mb-3"
+             style={{ borderColor: 'rgb(var(--accent))', borderTopColor: 'transparent' }} />
+        <p className="text-xs font-medium" style={{ color: 'rgb(var(--text-2))' }}>Loading CEFR Communication Framework...</p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       {!canEdit && (
-        <div className="card p-4 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50/80 dark:bg-amber-950/20 text-amber-800 dark:text-amber-200 text-xs font-semibold flex items-center gap-3 shadow-2xs">
-          <AlertTriangle size={16} className="shrink-0 text-amber-600" />
-          <span>🔒 Read-only view. CEFR communication assessments are evaluated by your Line Manager or Authorized Evaluator.</span>
+        <div className="p-4 rounded-2xl border flex items-center gap-3 shadow-card"
+             style={{
+               backgroundColor: 'rgb(var(--warning-soft))',
+               borderColor: 'rgb(var(--warning) / 0.3)',
+               color: 'rgb(var(--warning))',
+             }}>
+          <AlertTriangle size={16} className="shrink-0" />
+          <span className="text-xs font-semibold">🔒 Read-only view. CEFR communication assessments are evaluated by your Line Manager or Authorized Evaluator.</span>
         </div>
       )}
 
       {/* Main Score Summary Header */}
-      <div className="card p-6 space-y-6 bg-gradient-to-br from-white via-white to-zinc-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-sm rounded-2xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800/80 pb-4">
+      <div className="p-6 space-y-6 rounded-2xl border shadow-card transition-all"
+           style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4"
+             style={{ borderColor: 'rgb(var(--border))' }}>
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-xl font-black text-zinc-900 dark:text-zinc-100">{employeeName}</span>
-              <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">ID: {employeeId}</span>
-              {currentGradeCode && <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">Grade: {currentGradeCode} {currentGradeTitle ? `(${currentGradeTitle})` : ''}</span>}
+              <span className="text-xl font-black" style={{ color: 'rgb(var(--text-1))' }}>{employeeName}</span>
+              <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-full border"
+                    style={{
+                      backgroundColor: 'rgb(var(--accent-soft))',
+                      color: 'rgb(var(--accent-txt))',
+                      borderColor: 'rgb(var(--accent) / 0.3)',
+                    }}>
+                ID: {employeeId}
+              </span>
+              {currentGradeCode && (
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border"
+                      style={{
+                        backgroundColor: 'rgb(var(--surface-2))',
+                        borderColor: 'rgb(var(--border))',
+                        color: 'rgb(var(--text-2))',
+                      }}>
+                  Grade: {currentGradeCode} {currentGradeTitle ? `(${currentGradeTitle})` : ''}
+                </span>
+              )}
               {latestAssessment?.status && (
-                <span className={`text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${latestAssessment.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700'}`}>Status: {latestAssessment.status}</span>
+                <span className={`text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${
+                  latestAssessment.status === 'approved'
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700'
+                }`}>
+                  Status: {latestAssessment.status}
+                </span>
               )}
             </div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">Target Level: <span className="font-bold text-zinc-800 dark:text-zinc-200">{orgLevelKey.toUpperCase()}</span> — Role Benchmark: <span className="font-bold text-amber-600 dark:text-amber-400">{liveEvaluation?.orgBenchmark}</span> • <span className="text-zinc-500 italic">{canEdit ? `Reviewer Mode: ${reviewerTitle}` : `Evaluated by: ${latestAssessment?.assessor_name || 'Line Manager / Authorized Evaluator'}`}</span></p>
+            <p className="text-xs mt-1.5" style={{ color: 'rgb(var(--text-2))' }}>
+              Target Level: <span className="font-bold" style={{ color: 'rgb(var(--text-1))' }}>{orgLevelKey.toUpperCase()}</span> — Role Benchmark:{' '}
+              <span className="font-bold font-mono" style={{ color: 'rgb(var(--warning))' }}>{liveEvaluation?.orgBenchmark}</span> •{' '}
+              <span className="italic" style={{ color: 'rgb(var(--text-3))' }}>{canEdit ? `Reviewer Mode: ${reviewerTitle}` : `Evaluated by: ${latestAssessment?.assessor_name || 'Line Manager / Authorized Evaluator'}`}</span>
+            </p>
           </div>
           
           <div className="flex items-center gap-2 self-start md:self-center flex-wrap">
             {/* View Mode Switcher */}
-            <div className="flex items-center gap-1 bg-zinc-200/70 dark:bg-zinc-800 p-1 rounded-xl border border-zinc-300/50 dark:border-zinc-700">
+            <div className="flex items-center gap-1 p-1 rounded-xl border"
+                 style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'grid'
-                    ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                    ? 'shadow-xs'
+                    : 'hover:opacity-80'
                 }`}
+                style={{
+                  backgroundColor: viewMode === 'grid' ? 'rgb(var(--surface))' : 'transparent',
+                  color: viewMode === 'grid' ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))',
+                }}
               >
                 <LayoutGrid size={13} /> 3-Col Grid
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'list'
-                    ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                    ? 'shadow-xs'
+                    : 'hover:opacity-80'
                 }`}
+                style={{
+                  backgroundColor: viewMode === 'list' ? 'rgb(var(--surface))' : 'transparent',
+                  color: viewMode === 'list' ? 'rgb(var(--accent-txt))' : 'rgb(var(--text-2))',
+                }}
               >
                 <List size={13} /> Stacked
               </button>
             </div>
 
-            {history.length > 0 && <button type="button" onClick={() => setShowHistory(!showHistory)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 transition-colors"><History size={14} />{showHistory ? 'Hide History' : `History (${history.length})`}</button>}
-            {canEdit && <button type="button" onClick={handleResetToBenchmark} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl border border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition-colors"><Sparkles size={14} /> Match Baseline</button>}
+            {history.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowHistory(!showHistory)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer"
+                style={{
+                  backgroundColor: 'rgb(var(--surface))',
+                  borderColor: 'rgb(var(--border))',
+                  color: 'rgb(var(--text-2))',
+                }}
+              >
+                <History size={14} />
+                {showHistory ? 'Hide History' : `History (${history.length})`}
+              </button>
+            )}
+
+            {canEdit && (
+              <button
+                type="button"
+                onClick={handleResetToBenchmark}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer hover:brightness-105"
+                style={{
+                  backgroundColor: 'rgb(var(--accent-soft))',
+                  color: 'rgb(var(--accent-txt))',
+                  borderColor: 'rgb(var(--accent) / 0.3)',
+                }}
+              >
+                <Sparkles size={14} /> Match Baseline
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Top Action Bar (Reviewers only) - Positioned at Top of Form */}
+        {/* Top Action Bar (Reviewers only) */}
         {canEdit && (
-          <div className="p-3.5 px-5 flex flex-col sm:flex-row items-center justify-between gap-3 border border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-2xl shadow-xs">
-            <div className="flex items-center gap-3 text-xs text-zinc-600 dark:text-zinc-400 flex-wrap font-medium">
-              <div>Overall Level: <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{liveEvaluation?.band} ({liveEvaluation?.averageWeight.toFixed(2)})</strong></div>
-              <span className="text-zinc-300">•</span>
-              <div>Role Benchmark Req: <strong className="text-amber-600 dark:text-amber-400 font-extrabold">{liveEvaluation?.orgBenchmark}</strong></div>
-              {hasUnsavedChanges && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">Unsaved Changes</span>}
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              <button type="button" disabled={createMutation.isPending} onClick={() => handleSubmit('draft')} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 rounded-xl transition-colors disabled:opacity-50 shadow-xs"><Save size={14} /> Save Draft</button>
-              <button type="button" disabled={createMutation.isPending} onClick={() => handleSubmit('approved')} className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50"><CheckCircle2 size={14} /> {createMutation.isPending ? 'Saving...' : 'Approve & Save Evaluation'}</button>
-            </div>
-          </div>
-        )}
-
-        {liveEvaluation && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-            <div className="lg:col-span-7 space-y-4">
-              <div className="p-4 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-800/40">
-                <div className="flex items-center justify-between text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-3">
-                  <span className="flex items-center gap-1.5"><Target size={14} className="text-indigo-600 dark:text-indigo-400" /> CEFR Proficiency Ladder</span>
-                  <span className="text-[11px] font-normal text-zinc-500">Benchmark: <strong className="text-amber-600 dark:text-amber-400">{liveEvaluation.orgBenchmark}</strong></span>
-                </div>
-                <div className="grid grid-cols-6 gap-2">
-                  {CEFR_LEVELS.map((lvl) => {
-                    const isEvaluated = liveEvaluation.band === lvl;
-                    const isBenchmark = liveEvaluation.orgBenchmark === lvl;
-                    return (
-                      <div key={lvl} className={`relative text-center p-2.5 rounded-xl border transition-all ${isEvaluated ? 'bg-indigo-600 text-white border-indigo-600 ring-2 ring-indigo-500/50 shadow-md transform scale-[1.03]' : isBenchmark ? 'bg-amber-500/10 border-amber-400 text-amber-900 dark:text-amber-200' : 'bg-white dark:bg-zinc-800/80 border-zinc-200 dark:border-zinc-700/60 opacity-80'}`}>
-                        {isBenchmark && <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-amber-500 text-white rounded-full p-0.5 shadow-sm" title="Role Required Benchmark"><Star size={10} fill="currentColor" /></div>}
-                        <div className="text-sm font-black">{lvl}</div>
-                        <div className="text-[9px] font-bold opacity-80 uppercase mt-0.5">{LEVEL_WEIGHTS[lvl].toFixed(2)}</div>
-                        {isEvaluated && <div className="text-[9px] font-bold text-white uppercase mt-1">Evaluated</div>}
-                      </div>
-                    );
-                  })}
-                </div>
+          <div className="p-3.5 px-5 flex flex-col sm:flex-row items-center justify-between gap-3 border rounded-2xl shadow-card transition-all"
+               style={{
+                 backgroundColor: 'rgb(var(--accent-soft) / 0.25)',
+                 borderColor: 'rgb(var(--accent) / 0.3)',
+               }}>
+            <div className="flex items-center gap-3 text-xs flex-wrap font-medium"
+                 style={{ color: 'rgb(var(--text-2))' }}>
+              <div>
+                Overall Level: <strong className="font-extrabold font-mono" style={{ color: 'rgb(var(--text-1))' }}>
+                  {liveEvaluation?.band} ({liveEvaluation?.averageWeight.toFixed(2)})
+                </strong>
               </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-800/60">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Evaluated Band</div>
-                  <div className="flex items-center gap-1.5 mt-1"><CefrLevelBadge level={liveEvaluation.band} size="md" /></div>
-                  <div className="text-[11px] text-zinc-500 mt-1">Weight: <strong className="text-zinc-800 dark:text-zinc-200">{liveEvaluation.averageWeight.toFixed(2)}</strong></div>
-                </div>
-
-                <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-800/60">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Role Benchmark</div>
-                  <div className="text-base font-black text-amber-600 dark:text-amber-400 mt-1">{liveEvaluation.orgBenchmark}</div>
-                  <div className="text-[11px] text-zinc-500 mt-1">Target: <strong className="text-zinc-800 dark:text-zinc-200">{liveEvaluation.orgExpectedScore.toFixed(2)}</strong></div>
-                </div>
-
-                <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-800/60">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Benchmark Gap</div>
-                  <div className={`text-base font-black mt-1 ${liveEvaluation.overallGap >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                    {liveEvaluation.overallGap >= 0 ? `+${liveEvaluation.overallGap.toFixed(2)}` : liveEvaluation.overallGap.toFixed(2)}
-                  </div>
-                  <div className="text-[11px] font-semibold uppercase text-zinc-500 mt-1">{liveEvaluation.overallStatus}</div>
-                </div>
-
-                <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-800/60">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Readiness</div>
-                  <div className="mt-1">
-                    {liveEvaluation.isReady ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20"><CheckCircle2 size={12} /> READY</span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20"><AlertTriangle size={12} /> GATED</span>
-                    )}
-                  </div>
-                  <div className="text-[10px] text-zinc-400 mt-1 truncate">{liveEvaluation.isGated ? 'Active Gating' : 'Dev Tracking'}</div>
-                </div>
+              <span style={{ color: 'rgb(var(--border-2))' }}>•</span>
+              <div>
+                Role Benchmark Req: <strong className="font-extrabold font-mono" style={{ color: 'rgb(var(--warning))' }}>
+                  {liveEvaluation?.orgBenchmark}
+                </strong>
               </div>
-
-              {liveEvaluation.priorities.length > 0 && (
-                <div className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-center gap-2.5">
-                  <Zap size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                  <div className="text-xs text-amber-800 dark:text-amber-300 leading-tight">
-                    <span className="font-bold">Priorities for promotion readiness: </span>
-                    {liveEvaluation.priorities.map((p) => p.replace(/_/g, ' ')).join(', ')}.
-                  </div>
-                </div>
+              {hasUnsavedChanges && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full border"
+                      style={{
+                        backgroundColor: 'rgb(var(--warning-soft))',
+                        color: 'rgb(var(--warning))',
+                        borderColor: 'rgb(var(--warning) / 0.3)',
+                      }}>
+                  Unsaved Changes
+                </span>
               )}
             </div>
 
-            <div className="lg:col-span-5 flex flex-col items-center justify-center p-3 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-900/40 min-h-[280px]">
-              <div className="text-xs font-bold text-zinc-700 dark:text-zinc-300 self-start px-2 mb-1">Communication Competencies Radar</div>
-              <div className="w-full h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarChartData}>
-                    <PolarGrid stroke={chartColors.grid} />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: chartColors.text, fontSize: 11, fontWeight: 600 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                    <Tooltip contentStyle={tooltipStyle(chartColors)} formatter={(val: any, name: any) => [`${val}%`, name]} />
-                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '4px' }} />
-                    <Radar name="Assessed Level" dataKey="assessed" stroke="rgb(99, 102, 241)" fill="rgb(99, 102, 241)" fillOpacity={0.4} />
-                    <Radar name="Role Benchmark" dataKey="benchmark" stroke="rgb(245, 158, 11)" fill="rgb(245, 158, 11)" fillOpacity={0.15} strokeDasharray="4 4" />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                disabled={createMutation.isPending}
+                onClick={() => handleSubmit('draft')}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl border transition-colors disabled:opacity-50 cursor-pointer"
+                style={{
+                  backgroundColor: 'rgb(var(--surface))',
+                  borderColor: 'rgb(var(--border))',
+                  color: 'rgb(var(--text-2))',
+                }}
+              >
+                <Save size={14} /> Save Draft
+              </button>
+              <button
+                type="button"
+                disabled={createMutation.isPending}
+                onClick={() => handleSubmit('approved')}
+                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-black text-white rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer hover:brightness-110"
+                style={{ backgroundColor: 'rgb(var(--success))' }}
+              >
+                <CheckCircle2 size={14} /> {createMutation.isPending ? 'Saving...' : 'Approve & Save Evaluation'}
+              </button>
             </div>
           </div>
         )}
+
+        {/* ── UNIFIED HERO SECTION: Consumes AssessmentHeroLayout Primitive ── */}
+        {liveEvaluation && (
+          <AssessmentHeroLayout
+            ladderComponent={
+              <ProficiencyLadder
+                title="CEFR Proficiency Ladder"
+                icon="target"
+                steps={CEFR_STEPS}
+                evaluatedCode={liveEvaluation.band}
+                benchmarkCode={liveEvaluation.orgBenchmark}
+                benchmarkSubtext={liveEvaluation.orgExpectedScore.toFixed(2)}
+                gap={liveEvaluation.overallGap}
+              />
+            }
+            metricCards={
+              <>
+                {/* Card 1: EVALUATED BAND */}
+                <MetricKpiCard
+                  label="EVALUATED BAND"
+                  badgeContent={<CefrLevelBadge level={liveEvaluation.band} size="md" />}
+                  subtext="Weight"
+                  subtextValue={liveEvaluation.averageWeight.toFixed(2)}
+                />
+
+                {/* Card 2: ROLE BENCHMARK */}
+                <MetricKpiCard
+                  label="ROLE BENCHMARK"
+                  primaryValue={liveEvaluation.orgBenchmark}
+                  statusType="warning"
+                  subtext="Target"
+                  subtextValue={liveEvaluation.orgExpectedScore.toFixed(2)}
+                />
+
+                {/* Card 3: BENCHMARK GAP */}
+                <MetricKpiCard
+                  label="BENCHMARK GAP"
+                  primaryValue={
+                    liveEvaluation.overallGap > 0
+                      ? `+${liveEvaluation.overallGap.toFixed(2)}`
+                      : `${liveEvaluation.overallGap.toFixed(2)}`
+                  }
+                  statusType={liveEvaluation.overallGap >= 0 ? 'success' : 'danger'}
+                  statusText={liveEvaluation.overallStatus}
+                />
+
+                {/* Card 4: READINESS */}
+                <MetricKpiCard
+                  label="READINESS"
+                  badgeContent={
+                    liveEvaluation.isReady ? (
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] font-black px-2 py-0.5 rounded-md border"
+                        style={{
+                          backgroundColor: 'rgb(var(--success-soft))',
+                          color: 'rgb(var(--success))',
+                          borderColor: 'rgb(var(--success) / 0.3)',
+                        }}
+                      >
+                        <CheckCircle2 size={12} />
+                        READY
+                      </span>
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] font-black px-2 py-0.5 rounded-md border"
+                        style={{
+                          backgroundColor: 'rgb(var(--danger-soft))',
+                          color: 'rgb(var(--danger))',
+                          borderColor: 'rgb(var(--danger) / 0.3)',
+                        }}
+                      >
+                        <AlertTriangle size={12} />
+                        GATED
+                      </span>
+                    )
+                  }
+                  subtext="Status"
+                  subtextValue={liveEvaluation.isGated ? 'Active Gating' : 'Dev Tracking'}
+                />
+              </>
+            }
+            priorities={liveEvaluation.priorities.map((p) => p.replace(/_/g, ' '))}
+            radarData={radarChartData}
+            radarTitle="Communication Competencies Radar"
+            radarUnit="Proficiency (0-100)"
+          />
+        )}
+
       </div>
 
       {/* Assessment History Drawer */}
       {showHistory && (
-        <div className="card p-5 space-y-3 bg-zinc-50/80 dark:bg-zinc-900/80 border-indigo-500/20">
+        <div className="p-5 space-y-3 rounded-2xl border shadow-card"
+             style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}>
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2"
+                style={{ color: 'rgb(var(--text-1))' }}>
               <History size={15} /> Assessment History Timeline ({history.length})
             </h4>
-            <button type="button" onClick={() => setShowHistory(false)} className="text-xs text-zinc-400 hover:text-zinc-600">Close</button>
+            <button
+              type="button"
+              onClick={() => setShowHistory(false)}
+              className="text-xs cursor-pointer hover:underline"
+              style={{ color: 'rgb(var(--text-3))' }}
+            >
+              Close
+            </button>
           </div>
           <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
             {history.map((h) => {
@@ -546,19 +682,40 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
                 (typeof h.overallGap === 'number' ? 1 - Math.abs(h.overallGap) : null);
 
               return (
-                <div key={h.id} className="flex items-center justify-between p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs">
+                <div
+                  key={h.id}
+                  className="flex items-center justify-between p-3 rounded-xl border text-xs"
+                  style={{
+                    backgroundColor: 'rgb(var(--surface-2))',
+                    borderColor: 'rgb(var(--border))',
+                  }}
+                >
                   <div className="flex items-center gap-3">
                     <CefrLevelBadge level={cefrLevel} size="sm" />
                     <div>
-                      <span className="font-bold text-zinc-900 dark:text-zinc-100">{new Date(h.assessed_at).toLocaleDateString()}</span>
-                      <span className="text-zinc-400 ml-2">by {h.assessor_name || (canEdit ? reviewerTitle : 'Line Manager / Authorized Evaluator')}</span>
+                      <span className="font-bold" style={{ color: 'rgb(var(--text-1))' }}>
+                        {new Date(h.assessed_at).toLocaleDateString()}
+                      </span>
+                      <span className="ml-2" style={{ color: 'rgb(var(--text-3))' }}>
+                        by {h.assessor_name || (canEdit ? reviewerTitle : 'Line Manager / Authorized Evaluator')}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
                     {scoreNum !== null && scoreNum !== undefined && (
-                      <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">Score: {Number(scoreNum).toFixed(2)}</span>
+                      <span className="font-mono font-bold" style={{ color: 'rgb(var(--text-2))' }}>
+                        Score: {Number(scoreNum).toFixed(2)}
+                      </span>
                     )}
-                    <span className={`font-bold uppercase px-2.5 py-0.5 rounded-full text-[10px] border ${h.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-zinc-100 text-zinc-600 border-zinc-300'}`}>{h.status}</span>
+                    <span
+                      className={`font-bold uppercase px-2.5 py-0.5 rounded-full text-[10px] border ${
+                        h.status === 'approved'
+                          ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                          : 'bg-zinc-100 text-zinc-600 border-zinc-300'
+                      }`}
+                    >
+                      {h.status}
+                    </span>
                   </div>
                 </div>
               );
@@ -572,8 +729,8 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
         <div
           className={
             viewMode === 'grid'
-              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 items-start w-full overflow-x-hidden'
-              : 'space-y-4.5'
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start w-full'
+              : 'space-y-4'
           }
         >
           {allCompetencies.map((comp) => {
@@ -587,95 +744,157 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
             const specificRubric = COMPETENCY_RUBRICS[comp.key]?.[currentRating] || CEFR_DESCRIPTORS[currentRating];
 
             return (
-              <div key={comp.key} className="p-3.5 sm:p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 shadow-xs space-y-2.5 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all h-full flex flex-col justify-between min-w-0">
+              <div
+                key={comp.key}
+                className="p-4 sm:p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-3.5 h-full shadow-card hover:border-zinc-400 dark:hover:border-zinc-600"
+                style={{
+                  backgroundColor: 'rgb(var(--surface))',
+                  borderColor: 'rgb(var(--border))',
+                }}
+              >
                 <div className="space-y-3">
-                  <div className="space-y-1">
+                  <div>
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <h4 className="text-xs sm:text-sm font-black text-zinc-950 dark:text-zinc-50 leading-tight">{COMPETENCY_TITLES[comp.key] || comp.name}</h4>
-                      <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-md bg-indigo-500/10 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 shrink-0">
+                      <h4 className="text-sm font-black" style={{ color: 'rgb(var(--text-1))' }}>
+                        {COMPETENCY_TITLES[comp.key] || comp.name}
+                      </h4>
+                      <span
+                        className="px-2 py-0.5 text-[9px] font-bold uppercase rounded-md border"
+                        style={{
+                          backgroundColor: 'rgb(var(--accent-soft))',
+                          color: 'rgb(var(--accent-txt))',
+                          borderColor: 'rgb(var(--accent) / 0.3)',
+                        }}
+                      >
                         {comp.categoryName}
                       </span>
                     </div>
-                    <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-snug font-medium">{comp.description}</p>
+                    <p className="text-xs mt-1 leading-normal" style={{ color: 'rgb(var(--text-2))' }}>
+                      {comp.description}
+                    </p>
                   </div>
 
-                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                      <Star size={9} className="fill-amber-500 text-amber-500" /> Req: {expected} ({expectedWeight.toFixed(2)})
+                  <div className="flex items-center justify-between text-xs gap-2 pt-1">
+                    <span
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg border font-mono"
+                      style={{
+                        backgroundColor: 'rgb(var(--warning-soft))',
+                        color: 'rgb(var(--warning))',
+                        borderColor: 'rgb(var(--warning) / 0.3)',
+                      }}
+                    >
+                      ⭐ Req: {expected} ({expectedWeight.toFixed(2)})
                     </span>
-                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border flex items-center gap-1 ${status === 'MEETS' ? 'bg-indigo-500/10 text-indigo-700 border-indigo-500/30' : status === 'ABOVE' ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30' : 'bg-rose-500/10 text-rose-700 border-rose-500/30'}`}>
-                      {status === 'ABOVE' ? <TrendingUp size={10} /> : status === 'BELOW' ? <TrendingDown size={10} /> : <Check size={10} />}
+                    <span
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg border font-mono"
+                      style={{
+                        backgroundColor:
+                          status === 'MEETS'
+                            ? 'rgb(var(--accent-soft))'
+                            : status === 'ABOVE'
+                            ? 'rgb(var(--success-soft))'
+                            : 'rgb(var(--danger-soft))',
+                        color:
+                          status === 'MEETS'
+                            ? 'rgb(var(--accent-txt))'
+                            : status === 'ABOVE'
+                            ? 'rgb(var(--success))'
+                            : 'rgb(var(--danger))',
+                        borderColor:
+                          status === 'MEETS'
+                            ? 'rgb(var(--accent) / 0.3)'
+                            : status === 'ABOVE'
+                            ? 'rgb(var(--success) / 0.3)'
+                            : 'rgb(var(--danger) / 0.3)',
+                      }}
+                    >
+                      {status === 'ABOVE' ? <TrendingUp size={11} /> : status === 'BELOW' ? <TrendingDown size={11} /> : <Check size={11} />}
                       {status} ({gap >= 0 ? `+${gap.toFixed(2)}` : gap.toFixed(2)})
                     </span>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-6 gap-1">
-                      {CEFR_LEVELS.map((lvl) => {
-                        const isSelected = currentRating === lvl;
-                        const isTarget = expected === lvl;
-                        const lvlWeight = LEVEL_WEIGHTS[lvl];
+                  {/* LevelSelectorBar Component */}
+                  <LevelSelectorBar
+                    levels={CEFR_LEVEL_OPTIONS}
+                    selectedCode={currentRating}
+                    expectedCode={expected}
+                    disabled={!canEdit}
+                    onSelectLevel={(lvl) => handleRatingChange(comp.key, lvl)}
+                  />
 
-                        let btnStyle = 'bg-zinc-100/80 dark:bg-zinc-800/80 border-zinc-200 dark:border-zinc-700/80 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200';
-
-                        if (isSelected) {
-                          if (status === 'ABOVE') {
-                            btnStyle = 'bg-emerald-600 text-white border-emerald-600 ring-2 ring-emerald-500/60 shadow-md font-black';
-                          } else if (status === 'BELOW') {
-                            btnStyle = 'bg-rose-600 text-white border-rose-600 ring-2 ring-rose-500/60 shadow-md font-black';
-                          } else {
-                            btnStyle = 'bg-indigo-600 text-white border-indigo-600 ring-2 ring-indigo-500/60 shadow-md font-black';
-                          }
-                        } else if (isTarget) {
-                          btnStyle = 'bg-amber-500/10 dark:bg-amber-950/40 border-amber-400 dark:border-amber-500/80 text-amber-900 dark:text-amber-200 font-bold hover:bg-amber-100';
-                        }
-
-                        return (
-                          <button key={lvl} type="button" disabled={!canEdit} onClick={() => handleRatingChange(comp.key, lvl)} className={`py-1.5 px-0.5 text-center rounded-xl border transition-all text-[11px] ${btnStyle} ${!canEdit ? 'cursor-default' : 'cursor-pointer'}`}>
-                            <div className="font-black">{lvl}</div>
-                            <div className="text-[8px] opacity-75 font-mono">{lvlWeight.toFixed(2)}</div>
-                            {isSelected ? (
-                              <div className="text-[7px] font-black uppercase tracking-tighter mt-0.5 text-white/90 truncate">✓ Set</div>
-                            ) : isTarget ? (
-                              <div className="text-[7px] font-black text-amber-600 dark:text-amber-400 mt-0.5 truncate">★ Req</div>
-                            ) : null}
-                          </button>
-                        );
-                      })}
+                  {/* Active Level Summary Box */}
+                  <div
+                    className="p-3 rounded-xl border text-xs space-y-1.5"
+                    style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}
+                  >
+                    <div className="flex items-center justify-between font-bold text-[11px]">
+                      <span className="flex items-center gap-1 font-mono" style={{ color: 'rgb(var(--warning))' }}>
+                        Req: {expected} ({expectedWeight.toFixed(2)})
+                      </span>
+                      <span
+                        className="font-mono font-bold"
+                        style={{
+                          color:
+                            status === 'ABOVE'
+                              ? 'rgb(var(--success))'
+                              : status === 'BELOW'
+                              ? 'rgb(var(--danger))'
+                              : 'rgb(var(--accent-txt))',
+                        }}
+                      >
+                        Set: {currentRating} ({givenWeight.toFixed(2)})
+                      </span>
                     </div>
-                    <div className="bg-zinc-50 dark:bg-zinc-950/80 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/80 shadow-xs space-y-1.5">
-                      <div className="flex items-center justify-between gap-1 border-b border-zinc-200 dark:border-zinc-800/80 pb-1.5 text-[9px] font-bold">
-                        <span className="text-amber-700 dark:text-amber-400 flex items-center gap-0.5"><Star size={9} className="fill-amber-500" /> Req: {expected} ({expectedWeight.toFixed(2)})</span>
-                        <span className={status === 'ABOVE' ? 'text-emerald-700 dark:text-emerald-400' : status === 'BELOW' ? 'text-rose-700 dark:text-rose-400' : 'text-indigo-700 dark:text-indigo-400'}>Set: {currentRating} ({givenWeight.toFixed(2)})</span>
-                      </div>
-                      <div className="flex items-start gap-2 pt-0.5">
-                        <span className="text-[9px] font-black font-mono px-1.5 py-0.5 rounded bg-indigo-600 text-white shrink-0">{currentRating}</span>
-                        <p className="text-[10.5px] text-zinc-800 dark:text-zinc-200 italic leading-snug font-medium">{specificRubric}</p>
-                      </div>
+                    <div className="flex items-start gap-2 pt-1 border-t" style={{ borderColor: 'rgb(var(--border))' }}>
+                      <span
+                        className="px-1.5 py-0.5 rounded text-[10px] font-mono font-black text-white shrink-0"
+                        style={{ backgroundColor: 'rgb(var(--accent))' }}
+                      >
+                        {currentRating}
+                      </span>
+                      <p className="italic text-[11px] leading-relaxed" style={{ color: 'rgb(var(--text-2))' }}>
+                        "{specificRubric}"
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-2.5 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2 mt-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Evidence Notes</span>
-                    {canEdit && (
-                      <button type="button" onClick={() => toggleEvidence(comp.key)} className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-bold flex items-center gap-1">
-                        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                        {isExpanded ? 'Hide Notes' : '+ Notes'}
-                      </button>
-                    )}
+                {/* Evidence Notes & Quick Tags */}
+                <div className="pt-2.5 border-t space-y-2" style={{ borderColor: 'rgb(var(--border))' }}>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: 'rgb(var(--text-3))' }}>
+                      EVIDENCE NOTES
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleEvidence(comp.key)}
+                      className="text-[11px] font-bold flex items-center gap-1 cursor-pointer hover:underline"
+                      style={{ color: 'rgb(var(--accent-txt))' }}
+                    >
+                      {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      {isExpanded ? 'Hide Notes' : '+ Notes'}
+                    </button>
                   </div>
 
                   {canEdit && (
                     <div className="flex flex-wrap gap-1">
                       {EVIDENCE_TAGS[comp.key]?.map((tag) => {
                         const cleanTag = tag.replace(/^\+\s*/, '');
-                        const isTagSelected = (ratings[comp.key]?.evidence || '').includes(cleanTag);
+                        const isSelected = (ratings[comp.key]?.evidence || '').includes(cleanTag);
                         return (
-                          <button key={tag} type="button" onClick={() => handleAddEvidenceTag(comp.key, tag)} className={`text-[9.5px] font-bold px-2 py-0.5 rounded-lg border transition-all active:scale-95 flex items-center gap-1 ${isTagSelected ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'border-zinc-200 dark:border-zinc-700/80 bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 hover:bg-indigo-50'}`}>
-                            {isTagSelected ? <Check size={10} /> : null}
-                            {isTagSelected ? cleanTag : tag}
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => handleAddEvidenceTag(comp.key, tag)}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1 cursor-pointer"
+                            style={{
+                              backgroundColor: isSelected ? 'rgb(var(--accent))' : 'rgb(var(--surface-2))',
+                              color: isSelected ? '#ffffff' : 'rgb(var(--text-2))',
+                              borderColor: isSelected ? 'rgb(var(--accent))' : 'rgb(var(--border))',
+                            }}
+                          >
+                            {isSelected ? <Check size={10} /> : null}
+                            {isSelected ? cleanTag : tag}
                           </button>
                         );
                       })}
@@ -683,12 +902,34 @@ export const CommunicationAssessmentView: React.FC<CommunicationAssessmentViewPr
                   )}
 
                   {canEdit && isExpanded && (
-                    <textarea value={ratings[comp.key]?.evidence || ''} onChange={(e) => handleEvidenceChange(comp.key, e.target.value)} placeholder="Add specific RFCs, meeting examples, demos..." rows={2} className="w-full mt-1.5 text-xs p-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+                    <textarea
+                      value={ratings[comp.key]?.evidence || ''}
+                      onChange={(e) => handleEvidenceChange(comp.key, e.target.value)}
+                      placeholder="Add specific STAR evidence, RFC links, demo feedback..."
+                      rows={2}
+                      className="w-full mt-1.5 text-xs p-2 rounded-xl border focus:outline-none focus:ring-2"
+                      style={{
+                        backgroundColor: 'rgb(var(--surface-3))',
+                        borderColor: 'rgb(var(--border-2))',
+                        color: 'rgb(var(--text-1))',
+                      }}
+                    />
                   )}
 
                   {!canEdit && (
-                    <div className="text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 font-medium">
-                      {ratings[comp.key]?.evidence ? <span>{ratings[comp.key].evidence}</span> : <span className="text-zinc-400 italic">No evaluator evidence notes recorded.</span>}
+                    <div
+                      className="text-xs p-2.5 rounded-xl border font-medium"
+                      style={{
+                        backgroundColor: 'rgb(var(--surface-2))',
+                        borderColor: 'rgb(var(--border))',
+                        color: 'rgb(var(--text-2))',
+                      }}
+                    >
+                      {ratings[comp.key]?.evidence ? (
+                        <span>{ratings[comp.key].evidence}</span>
+                      ) : (
+                        <span className="italic" style={{ color: 'rgb(var(--text-3))' }}>No evidence notes recorded.</span>
+                      )}
                     </div>
                   )}
                 </div>
