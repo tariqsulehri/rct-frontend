@@ -209,8 +209,8 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   // 3. Behavioral stats
   const behavLevel: BehavioralLevelCode = (behavAss?.result?.overallProficiency as BehavioralLevelCode) || 'L4';
   const behavBenchmark: BehavioralLevelCode = 'L3';
-  const behavScorePct = behavAss?.result?.overallScore ? Math.round(behavAss.result.overallScore * 100) : (BEHAVIORAL_LEVEL_NUMERIC[behavLevel] || 80);
-  const behavReqPct = behavAss?.result?.expectedScore ? Math.round(behavAss.result.expectedScore * 100) : (BEHAVIORAL_LEVEL_NUMERIC[behavBenchmark] || 60);
+  const behavScorePct = behavAss?.result?.overallCw ? Math.round(behavAss.result.overallCw * 100) : (BEHAVIORAL_LEVEL_NUMERIC[behavLevel] || 80);
+  const behavReqPct = behavAss?.result?.overallExpectedCw ? Math.round(behavAss.result.overallExpectedCw * 100) : (BEHAVIORAL_LEVEL_NUMERIC[behavBenchmark] || 60);
   const behavReady = behavScorePct >= behavReqPct;
 
   const behavChartData = useMemo(() => {
