@@ -97,12 +97,15 @@ export const BehavioralPillarsCard: React.FC<BehavioralPillarsCardProps> = ({
   const totalPillars = coreCount + leadershipCount;
 
   return (
-    <div className="rounded-2xl p-4 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-3">
+    <div className="relative rounded-2xl p-4 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-3 overflow-hidden">
+      {/* Subtle ambient corner glow */}
+      <div className="absolute -top-24 -right-24 w-48 h-48 bg-amber-500/10 dark:bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
+
       {/* Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-border">
+      <div className="relative flex items-center justify-between pb-2 border-b border-border">
         <div className="flex items-center gap-2">
-          <Award size={14} className="text-amber-500 shrink-0" />
-          <h2 className="text-xs font-black uppercase tracking-wider text-text-1">
+          <Award size={14} className="text-amber-500 shrink-0 drop-shadow-sm" />
+          <h2 className="text-xs font-black uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-b from-amber-400 to-amber-700 dark:from-amber-300 dark:to-amber-500 drop-shadow-sm">
             3. Behavioral ({totalPillars} Pillars)
           </h2>
         </div>
