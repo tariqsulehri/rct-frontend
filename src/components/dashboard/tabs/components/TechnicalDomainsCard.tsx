@@ -159,7 +159,7 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
         {/* Right Column: Radar */}
         <div className="flex flex-col items-center justify-center w-full h-[320px] md:col-span-5">
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart data={chartData} cx="50%" cy="50%" outerRadius="75%">
+              <RadarChart data={chartData} cx="50%" cy="50%" outerRadius="65%">
               <defs>
                 <linearGradient id="colorTechnical" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.85}/>
@@ -170,7 +170,35 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
               <PolarGrid stroke={chartTheme.isDark ? '#52525b' : '#d4d4d8'} strokeDasharray="3 3" />
               <PolarAngleAxis
                 dataKey="fullLabel"
-                tick={{ fill: chartTheme.isDark ? '#d4d4d8' : '#52525b', fontSize: 10, fontWeight: 700 }}
+                tick={(props: any) => {
+                  const { payload, x, y, textAnchor } = props;
+                  const words = payload.value.split(' ');
+                  let lines = [];
+                  if (words.length > 2) {
+                    const mid = Math.ceil(words.length / 2);
+                    lines.push(words.slice(0, mid).join(' '));
+                    lines.push(words.slice(mid).join(' '));
+                  } else {
+                    lines.push(payload.value);
+                  }
+                  
+                  return (
+                    <text 
+                      x={x} 
+                      y={y} 
+                      textAnchor={textAnchor} 
+                      fill={chartTheme.isDark ? '#d4d4d8' : '#52525b'} 
+                      fontSize={9} 
+                      fontWeight={700}
+                    >
+                      {lines.map((line, i) => (
+                        <tspan key={i} x={x} dy={i === 0 ? (lines.length === 1 ? 3 : -4) : 12}>
+                          {line}
+                        </tspan>
+                      ))}
+                    </text>
+                  );
+                }}
               />
               <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
               
