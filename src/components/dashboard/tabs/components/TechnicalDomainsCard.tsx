@@ -1,5 +1,5 @@
 import React from 'react';
-import { ResponsiveContainer, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip, TooltipProps } from 'recharts';
 import { Cpu, ArrowUpRight } from 'lucide-react';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { TabType } from '../../types';
@@ -19,6 +19,34 @@ const BAR_PALETTE = [
   'linear-gradient(90deg,#d946ef,#e879f9)',
   'linear-gradient(90deg,#f43f5e,#fb7185)',
 ] as const;
+
+const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const gap = data.score - data.benchmark;
+    const isMet = gap >= 0;
+    return (
+      <div className="bg-surface/95 backdrop-blur-md border border-border p-3 rounded-lg shadow-xl text-xs min-w-[140px] z-50">
+        <p className="font-bold mb-2 text-text-1 border-b border-border pb-1.5">{data.fullLabel}</p>
+        <div className="flex items-center justify-between gap-4 mb-1.5">
+          <span className="text-text-2">Achieved:</span>
+          <span className="font-bold text-indigo-500 text-[13px]">{data.score}%</span>
+        </div>
+        <div className="flex items-center justify-between gap-4 mb-2">
+          <span className="text-text-2">Target:</span>
+          <span className="font-bold text-text-1 text-[13px]">{data.benchmark}%</span>
+        </div>
+        <div className="flex items-center justify-between gap-4 pt-1.5 border-t border-border/60">
+          <span className="text-text-3 font-medium">Gap:</span>
+          <span className={`font-black text-[13px] ${isMet ? 'text-emerald-500' : 'text-red-500'}`}>
+            {gap > 0 ? `+${gap}` : gap}%
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 export interface TechnicalDomainBar {
   fullLabel: string;
@@ -68,9 +96,9 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
         {/* Left Column: Bars */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 md:col-span-7">
           {/* Donut summary */}
           <div className="flex items-center gap-3 bg-surface-2 p-2.5 rounded-xl border border-border">
             <div className="relative w-14 h-14 shrink-0">
@@ -120,10 +148,17 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
         </div>
 
         {/* Right Column: Radar */}
-        <div className="flex flex-col items-center justify-center w-full h-[320px]">
+        <div className="flex flex-col items-center justify-center w-full h-[320px] md:col-span-5">
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart data={chartData} outerRadius="70%">
-              <PolarGrid stroke={chartTheme.isDark ? '#3f3f46' : '#e5e7eb'} />
+            <RadarChart data={chartData} cx="50%" cy="50%" outerRadius="75%">
+              <defs>
+                <linearGradient id="colorTechnical" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6}/>
+                  <stop offset="95%" stopColor="#818cf8" stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3', stroke: chartTheme.isDark ? '#52525b' : '#d4d4d8' }} />
+              <PolarGrid stroke={chartTheme.isDark ? '#3f3f46' : '#e5e7eb'} strokeDasharray="3 3" />
               <PolarAngleAxis
                 dataKey="fullLabel"
                 tick={{ fill: chartTheme.isDark ? '#a1a1aa' : '#71717a', fontSize: 10, fontWeight: 600 }}
@@ -133,8 +168,8 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
               <Radar
                 name="Required"
                 dataKey="benchmark"
-                stroke={chartTheme.isDark ? '#52525b' : '#d4d4d8'}
-                strokeWidth={1.5}
+                stroke={chartTheme.isDark ? '#71717a' : '#a1a1aa'}
+                strokeWidth={2}
                 strokeDasharray="4 4"
                 fill="none"
               />
@@ -142,9 +177,9 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
                 name="Achieved"
                 dataKey="score"
                 stroke="#6366f1"
-                fill="#6366f1"
-                fillOpacity={0.3}
-                strokeWidth={2}
+                fill="url(#colorTechnical)"
+                fillOpacity={1}
+                strokeWidth={2.5}
               />
             </RadarChart>
           </ResponsiveContainer>
