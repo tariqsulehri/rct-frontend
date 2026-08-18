@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell, LabelList, PieChart, Pie, Legend, ComposedChart, Line } from 'recharts';
 import type { LabelProps } from 'recharts';
+import { toPct } from '@/lib/formatters';
 import { usePromotionReadiness } from '@/hooks/useReports';
 import { useChartTheme, getChartTooltipStyle } from '@/hooks/useChartTheme';
 import { DataTable, Empty, InfoTip, Loading, PromotionRow, Stars, TR, View, ViewToggle } from '../shared';
@@ -48,15 +49,13 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
   if (rows.length === 0) return <Empty msg="No people match the current report filters." />;
 
   const shortName = (name: string) => name.split(' ').slice(0, 2).join(' ');
-  const getScorePct = (score: number) => (score > 1 ? score : score * 100);
-  const getThreshPct = (thresh: number) => (thresh > 0 ? (thresh <= 1 ? thresh * 100 : thresh) : 0);
 
-  const sortedRows = [...rows].sort((a, b) => getScorePct(b.overall_score) - getScorePct(a.overall_score));
+  const sortedRows = [...rows].sort((a, b) => toPct(b.overall_score) - toPct(a.overall_score));
   const readyCount = rows.filter(r => r.promotion_ready).length;
   const readinessRate = Math.round((readyCount / Math.max(1, rows.length)) * 100);
-  const avgScore = Math.round(rows.reduce((sum, r) => sum + getScorePct(r.overall_score), 0) / Math.max(1, rows.length));
+  const avgScore = Math.round(rows.reduce((sum, r) => sum + toPct(r.overall_score), 0) / Math.max(1, rows.length));
   const avgNeeded = rows.some(r => r.avg_threshold > 0)
-    ? Math.round(rows.filter(r => r.avg_threshold > 0).reduce((sum, r) => sum + getThreshPct(r.avg_threshold), 0) / Math.max(1, rows.filter(r => r.avg_threshold > 0).length))
+    ? Math.round(rows.filter(r => r.avg_threshold > 0).reduce((sum, r) => sum + toPct(r.avg_threshold), 0) / Math.max(1, rows.filter(r => r.avg_threshold > 0).length))
     : 0;
   const needsAttentionCount = rows.filter(r => !r.promotion_ready).length;
   const nearReadyCount = rows.filter(r => !r.promotion_ready && r.total_competencies > 0 && (r.meets_count / r.total_competencies) >= 0.75).length;
@@ -69,7 +68,7 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
     name: shortName(r.full_name),
     fullName: r.full_name,
     grade: `${r.current_grade} -> ${r.target_grade}`,
-    score: Math.round(getScorePct(r.overall_score)),
+    score: toPct(r.overall_score),
     meets: r.total_competencies === 0 ? 'N/A' : `${r.meets_count}/${r.total_competencies}`,
     ready: r.promotion_ready,
   }));
@@ -88,8 +87,8 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
     { range: '80-100', min: 80, max: 101, color: c.success },
   ].map(bucket => ({
     ...bucket,
-    employees: rows.filter(r => getScorePct(r.overall_score) >= bucket.min && getScorePct(r.overall_score) < bucket.max).length,
-    share: Math.round((rows.filter(r => getScorePct(r.overall_score) >= bucket.min && getScorePct(r.overall_score) < bucket.max).length / Math.max(1, rows.length)) * 100),
+    employees: rows.filter(r => toPct(r.overall_score) >= bucket.min && toPct(r.overall_score) < bucket.max).length,
+    share: Math.round((rows.filter(r => toPct(r.overall_score) >= bucket.min && toPct(r.overall_score) < bucket.max).length / Math.max(1, rows.length)) * 100),
     containsTarget: avgNeeded > 0 && avgNeeded >= bucket.min && avgNeeded < bucket.max,
   }));
 
@@ -98,9 +97,9 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
       const key = `${r.department}||${r.current_grade}`;
       if (!acc[key]) acc[key] = { department: r.department, grade: r.current_grade, ready: 0, notReady: 0, total: 0, scoreSum: 0, thresholdSum: 0, thresholdCount: 0 };
       acc[key].total += 1;
-      acc[key].scoreSum += getScorePct(r.overall_score);
+      acc[key].scoreSum += toPct(r.overall_score);
       if (r.avg_threshold > 0) {
-        acc[key].thresholdSum += getThreshPct(r.avg_threshold);
+        acc[key].thresholdSum += toPct(r.avg_threshold);
         acc[key].thresholdCount += 1;
       }
       if (r.promotion_ready) acc[key].ready += 1;
@@ -135,7 +134,7 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
   });
 
   const notReadyPipeline = sortedRows.filter(r => !r.promotion_ready).slice(0, 8);
-  const pipelineMax = Math.max(...notReadyPipeline.map(r => getScorePct(r.overall_score)), 1);
+  const pipelineMax = Math.max(...notReadyPipeline.map(r => toPct(r.overall_score)), 1);
 
   const ScoreBarTooltip = ({ active, payload }: ScoreBarTooltipProps) => {
     if (!active || !payload?.length) return null;
@@ -347,9 +346,8 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
                   {notReadyPipeline.length === 0 ? (
                     <p className="text-xs py-3 text-center" style={{ color: 'rgb(var(--text-3))' }}>All assessed people are ready.</p>
                   ) : notReadyPipeline.map((r) => {
-                    const scorePct = Math.round(getScorePct(r.overall_score));
-                    const normScore = getScorePct(r.overall_score);
-                    const barWidthPct = Math.min((normScore / Math.max(1, pipelineMax)) * 100, 100);
+                    const scorePct = toPct(r.overall_score);
+                    const barWidthPct = Math.min((scorePct / Math.max(1, pipelineMax)) * 100, 100);
                     const thrPos = avgNeeded > 0 ? Math.min((avgNeeded / Math.max(1, pipelineMax)) * 100, 100) : 0;
                     return (
                       <div key={r.employee_id}>
@@ -547,8 +545,8 @@ export const PromotionReadinessTab: React.FC<{ reportFilters?: ReportFilters }> 
       ) : (
         <DataTable headers={['Name', 'Code', 'Grade', 'Achieved', 'Required', 'Gap', 'Meets', 'Rating', 'CEFR Level', 'Status']}>
           {sortedRows.map(r => {
-            const achieved = Math.round(getScorePct(r.overall_score));
-            const required = r.avg_threshold > 0 ? Math.round(getThreshPct(r.avg_threshold)) : null;
+            const achieved = toPct(r.overall_score);
+            const required = r.avg_threshold > 0 ? toPct(r.avg_threshold) : null;
             const gap = required !== null ? achieved - required : null;
 
             const isTechReady = r.promotion_ready;

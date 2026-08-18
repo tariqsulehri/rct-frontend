@@ -37,6 +37,16 @@ export function formatGrade(code?: string, title?: string, fallback = 'N/A'): st
 }
 
 /**
+ * Calculates the target grade string by incrementing the numeric portion of the current grade.
+ * (e.g., "G15" -> "G16").
+ */
+export function calculateTargetGrade(currentGrade: string | undefined | null): string {
+  if (!currentGrade) return '';
+  const num = parseInt(currentGrade.replace(/\D/g, ''), 10);
+  return !isNaN(num) ? `G${num + 1}` : currentGrade;
+}
+
+/**
  * Formats employee name and ID into standard dropdown/header option string (e.g. "Zain UL Abdeen · ID 1392").
  */
 export function formatEmployeeOption(name?: string, empCode?: string, fallback = 'Employee'): string {
@@ -48,6 +58,22 @@ export function formatEmployeeOption(name?: string, empCode?: string, fallback =
  */
 export function getReadinessStatus(ready?: boolean): { label: string; badgeClass: string } {
   return ready
-    ? { label: 'Ready', badgeClass: 'badge-success' }
-    : { label: 'In Progress', badgeClass: 'badge-warning' };
+    ? { label: 'Promotion Ready', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+    : { label: 'Developing', badgeClass: 'bg-slate-50 text-slate-700 border-slate-200' };
+}
+
+/**
+ * Calculates the final normalized readiness percentage using the 40/30/30 weighting rule.
+ * 40% Technical, 30% Communication, 30% Behavioral.
+ * Validates inputs and clamps the max value to 100.
+ */
+export function calculateReadinessScore(
+  techScore: number, techReq: number,
+  commScorePct: number, commReqPct: number,
+  behavScorePct: number, behavReqPct: number
+): number {
+  const techFactor = techReq > 0 ? (techScore / techReq) * 40 : 0;
+  const commFactor = commReqPct > 0 ? (commScorePct / commReqPct) * 30 : 0;
+  const behavFactor = behavReqPct > 0 ? (behavScorePct / behavReqPct) * 30 : 0;
+  return Math.min(100, Math.round(techFactor + commFactor + behavFactor));
 }

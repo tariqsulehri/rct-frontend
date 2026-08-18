@@ -125,8 +125,8 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   );
 
   const radarData = domains.map((d, i) => {
-    const score = toPct(myRow?.domain_scores[d]);
     const domGap = gapRow?.domain_gaps[d];
+    const score = toPct(domGap?.score);
     const threshold = domGap && domGap.threshold > 0 ? toPct(domGap.threshold) : avgThreshold;
     return {
       domain: d.length > 14 ? d.slice(0, 14) + '…' : d,
@@ -492,6 +492,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
         <BehavioralAssessmentView
           employeeId={effectiveEmpCode}
           employeeName={myRow?.full_name || user?.employeeName || 'Employee'}
+          gradeCode={myRow?.current_grade || user?.currentGrade}
           canAssess={isPrivileged}
         />
       )}

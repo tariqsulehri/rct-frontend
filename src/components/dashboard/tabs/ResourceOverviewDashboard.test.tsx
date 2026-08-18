@@ -168,7 +168,7 @@ describe('ResourceOverviewDashboard (SSR Rendering)', () => {
     expect(html).toContain('Test Engineer');
     expect(html).toContain('G14');
     expect(html).toContain('G15');
-    expect(html).toContain('Cycle 2026 (Active)');
+    expect(html).toContain(`Cycle ${new Date().getFullYear()} (Active)`);
     expect(html).toContain('Assess Skills');
   });
 

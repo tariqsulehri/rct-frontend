@@ -14,6 +14,8 @@ export interface PromotionRow {
   meets_count: number;
   total_competencies: number;
   promotion_ready: boolean;
+  is_cefr_gated?: boolean;
+  cefr_level?: string;
   star_rating: number;
 }
 

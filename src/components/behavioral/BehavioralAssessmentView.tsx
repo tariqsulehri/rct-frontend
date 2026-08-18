@@ -121,8 +121,14 @@ export const BehavioralAssessmentView: React.FC<BehavioralAssessmentViewProps> =
     (m) => m.emp_code === employeeId || String(m.id) === String(employeeId)
   );
 
-  const resolvedName = employeeName || rosterMember?.full_name || 'Tariq Mahmood';
-  const gradeKey = gradeCode || assessment?.gradeKey || rosterMember?.current_grade.code || 'G18';
+  const resolvedName = employeeName || rosterMember?.full_name || 'Employee';
+  
+  // Safely extract the grade from rosterMember regardless of string vs object type
+  const rosterGradeCode = typeof rosterMember?.current_grade === 'string' 
+    ? rosterMember.current_grade 
+    : rosterMember?.current_grade?.code;
+
+  const gradeKey = gradeCode || assessment?.gradeKey || rosterGradeCode || 'G1';
 
   const competencies = (config?.competencies && config.competencies.length > 0)
     ? config.competencies

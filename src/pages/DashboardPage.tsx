@@ -570,6 +570,7 @@ export const DashboardPage: React.FC = () => {
                 <BehavioralAssessmentView
                   employeeId={user?.empCode || ''}
                   employeeName={user?.employeeName || user?.username || 'Employee'}
+                  gradeCode={user?.currentGrade}
                   canAssess={isLeaderRole(user?.role)}
                 />
               </div>
