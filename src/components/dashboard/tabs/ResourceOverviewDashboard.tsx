@@ -105,7 +105,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   const { data: userScores = [] } = useCompetencyScores();
   const { data: gapMatrixData } = useGapMatrix();
 
-  const activeUserId = user?.id ? String(user.id) : undefined;
+  const activeUserId = user?.empCode ? String(user.empCode) : undefined;
   const { data: commAss } = useLatestCommAssessment(activeUserId);
   const { data: behavAss } = useLatestBehavioralAssessment(activeUserId);
 
