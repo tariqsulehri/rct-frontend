@@ -23,6 +23,7 @@ import { type User } from '@/store/authStore';
 import { useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
 import { useLatestCommAssessment, useCommConfig } from '@/hooks/useCommunication';
 import { useLatestBehavioralAssessment, useBehavioralConfig } from '@/hooks/useBehavioral';
+import { useConfigSkillDomains } from '@/hooks/useConfig';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { formatGrade } from '@/lib/formatters';
 import { CefrLevelBadge } from '@/components/communication/CefrLevelBadge';
@@ -71,6 +72,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
   const { data: behavAss } = useLatestBehavioralAssessment(activeUserId);
   const { data: commConfig } = useCommConfig();
   const { data: behavConfig } = useBehavioralConfig();
+  const { data: globalDomains } = useConfigSkillDomains();
 
   // Grade targets
   const currentGrade = user?.currentGrade || 'G15';
@@ -88,20 +90,13 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
     const domainGaps = myEmp?.domain_gaps;
 
     if (!domainGaps && !userScores.length) {
-      return [
-        { label: 'AI DevOps', fullLabel: 'AI-Augmented DevOps', score: 0, benchmark: 100 },
-        { label: 'AIOps', fullLabel: 'AIOps', score: 0, benchmark: 100 },
-        { label: 'Cloud', fullLabel: 'Cloud', score: 0, benchmark: 100 },
-        { label: 'Core DevOps', fullLabel: 'Core DevOps', score: 0, benchmark: 100 },
-        { label: 'DataOps', fullLabel: 'DataOps', score: 0, benchmark: 100 },
-        { label: 'DevSecOps', fullLabel: 'DevSecOps', score: 0, benchmark: 95 },
-        { label: 'FinOps', fullLabel: 'FinOps', score: 0, benchmark: 100 },
-        { label: 'MLOps', fullLabel: 'MLOps', score: 0, benchmark: 100 },
-        { label: 'Networking', fullLabel: 'Networking', score: 10, benchmark: 100 },
-        { label: 'Platform Eng', fullLabel: 'Platform Engineering', score: 0, benchmark: 100 },
-        { label: 'SRE', fullLabel: 'SRE', score: 2, benchmark: 100 },
-        { label: 'SysOps', fullLabel: 'SysOps', score: 0, benchmark: 100 },
-      ];
+      if (!globalDomains || globalDomains.length === 0) return [];
+      return globalDomains.map((domain) => ({
+        label: domain.name.length > 13 ? `${domain.name.slice(0, 11)}..` : domain.name,
+        fullLabel: domain.name,
+        score: 0,
+        benchmark: 100,
+      }));
     }
 
     if (domainGaps) {

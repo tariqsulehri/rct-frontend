@@ -43,6 +43,16 @@ vi.mock('@/hooks/useReports', () => ({
   }),
 }));
 
+vi.mock('@/hooks/useConfig', () => ({
+  useConfigSkillDomains: () => ({
+    data: [
+      { id: 1, name: 'Cloud Architecture' },
+      { id: 2, name: 'CI/CD & DevOps' },
+    ],
+    isLoading: false,
+  }),
+}));
+
 vi.mock('@/hooks/useCommunication', () => ({
   useLatestCommAssessment: () => ({
     data: {
