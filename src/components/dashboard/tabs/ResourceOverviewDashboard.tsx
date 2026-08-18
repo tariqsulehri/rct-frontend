@@ -235,7 +235,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
         behavReady={behavReady}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+      <div className="flex flex-col gap-6">
         <TechnicalDomainsCard
           chartData={technicalChartData}
           myScore={myScore}

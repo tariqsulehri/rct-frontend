@@ -1,5 +1,5 @@
 import React from 'react';
-import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { Cpu, ArrowUpRight } from 'lucide-react';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { TabType } from '../../types';
@@ -68,55 +68,91 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
         </span>
       </div>
 
-      {/* Donut summary */}
-      <div className="flex items-center gap-3 bg-surface-2 p-2.5 rounded-xl border border-border">
-        <div className="relative w-14 h-14 shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={[{ v: myScore ?? 0 }, { v: 100 - (myScore ?? 0) }]} dataKey="v" innerRadius={18} outerRadius={26} startAngle={90} endAngle={-270} paddingAngle={2}>
-                <Cell fill={technicalReady ? '#6366f1' : '#f43f5e'} />
-                <Cell fill={chartTheme.isDark ? '#27272a' : '#e5e7eb'} />
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-xs font-black font-mono text-text-1 leading-none">{myScore}%</span>
-          </div>
-        </div>
-        <div className="text-[10px] text-text-3 leading-relaxed">
-          <div><span className="font-bold text-indigo-500">{myScore}%</span> achieved</div>
-          <div><span className="font-bold text-text-2">{myRequired}%</span> required</div>
-          <div className="mt-0.5 text-[9px]">{myMeets}/{myTotal} skills verified</div>
-        </div>
-      </div>
-
-      {/* Horizontal bars */}
-      <div className="flex flex-col gap-2 flex-1">
-        {chartData.map((d, i) => {
-          const barColor = BAR_PALETTE[i % BAR_PALETTE.length];
-          return (
-            <div key={i} className="flex flex-col gap-0.5">
-              <div className="flex items-center justify-between gap-2 text-[11px]">
-                <span className="font-medium text-text-1 truncate flex-1 min-w-0" title={d.fullLabel}>
-                  {d.fullLabel}
-                </span>
-                <span className="font-mono text-[10px] text-text-2 tabular-nums shrink-0 whitespace-nowrap">
-                  <strong className="text-text-1">{d.score}%</strong> / {d.benchmark}%
-                </span>
-              </div>
-              <div className="relative h-2.5 rounded-full bg-surface-2 border border-border overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
-                />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        {/* Left Column: Bars */}
+        <div className="flex flex-col gap-4">
+          {/* Donut summary */}
+          <div className="flex items-center gap-3 bg-surface-2 p-2.5 rounded-xl border border-border">
+            <div className="relative w-14 h-14 shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={[{ v: myScore ?? 0 }, { v: 100 - (myScore ?? 0) }]} dataKey="v" innerRadius={18} outerRadius={26} startAngle={90} endAngle={-270} paddingAngle={2}>
+                    <Cell fill={technicalReady ? '#6366f1' : '#f43f5e'} />
+                    <Cell fill={chartTheme.isDark ? '#27272a' : '#e5e7eb'} />
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-xs font-black font-mono text-text-1 leading-none">{myScore}%</span>
               </div>
             </div>
-          );
-        })}
+            <div className="text-[10px] text-text-3 leading-relaxed">
+              <div><span className="font-bold text-indigo-500">{myScore}%</span> achieved</div>
+              <div><span className="font-bold text-text-2">{myRequired}%</span> required</div>
+              <div className="mt-0.5 text-[9px]">{myMeets}/{myTotal} skills verified</div>
+            </div>
+          </div>
+
+          {/* Horizontal bars */}
+          <div className="flex flex-col gap-2">
+            {chartData.map((d, i) => {
+              const barColor = BAR_PALETTE[i % BAR_PALETTE.length];
+              return (
+                <div key={i} className="flex flex-col gap-0.5">
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="font-medium text-text-1 truncate flex-1 min-w-0" title={d.fullLabel}>
+                      {d.fullLabel}
+                    </span>
+                    <span className="font-mono text-[10px] text-text-2 tabular-nums shrink-0 whitespace-nowrap">
+                      <strong className="text-text-1">{d.score}%</strong> / {d.benchmark}%
+                    </span>
+                  </div>
+                  <div className="relative h-2.5 rounded-full bg-surface-2 border border-border overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right Column: Radar */}
+        <div className="flex flex-col items-center justify-center w-full h-[320px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart data={chartData} outerRadius="70%">
+              <PolarGrid stroke={chartTheme.isDark ? '#3f3f46' : '#e5e7eb'} />
+              <PolarAngleAxis
+                dataKey="fullLabel"
+                tick={{ fill: chartTheme.isDark ? '#a1a1aa' : '#71717a', fontSize: 10, fontWeight: 600 }}
+              />
+              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+              
+              <Radar
+                name="Required"
+                dataKey="benchmark"
+                stroke={chartTheme.isDark ? '#52525b' : '#d4d4d8'}
+                strokeWidth={1.5}
+                strokeDasharray="4 4"
+                fill="none"
+              />
+              <Radar
+                name="Achieved"
+                dataKey="score"
+                stroke="#6366f1"
+                fill="#6366f1"
+                fillOpacity={0.3}
+                strokeWidth={2}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between text-[10px] text-text-3 pt-2 border-t border-border">
+      <div className="flex items-center justify-between text-[10px] text-text-3 pt-2 border-t border-border mt-auto">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5"><span className="w-3 h-1.5 rounded-full bg-indigo-500 inline-block" />Achieved</span>
           <span className="flex items-center gap-1.5"><span className="w-3 h-1.5 rounded-full bg-surface-2 border border-border inline-block" />Target</span>
