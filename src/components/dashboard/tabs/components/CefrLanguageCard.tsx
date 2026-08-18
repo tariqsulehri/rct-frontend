@@ -7,18 +7,18 @@ import { type CefrLevelCode } from '@/types/communication';
 import { TabType } from '../../types';
 
 const BAR_PALETTE = [
-  'linear-gradient(90deg,#6366f1,#818cf8)',
-  'linear-gradient(90deg,#06b6d4,#22d3ee)',
-  'linear-gradient(90deg,#f59e0b,#fbbf24)',
-  'linear-gradient(90deg,#10b981,#34d399)',
-  'linear-gradient(90deg,#ec4899,#f472b6)',
-  'linear-gradient(90deg,#8b5cf6,#a78bfa)',
-  'linear-gradient(90deg,#f97316,#fb923c)',
-  'linear-gradient(90deg,#14b8a6,#2dd4bf)',
-  'linear-gradient(90deg,#3b82f6,#60a5fa)',
-  'linear-gradient(90deg,#84cc16,#a3e635)',
-  'linear-gradient(90deg,#d946ef,#e879f9)',
-  'linear-gradient(90deg,#f43f5e,#fb7185)',
+  'linear-gradient(180deg,#818cf8 0%,#6366f1 40%,#4f46e5 100%)',
+  'linear-gradient(180deg,#22d3ee 0%,#06b6d4 40%,#0891b2 100%)',
+  'linear-gradient(180deg,#fbbf24 0%,#f59e0b 40%,#d97706 100%)',
+  'linear-gradient(180deg,#34d399 0%,#10b981 40%,#059669 100%)',
+  'linear-gradient(180deg,#f472b6 0%,#ec4899 40%,#db2777 100%)',
+  'linear-gradient(180deg,#a78bfa 0%,#8b5cf6 40%,#7c3aed 100%)',
+  'linear-gradient(180deg,#fb923c 0%,#f97316 40%,#ea580c 100%)',
+  'linear-gradient(180deg,#2dd4bf 0%,#14b8a6 40%,#0d9488 100%)',
+  'linear-gradient(180deg,#60a5fa 0%,#3b82f6 40%,#2563eb 100%)',
+  'linear-gradient(180deg,#a3e635 0%,#84cc16 40%,#65a30d 100%)',
+  'linear-gradient(180deg,#e879f9 0%,#d946ef 40%,#c026d3 100%)',
+  'linear-gradient(180deg,#fb7185 0%,#f43f5e 40%,#e11d48 100%)',
 ] as const;
 
 const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
@@ -137,11 +137,17 @@ export const CefrLanguageCard: React.FC<CefrLanguageCardProps> = ({
                       <strong className="text-text-1">{d.score}%</strong> / {d.benchmark}%
                     </span>
                   </div>
-                  <div className="relative h-2.5 rounded-full bg-surface-2 border border-border overflow-hidden">
+                  <div className="relative h-3 rounded-full bg-surface-2 border border-border shadow-inner overflow-hidden">
                     <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
-                    />
+                      className="h-full rounded-full transition-all duration-700 relative overflow-hidden"
+                      style={{ 
+                        width: `${Math.min(d.score, 100)}%`, 
+                        background: barColor,
+                        boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3), inset 0 -1px 2px rgba(0,0,0,0.25)'
+                      }}
+                    >
+                      <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent rounded-t-full" />
+                    </div>
                   </div>
                 </div>
               );
