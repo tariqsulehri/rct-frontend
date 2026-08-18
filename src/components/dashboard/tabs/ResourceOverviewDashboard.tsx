@@ -24,7 +24,7 @@ import { useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
 import { useLatestCommAssessment } from '@/hooks/useCommunication';
 import { useLatestBehavioralAssessment } from '@/hooks/useBehavioral';
 import { useChartTheme } from '@/hooks/useChartTheme';
-import { toPctNullable, formatGrade } from '@/lib/formatters';
+import { formatGrade } from '@/lib/formatters';
 import { CefrLevelBadge } from '@/components/communication/CefrLevelBadge';
 import { BehavioralLevelBadge } from '@/components/behavioral/BehavioralLevelBadge';
 import { type CefrLevelCode } from '@/types/communication';
@@ -79,8 +79,6 @@ const CEFR_6_COMPETENCIES = [
 
 /**
  * BAR_PALETTE — 12 visually distinct gradient fills for per-bar nominal color encoding.
- * Each category (domain / competency / pillar) gets a unique identity hue.
- * Palette is perceptually balanced: adjacent entries have high hue contrast.
  */
 const BAR_PALETTE = [
   'linear-gradient(90deg,#6366f1,#818cf8)',   // 0 — indigo
@@ -97,156 +95,168 @@ const BAR_PALETTE = [
   'linear-gradient(90deg,#f43f5e,#fb7185)',   // 11 — rose
 ] as const;
 
-/** Dot color for the value label — matches the palette entry hue */
-const BAR_PALETTE_TEXT = [
-  'text-indigo-400',
-  'text-cyan-400',
-  'text-amber-400',
-  'text-emerald-400',
-  'text-pink-400',
-  'text-violet-400',
-  'text-orange-400',
-  'text-teal-400',
-  'text-blue-400',
-  'text-lime-400',
-  'text-fuchsia-400',
-  'text-rose-400',
-] as const;
-
 export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps> = ({
   user,
   onNavigate,
 }) => {
   const chartTheme = useChartTheme();
-  // No copilot state needed — AI panel removed in favour of expanded graphs
 
-  const { data: overviewCompData } = useCompetencyScores();
-  const { data: overviewGapData } = useGapMatrix();
-  const { data: latestComm } = useLatestCommAssessment(user?.employeeId);
-  const { data: latestBehav } = useLatestBehavioralAssessment(user?.employeeId);
+  // API Data hooks
+  const { data: userScores = [] } = useCompetencyScores();
+  const { data: gapMatrixData } = useGapMatrix();
+
+  const activeUserId = user?.id ? String(user.id) : undefined;
+  const { data: commAss } = useLatestCommAssessment(activeUserId);
+  const { data: behavAss } = useLatestBehavioralAssessment(activeUserId);
+
+  // Grade targets
+  const currentGrade = user?.currentGrade || 'G15';
+  const targetGrade = useMemo(() => {
+    const num = parseInt(currentGrade.replace(/\D/g, ''), 10);
+    return !isNaN(num) ? `G${num + 1}` : 'G16';
+  }, [currentGrade]);
 
   const displayName = user?.employeeName || user?.username || 'Engineer';
 
-  // Find user's technical records
-  const myCompRow = useMemo(
-    () => (overviewCompData ?? []).find((r) => r.emp_code === user?.empCode || r.employee_id === user?.employeeId),
-    [overviewCompData, user]
-  );
+  // 1. Technical Domain Scores
+  const technicalChartData = useMemo(() => {
+    const employees = gapMatrixData?.employees || [];
+    const myEmp = employees.find(e => e.emp_code === user?.empCode) || employees[0];
+    const domainGaps = myEmp?.domain_gaps;
 
-  const myGapRow = useMemo(
-    () => (overviewGapData?.employees ?? []).find((r) => r.emp_code === user?.empCode || r.employee_id === user?.employeeId),
-    [overviewGapData, user]
-  );
+    if (!domainGaps && !userScores.length) {
+      return [
+        { label: 'AI DevOps', fullLabel: 'AI-Augmented DevOps', score: 0, benchmark: 100 },
+        { label: 'AIOps', fullLabel: 'AIOps', score: 0, benchmark: 100 },
+        { label: 'Cloud', fullLabel: 'Cloud', score: 0, benchmark: 100 },
+        { label: 'Core DevOps', fullLabel: 'Core DevOps', score: 0, benchmark: 100 },
+        { label: 'DataOps', fullLabel: 'DataOps', score: 0, benchmark: 100 },
+        { label: 'DevSecOps', fullLabel: 'DevSecOps', score: 0, benchmark: 95 },
+        { label: 'FinOps', fullLabel: 'FinOps', score: 0, benchmark: 100 },
+        { label: 'MLOps', fullLabel: 'MLOps', score: 0, benchmark: 100 },
+        { label: 'Networking', fullLabel: 'Networking', score: 10, benchmark: 100 },
+        { label: 'Platform Eng', fullLabel: 'Platform Engineering', score: 0, benchmark: 100 },
+        { label: 'SRE', fullLabel: 'SRE', score: 2, benchmark: 100 },
+        { label: 'SysOps', fullLabel: 'SysOps', score: 0, benchmark: 100 },
+      ];
+    }
 
-  // Technical calculations
-  const myScore = myCompRow ? toPctNullable(myCompRow.overall_score) : 78;
-  const myRequired = myGapRow && myGapRow.overall_threshold > 0 ? toPctNullable(myGapRow.overall_threshold) : 80;
-  const myTotal = myGapRow?.total_with_threshold ?? 20;
-  const myMeets = myGapRow?.meets_count ?? 18;
-  const technicalReady = myScore !== null && myRequired !== null && myScore >= myRequired;
+    if (domainGaps) {
+      return Object.entries(domainGaps).map(([domain, val]) => ({
+        label: domain.length > 13 ? `${domain.slice(0, 11)}..` : domain,
+        fullLabel: domain,
+        score: Math.round(val.score),
+        benchmark: Math.round(val.threshold || 100),
+      }));
+    }
 
-  // CEFR Communication calculations
-  const commLevel = (latestComm?.overallCefr as CefrLevelCode) || 'B2';
-  const commBenchmark = (latestComm?.org_level_key as string) || 'B2';
+    return userScores.map((item) => ({
+      label: item.department.length > 13 ? `${item.department.slice(0, 11)}..` : item.department,
+      fullLabel: item.department,
+      score: Math.round(item.overall_score),
+      benchmark: 100,
+    }));
+  }, [userScores, gapMatrixData, user?.empCode]);
+
+  // Overall Technical stats
+  const { myScore, myRequired, myMeets, myTotal, technicalReady } = useMemo(() => {
+    if (!technicalChartData.length) {
+      return { myScore: 12, myRequired: 100, myMeets: 0, myTotal: 26, technicalReady: false };
+    }
+    const sumScore = technicalChartData.reduce((acc, d) => acc + d.score, 0);
+    const sumReq = technicalChartData.reduce((acc, d) => acc + d.benchmark, 0);
+    const avgScore = Math.round(sumScore / technicalChartData.length);
+    const avgReq = Math.round(sumReq / technicalChartData.length);
+
+    const employees = gapMatrixData?.employees || [];
+    const myEmp = employees.find(e => e.emp_code === user?.empCode) || employees[0];
+    const meets = myEmp?.meets_count || 0;
+    const total = myEmp?.total_with_threshold || 26;
+
+    return {
+      myScore: avgScore,
+      myRequired: avgReq,
+      myMeets: meets,
+      myTotal: total,
+      technicalReady: avgScore >= avgReq,
+    };
+  }, [technicalChartData, gapMatrixData, user?.empCode]);
+
+  // 2. CEFR Language stats
+  const commLevel: CefrLevelCode = (commAss?.overallCefr as CefrLevelCode) || 'B2';
+  const commBenchmark: CefrLevelCode = (commAss?.evaluation?.expectedCefr as CefrLevelCode) || 'B2';
   const commScorePct = CEFR_LEVEL_NUMERIC[commLevel] || 67;
   const commReqPct = CEFR_LEVEL_NUMERIC[commBenchmark] || 67;
-  const commReady = latestComm?.communicationReady ?? (commScorePct >= commReqPct);
+  const commReady = commScorePct >= commReqPct;
 
-  // Behavioral calculations
-  const behavLevel = (latestBehav?.result?.overallProficiency as BehavioralLevelCode) || 'L4';
-  const behavBenchmark = (latestBehav?.gradeKey as string) || 'L3';
-  const behavScorePct = BEHAVIORAL_LEVEL_NUMERIC[behavLevel] || 80;
-  const behavReqPct = BEHAVIORAL_LEVEL_NUMERIC[behavBenchmark] || 60;
-  const behavReady = latestBehav?.result?.behavioralReady ?? (behavScorePct >= behavReqPct);
-
-  // Grade Information
-  const currentGrade = myCompRow?.current_grade || user?.currentGrade || 'G14';
-  const targetGrade = myCompRow?.target_grade || user?.targetGrade || 'G15';
-
-  // Overall Readiness Score
-  const skillsCompletionPct = myTotal > 0 ? Math.round((myMeets / myTotal) * 100) : myScore ?? 78;
-
-  // 1. Technical Domain Dual-Tone Stacked Bar Chart Data
-  const technicalChartData = useMemo(() => {
-    if (myGapRow?.domain_gaps && Object.keys(myGapRow.domain_gaps).length > 0) {
-      return Object.entries(myGapRow.domain_gaps).map(([domain, data], idx) => {
-        const score = Math.round((data.score || 0) * 100);
-        const benchmark = Math.round((data.threshold || 0) * 100);
-        return {
-          label: domain.length > 7 ? `${domain.substring(0, 6)}…` : domain,
-          fullLabel: domain,
-          score: score,
-          benchmark: benchmark,
-          baseScore: Math.min(score, benchmark),
-          excessScore: Math.max(0, score - benchmark),
-          highlight: idx === 0,
-        };
-      });
-    }
-    return [
-      { label: 'Cloud', fullLabel: 'Cloud Architecture', score: 85, benchmark: 80, baseScore: 80, excessScore: 5, highlight: true },
-      { label: 'CI/CD', fullLabel: 'CI/CD Automation', score: 92, benchmark: 80, baseScore: 80, excessScore: 12, highlight: false },
-      { label: 'Arch', fullLabel: 'System Architecture', score: 74, benchmark: 75, baseScore: 74, excessScore: 0, highlight: false },
-      { label: 'DevOps', fullLabel: 'DevOps Tooling', score: 80, benchmark: 75, baseScore: 75, excessScore: 5, highlight: false },
-      { label: 'SRE', fullLabel: 'SRE & Reliability', score: 68, benchmark: 70, baseScore: 68, excessScore: 0, highlight: false },
-    ];
-  }, [myGapRow]);
-
-  // 2. CEFR Communication Single Dual-Tone Stacked Bar Chart Data (Base Requirement + Exceeding Level)
   const commChartData = useMemo(() => {
-    const ratings = latestComm?.ratings ?? [];
-    const targetScore = CEFR_LEVEL_NUMERIC[commBenchmark] || 67;
+    const breakdown = commAss?.evaluation?.competencyBreakdown || [];
+    const defaultBenchmark = CEFR_LEVEL_NUMERIC[commBenchmark] || 67;
+    const defaultAssessed = CEFR_LEVEL_NUMERIC[commLevel] || 67;
 
-    return CEFR_6_COMPETENCIES.map((comp, idx) => {
-      const match = ratings.find((r) => r.competency_key === comp.key);
-      const score = match?.cefr ? CEFR_LEVEL_NUMERIC[match.cefr] || 67 : (idx % 2 === 0 ? 83 : 67);
-      const base = Math.min(score, targetScore);
-      const excess = Math.max(0, score - targetScore);
-
+    return CEFR_6_COMPETENCIES.map((comp) => {
+      const match = breakdown.find(b => b.competencyKey === comp.key || b.name.toLowerCase().includes(comp.label.toLowerCase()));
+      const score = match ? (CEFR_LEVEL_NUMERIC[match.givenCefr] || defaultAssessed) : defaultAssessed;
       return {
         label: comp.label,
         fullLabel: comp.fullLabel,
-        score: score,
-        benchmark: targetScore,
-        baseRequirement: base,
-        excessLevel: excess,
-        highlight: idx === 1,
+        score,
+        benchmark: defaultBenchmark,
       };
     });
-  }, [latestComm, commBenchmark]);
+  }, [commAss, commLevel, commBenchmark]);
 
-  // 3. Behavioral 11-Item Radar Chart Data (6 Core + 5 Leadership)
-  const behavRadarData = useMemo(() => {
+  // 3. Behavioral stats
+  const behavLevel: BehavioralLevelCode = (behavAss?.result?.overallProficiency as BehavioralLevelCode) || 'L4';
+  const behavBenchmark: BehavioralLevelCode = 'L3';
+  const behavScorePct = BEHAVIORAL_LEVEL_NUMERIC[behavLevel] || 80;
+  const behavReqPct = BEHAVIORAL_LEVEL_NUMERIC[behavBenchmark] || 60;
+  const behavReady = behavScorePct >= behavReqPct;
+
+  const behavChartData = useMemo(() => {
+    const breakdown = behavAss?.result?.perCompetency || [];
     const defaultBenchmark = BEHAVIORAL_LEVEL_NUMERIC[behavBenchmark] || 60;
     const defaultAssessed = BEHAVIORAL_LEVEL_NUMERIC[behavLevel] || 80;
-    const perComp = latestBehav?.result?.perCompetency ?? [];
 
     return BEHAVIORAL_11_COMPETENCIES.map((comp) => {
-      const match = perComp.find((p) => p.competencyKey === comp.key || p.competencyKey.toLowerCase().includes(comp.key.toLowerCase()));
+      const match = breakdown.find(
+        (c) => c.competencyKey?.toLowerCase() === comp.key.toLowerCase()
+      );
       const score = match?.level ? BEHAVIORAL_LEVEL_NUMERIC[match.level] || defaultAssessed : defaultAssessed;
       const benchmark = match?.expectedLevel ? BEHAVIORAL_LEVEL_NUMERIC[match.expectedLevel] || defaultBenchmark : defaultBenchmark;
-
+      const assessedCode = match?.level || (score >= 80 ? 'L4' : score >= 60 ? 'L3' : 'L2');
+      const reqCode = match?.expectedLevel || (benchmark >= 80 ? 'L4' : benchmark >= 60 ? 'L3' : 'L2');
       return {
         name: comp.name,
         fullName: comp.fullName,
         type: comp.type,
-        score: score,
-        benchmark: benchmark,
+        score,
+        benchmark,
+        assessedCode,
+        reqCode,
       };
     });
-  }, [latestBehav, behavBenchmark, behavLevel]);
+  }, [behavAss, behavLevel, behavBenchmark]);
 
-  // 4. [removed — 3-Pillar donut and AI copilot panel replaced by expanded graphs]
+  // Overall readiness score
+  const skillsCompletionPct = useMemo(() => {
+    const techFactor = (myScore / (myRequired || 100)) * 40;
+    const commFactor = (commScorePct / (commReqPct || 100)) * 30;
+    const behavFactor = (behavScorePct / (behavReqPct || 100)) * 30;
+    return Math.min(100, Math.round(techFactor + commFactor + behavFactor));
+  }, [myScore, myRequired, commScorePct, commReqPct, behavScorePct, behavReqPct]);
 
   return (
-    <div className="space-y-3 animate-slide-up pb-4 text-text-1 font-sans">
-      {/* ── TOP HEADER RIBBON: GREETING + TRAJECTORY + EVALUATION CYCLE TITLE ──── */}
-      <div className="relative overflow-hidden rounded-2xl px-4 py-2.5 sm:py-3 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-2.5">
-        {/* Left: Greeting & Trajectory & Cycle Badge */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-1.5">
-            <Sparkles size={15} className="text-accent shrink-0" />
-            <h1 className="text-sm sm:text-base font-black tracking-tight text-text-1">
+    <div className="w-full max-w-[1700px] mx-auto space-y-4 px-4 sm:px-6 py-2">
+
+      {/* ── HEADER BANNER ───────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-2xl border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-accent-soft text-accent shrink-0">
+              <Sparkles size={18} />
+            </div>
+            <h1 className="text-base font-extrabold tracking-tight text-text-1">
               Welcome back, {displayName}! 👋
             </h1>
           </div>
@@ -288,12 +298,10 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
         </div>
       </div>
 
-      {/* ── KPI STATISTICS BAR: 5 FOCUSED MICRO-STAT TILES ──────────────────────────────────────── */}
+      {/* ── KPI STATISTICS BAR ──────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
-
         {/* KPI 1 — Overall Promotion Readiness */}
         <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-border bg-surface shadow-sm dark:shadow-lg backdrop-blur-xl flex flex-col gap-1.5 group hover:border-accent/40 transition-colors">
-          {/* Glow accent */}
           <div className="absolute -top-4 -right-4 w-14 h-14 rounded-full bg-accent/10 blur-xl group-hover:bg-accent/20 transition-colors" />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
@@ -301,9 +309,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
               <span className="text-[10px] font-bold uppercase tracking-wider text-text-3">Readiness</span>
             </div>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-              skillsCompletionPct >= 80
-                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+              skillsCompletionPct >= 80 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
             }`}>
               {skillsCompletionPct >= 80 ? '✓ Ready' : '⚡ In Progress'}
             </span>
@@ -312,7 +318,6 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             <span className="text-2xl font-black font-mono tabular-nums text-text-1 leading-none">{skillsCompletionPct}%</span>
             <span className="text-[10px] text-text-3 pb-0.5">of gate</span>
           </div>
-          {/* Mini progress bar */}
           <div className="w-full h-1 rounded-full bg-surface-2 border border-border overflow-hidden">
             <div
               className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-700"
@@ -331,9 +336,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
               <span className="text-[10px] font-bold uppercase tracking-wider text-text-3">Technical</span>
             </div>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-              technicalReady
-                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                : 'bg-red-500/15 text-red-600 dark:text-red-400'
+              technicalReady ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/15 text-red-600 dark:text-red-400'
             }`}>
               {technicalReady ? '✓ Met' : '✗ Gap'}
             </span>
@@ -356,7 +359,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           </div>
         </div>
 
-        {/* KPI 3 — CEFR Communication vs Benchmark */}
+        {/* KPI 3 — CEFR Communication */}
         <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-border bg-surface shadow-sm dark:shadow-lg backdrop-blur-xl flex flex-col gap-1.5 group hover:border-cyan-500/40 transition-colors">
           <div className="absolute -top-4 -right-4 w-14 h-14 rounded-full bg-cyan-500/10 blur-xl group-hover:bg-cyan-500/20 transition-colors" />
           <div className="flex items-center justify-between">
@@ -365,9 +368,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
               <span className="text-[10px] font-bold uppercase tracking-wider text-text-3">CEFR Lang</span>
             </div>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-              commReady
-                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+              commReady ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
             }`}>
               {commReady ? '✓ Met' : '▲ Progressing'}
             </span>
@@ -385,7 +386,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           <span className="text-[9px] text-text-3">Score: {commScorePct}% · Benchmark: {commReqPct}%</span>
         </div>
 
-        {/* KPI 4 — Behavioral Level vs Benchmark */}
+        {/* KPI 4 — Behavioral Level */}
         <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-border bg-surface shadow-sm dark:shadow-lg backdrop-blur-xl flex flex-col gap-1.5 group hover:border-amber-500/40 transition-colors">
           <div className="absolute -top-4 -right-4 w-14 h-14 rounded-full bg-amber-500/10 blur-xl group-hover:bg-amber-500/20 transition-colors" />
           <div className="flex items-center justify-between">
@@ -394,9 +395,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
               <span className="text-[10px] font-bold uppercase tracking-wider text-text-3">Behavioral</span>
             </div>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-              behavReady
-                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+              behavReady ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
             }`}>
               {behavReady ? '✓ Met' : '▲ Progressing'}
             </span>
@@ -414,7 +413,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
           <span className="text-[9px] text-text-3">11-pillar framework · {behavScorePct}% vs {behavReqPct}% req</span>
         </div>
 
-        {/* KPI 5 — Skills Verified / Total */}
+        {/* KPI 5 — Skills Verified */}
         <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-border bg-surface shadow-sm dark:shadow-lg backdrop-blur-xl flex flex-col gap-1.5 group hover:border-accent/40 transition-colors">
           <div className="absolute -top-4 -right-4 w-14 h-14 rounded-full bg-accent/10 blur-xl group-hover:bg-accent/20 transition-colors" />
           <div className="flex items-center justify-between">
@@ -441,256 +440,241 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
             <span>{myTotal > 0 ? Math.round((myMeets / myTotal) * 100) : skillsCompletionPct}% competencies verified</span>
           </div>
         </div>
-
       </div>
 
-      {/* ── ROW 1 (3-COLUMNS): ALL THREE PRO-LEVEL COMPETENCE GRAPHS (UNIFORM HEIGHT) ──────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* ── ROW 2 (3-COLUMNS): HIGH-CONTRAST STANDARDIZED ASSESSMENT CARDS ──────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
 
-        {/* ── GRAPH 1: Technical Domains — Horizontal Progress Bars + Donut ──────── */}
-        <div className="min-h-[420px] rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-2.5">
+        {/* ── GRAPH 1: Technical Domains ──────── */}
+        <div className="rounded-2xl p-4 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-3">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Cpu size={13} className="text-indigo-500 shrink-0" />
-              <h2 className="text-[10px] font-black uppercase tracking-wider text-text-1">1. Technical Domains</h2>
+          <div className="flex items-center justify-between pb-2 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Cpu size={14} className="text-indigo-500 shrink-0" />
+              <h2 className="text-xs font-black uppercase tracking-wider text-text-1">1. Technical Domains</h2>
             </div>
-            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${technicalReady ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/15 text-red-600 dark:text-red-400'}`}>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${technicalReady ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/15 text-red-600 dark:text-red-400'}`}>
               {technicalReady ? '✓ Met' : '✗ Gap'}
             </span>
           </div>
 
           {/* Donut summary + overall score */}
-          <div className="flex items-center gap-3">
-            <div className="relative w-16 h-16 shrink-0">
+          <div className="flex items-center gap-3 bg-surface-2 p-2.5 rounded-xl border border-border">
+            <div className="relative w-14 h-14 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={[{ v: myScore ?? 0 }, { v: 100 - (myScore ?? 0) }]} dataKey="v" innerRadius={22} outerRadius={30} startAngle={90} endAngle={-270} paddingAngle={2}>
+                  <Pie data={[{ v: myScore ?? 0 }, { v: 100 - (myScore ?? 0) }]} dataKey="v" innerRadius={18} outerRadius={26} startAngle={90} endAngle={-270} paddingAngle={2}>
                     <Cell fill={technicalReady ? '#6366f1' : '#f43f5e'} />
                     <Cell fill={chartTheme.isDark ? '#27272a' : '#e5e7eb'} />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[11px] font-black font-mono text-text-1 leading-none">{myScore}%</span>
+                <span className="text-xs font-black font-mono text-text-1 leading-none">{myScore}%</span>
               </div>
             </div>
-            <div className="text-[9px] text-text-3 leading-relaxed">
+            <div className="text-[10px] text-text-3 leading-relaxed">
               <div><span className="font-bold text-indigo-500">{myScore}%</span> achieved</div>
               <div><span className="font-bold text-text-2">{myRequired}%</span> required</div>
-              <div className="mt-0.5 text-[8px]">{myMeets}/{myTotal} skills verified</div>
+              <div className="mt-0.5 text-[9px]">{myMeets}/{myTotal} skills verified</div>
             </div>
           </div>
 
-          {/* Horizontal bars — label INSIDE bar (pro inline pattern) */}
-          <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-0.5">
+          {/* Horizontal bars — DECOUPLED HIGH-CONTRAST LABELS (STANDARDIZED) */}
+          <div className="flex flex-col gap-2 flex-1">
             {technicalChartData.map((d, i) => {
               const barColor = BAR_PALETTE[i % BAR_PALETTE.length];
-              const txtColor = BAR_PALETTE_TEXT[i % BAR_PALETTE_TEXT.length];
               return (
-              <div key={i} className="flex items-center gap-2">
-                {/* Bar track — full width, label embedded inside */}
-                <div className="flex-1 relative h-5 rounded-full bg-surface-2 overflow-visible">
-                  {/* Achieved fill */}
-                  <div
-                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-                    style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
-                  />
-                  {/* Inline label — clipped to bar bounds, always readable via text-shadow */}
-                  <div className="absolute inset-0 rounded-full overflow-hidden z-20 pointer-events-none flex items-center">
-                    <span
-                      className="pl-2.5 text-[9px] font-semibold text-white leading-none whitespace-nowrap overflow-hidden"
-                      style={{ textShadow: '0 1px 3px rgba(0,0,0,0.65)' }}
-                    >
+                <div key={i} className="flex flex-col gap-0.5">
+                  {/* Label Row: Left High-Contrast Title | Right Score Badge */}
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-semibold text-text-1 truncate max-w-[170px]" title={d.fullLabel}>
                       {d.fullLabel}
                     </span>
+                    <span className="font-mono text-[10px] font-bold text-text-2 tabular-nums shrink-0">
+                      <strong className="text-text-1">{d.score}%</strong> / {d.benchmark}%
+                    </span>
                   </div>
-                  {/* Required threshold marker */}
-                  <div
-                    className="absolute top-[-3px] bottom-[-3px] w-[2.5px] rounded-full bg-white shadow-lg z-30"
-                    style={{ left: `${Math.min(d.benchmark, 98)}%` }}
-                  />
+                  {/* Progress Bar Track */}
+                  <div className="relative h-2.5 rounded-full bg-surface-2 border border-border overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
+                    />
+                  </div>
                 </div>
-                {/* Value metric */}
-                <span className={`text-[8px] font-mono shrink-0 w-[48px] text-right tabular-nums ${txtColor} font-bold`}>
-                  {d.score}%<span className="text-text-3 font-normal">/{d.benchmark}%</span>
-                </span>
-              </div>
               );
             })}
           </div>
 
           {/* Footer legend */}
-          <div className="flex items-center justify-between text-[9px] text-text-3 pt-1.5 border-t border-border">
+          <div className="flex items-center justify-between text-[10px] text-text-3 pt-2 border-t border-border">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1"><span className="w-6 h-1.5 rounded-full bg-indigo-500 inline-block" />Achieved</span>
-              <span className="flex items-center gap-1"><span className="w-0.5 h-3 rounded-full bg-white/70 dark:bg-white/50 inline-block border border-border" />Required</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-1.5 rounded-full bg-indigo-500 inline-block" />Achieved</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-1.5 rounded-full bg-surface-2 border border-border inline-block" />Target</span>
             </div>
             <button type="button" onClick={() => onNavigate('assessments')} className="font-bold text-indigo-500 hover:underline inline-flex items-center gap-0.5">
-              Skills Grid <ArrowUpRight size={10} />
+              Skills Grid <ArrowUpRight size={12} />
             </button>
           </div>
         </div>
 
-        {/* ── GRAPH 2: CEFR Language — Horizontal Progress Bars + Donut ────────── */}
-        <div className="min-h-[420px] rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-2.5">
+        {/* ── GRAPH 2: CEFR Language ────────── */}
+        <div className="rounded-2xl p-4 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-3">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <MessageSquare size={13} className="text-cyan-500 shrink-0" />
-              <h2 className="text-[10px] font-black uppercase tracking-wider text-text-1">2. CEFR Language</h2>
+          <div className="flex items-center justify-between pb-2 border-b border-border">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={14} className="text-cyan-500 shrink-0" />
+              <h2 className="text-xs font-black uppercase tracking-wider text-text-1">2. CEFR Language</h2>
             </div>
             <CefrLevelBadge level={commLevel} size="sm" />
           </div>
 
           {/* Donut summary + level */}
-          <div className="flex items-center gap-3">
-            <div className="relative w-16 h-16 shrink-0">
+          <div className="flex items-center gap-3 bg-surface-2 p-2.5 rounded-xl border border-border">
+            <div className="relative w-14 h-14 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={[{ v: commScorePct }, { v: 100 - commScorePct }]} dataKey="v" innerRadius={22} outerRadius={30} startAngle={90} endAngle={-270} paddingAngle={2}>
+                  <Pie data={[{ v: commScorePct }, { v: 100 - commScorePct }]} dataKey="v" innerRadius={18} outerRadius={26} startAngle={90} endAngle={-270} paddingAngle={2}>
                     <Cell fill={commReady ? '#06b6d4' : '#f59e0b'} />
                     <Cell fill={chartTheme.isDark ? '#27272a' : '#e5e7eb'} />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[11px] font-black font-mono text-text-1 leading-none">{commLevel}</span>
+                <span className="text-xs font-black font-mono text-text-1 leading-none">{commLevel}</span>
               </div>
             </div>
-            <div className="text-[9px] text-text-3 leading-relaxed">
+            <div className="text-[10px] text-text-3 text-left leading-relaxed">
               <div><span className="font-bold text-cyan-500">{commLevel}</span> assessed ({commScorePct}%)</div>
               <div><span className="font-bold text-text-2">{commBenchmark}</span> required ({commReqPct}%)</div>
-              <div className="mt-0.5 text-[8px]">6-competency framework</div>
+              <div className="mt-0.5 text-[9px]">6-competency framework</div>
             </div>
           </div>
 
-          {/* Horizontal bars — label INSIDE bar (pro inline pattern) */}
-          <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-0.5">
+          {/* Horizontal bars — DECOUPLED HIGH-CONTRAST LABELS (STANDARDIZED) */}
+          <div className="flex flex-col gap-2 flex-1">
             {commChartData.map((d, i) => {
               const barColor = BAR_PALETTE[(i + 6) % BAR_PALETTE.length];
-              const txtColor = BAR_PALETTE_TEXT[(i + 6) % BAR_PALETTE_TEXT.length];
               return (
-              <div key={i} className="flex items-center gap-2">
-                <div className="flex-1 relative h-5 rounded-full bg-surface-2 overflow-visible">
-                  <div
-                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-                    style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
-                  />
-                  <div className="absolute inset-0 rounded-full overflow-hidden z-20 pointer-events-none flex items-center">
-                    <span
-                      className="pl-2.5 text-[9px] font-semibold text-white leading-none whitespace-nowrap overflow-hidden"
-                      style={{ textShadow: '0 1px 3px rgba(0,0,0,0.65)' }}
-                    >
+                <div key={i} className="flex flex-col gap-0.5">
+                  {/* Label Row */}
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-semibold text-text-1 truncate max-w-[170px]" title={d.fullLabel}>
                       {d.fullLabel}
                     </span>
+                    <span className="font-mono text-[10px] font-bold text-text-2 tabular-nums shrink-0">
+                      <strong className="text-text-1">{d.score}%</strong> / {d.benchmark}%
+                    </span>
                   </div>
-                  <div
-                    className="absolute top-[-3px] bottom-[-3px] w-[2.5px] rounded-full bg-white shadow-lg z-30"
-                    style={{ left: `${Math.min(d.benchmark, 98)}%` }}
-                  />
+                  {/* Progress Bar Track */}
+                  <div className="relative h-2.5 rounded-full bg-surface-2 border border-border overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
+                    />
+                  </div>
                 </div>
-                <span className={`text-[8px] font-mono shrink-0 w-[48px] text-right tabular-nums ${txtColor} font-bold`}>
-                  {d.score}%<span className="text-text-3 font-normal">/{d.benchmark}%</span>
-                </span>
-              </div>
               );
             })}
           </div>
 
           {/* Footer legend */}
-          <div className="flex items-center justify-between text-[9px] text-text-3 pt-1.5 border-t border-border">
+          <div className="flex items-center justify-between text-[10px] text-text-3 pt-2 border-t border-border">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1"><span className="w-6 h-1.5 rounded-full bg-cyan-500 inline-block" />Assessed</span>
-              <span className="flex items-center gap-1"><span className="w-0.5 h-3 rounded-full bg-white/70 dark:bg-white/50 inline-block border border-border" />Required</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-1.5 rounded-full bg-cyan-500 inline-block" />Assessed</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-1.5 rounded-full bg-surface-2 border border-border inline-block" />Required</span>
             </div>
             <button type="button" onClick={() => onNavigate('assessments')} className="font-bold text-cyan-500 hover:underline inline-flex items-center gap-0.5">
-              CEFR Rubric <ArrowUpRight size={10} />
+              CEFR Rubric <ArrowUpRight size={12} />
             </button>
           </div>
         </div>
 
-        {/* ── GRAPH 3: Behavioral 11-Pillar — Horizontal Progress Bars + Donut ───── */}
-        <div className="min-h-[420px] rounded-2xl p-3.5 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-2">
+        {/* ── GRAPH 3: Behavioral 11-Pillar ───── */}
+        <div className="rounded-2xl p-4 border border-border bg-surface shadow-sm dark:shadow-xl backdrop-blur-xl flex flex-col gap-3">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Award size={13} className="text-amber-500 shrink-0" />
-              <h2 className="text-[10px] font-black uppercase tracking-wider text-text-1">3. Behavioral (11 Pillars)</h2>
+          <div className="flex items-center justify-between pb-2 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Award size={14} className="text-amber-500 shrink-0" />
+              <h2 className="text-xs font-black uppercase tracking-wider text-text-1">3. Behavioral (11 Pillars)</h2>
             </div>
             <BehavioralLevelBadge level={behavLevel} size="sm" />
           </div>
 
           {/* Donut summary + level */}
-          <div className="flex items-center gap-3">
-            <div className="relative w-16 h-16 shrink-0">
+          <div className="flex items-center gap-3 bg-surface-2 p-2.5 rounded-xl border border-border">
+            <div className="relative w-14 h-14 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={[{ v: behavScorePct }, { v: 100 - behavScorePct }]} dataKey="v" innerRadius={22} outerRadius={30} startAngle={90} endAngle={-270} paddingAngle={2}>
+                  <Pie data={[{ v: behavScorePct }, { v: 100 - behavScorePct }]} dataKey="v" innerRadius={18} outerRadius={26} startAngle={90} endAngle={-270} paddingAngle={2}>
                     <Cell fill={behavReady ? '#f59e0b' : '#f43f5e'} />
                     <Cell fill={chartTheme.isDark ? '#27272a' : '#e5e7eb'} />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[11px] font-black font-mono text-text-1 leading-none">{behavLevel}</span>
+                <span className="text-xs font-black font-mono text-text-1 leading-none">{behavLevel}</span>
               </div>
             </div>
-            <div className="text-[9px] text-text-3 leading-relaxed">
-              <div>
-                <span className="text-[8px] font-bold text-amber-400 uppercase">Core</span>
-                <span className="text-[8px] font-bold text-purple-400 uppercase ml-1.5">Leadership</span>
+            <div className="text-[10px] text-text-3 text-left leading-relaxed">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[9px] font-bold text-amber-500 uppercase flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />Core (6)
+                </span>
+                <span className="text-[9px] font-bold text-purple-500 uppercase flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />Leadership (5)
+                </span>
               </div>
               <div><span className="font-bold text-amber-500">{behavLevel}</span> assessed ({behavScorePct}%)</div>
               <div><span className="font-bold text-text-2">{behavBenchmark}</span> required ({behavReqPct}%)</div>
             </div>
           </div>
 
-          {/* Horizontal bars — label INSIDE bar (pro inline pattern) with Core/Leadership dot */}
-          <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-0.5">
-            {behavRadarData.map((d, i) => {
+          {/* Horizontal bars — DECOUPLED HIGH-CONTRAST LABELS WITH DUAL-STATS */}
+          <div className="flex flex-col gap-2 flex-1">
+            {behavChartData.map((d, i) => {
               const barColor = BAR_PALETTE[i % BAR_PALETTE.length];
               return (
-              <div key={i} className="flex items-center gap-1.5">
-                {/* Core vs Leadership type dot */}
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.type === 'core' ? 'bg-amber-400' : 'bg-purple-400'}`} />
-                {/* Bar track with embedded full name */}
-                <div className="flex-1 relative h-5 rounded-full bg-surface-2 overflow-visible">
-                  <div
-                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-                    style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
-                  />
-                  <div className="absolute inset-0 rounded-full overflow-hidden z-20 pointer-events-none flex items-center">
-                    <span
-                      className="pl-2.5 text-[9px] font-semibold text-white leading-none whitespace-nowrap overflow-hidden"
-                      style={{ textShadow: '0 1px 3px rgba(0,0,0,0.65)' }}
-                    >
-                      {d.fullName}
-                    </span>
+                <div key={i} className="flex flex-col gap-0.5">
+                  {/* Label Row */}
+                  <div className="flex items-center justify-between text-[11px]">
+                    <div className="flex items-center gap-1.5 truncate max-w-[180px]">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.type === 'core' ? 'bg-amber-400' : 'bg-purple-400'}`} />
+                      <span className="font-semibold text-text-1 truncate" title={d.fullName}>
+                        {d.fullName}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0 font-mono text-[10px] tabular-nums">
+                      <span className="font-bold text-text-1">{d.assessedCode}</span>
+                      <span className="text-text-3">/</span>
+                      <span className="text-text-2">{d.reqCode}</span>
+                      <span className={`ml-1 font-bold ${d.score >= d.benchmark ? 'text-emerald-500' : 'text-red-400'}`}>
+                        {d.score >= d.benchmark ? '✓' : '▲'}
+                      </span>
+                    </div>
                   </div>
-                  <div
-                    className="absolute top-[-3px] bottom-[-3px] w-[2.5px] rounded-full bg-white shadow-lg z-30"
-                    style={{ left: `${Math.min(d.benchmark, 98)}%` }}
-                  />
+                  {/* Progress Bar Track */}
+                  <div className="relative h-2.5 rounded-full bg-surface-2 border border-border overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
+                    />
+                  </div>
                 </div>
-                {/* Met / Gap indicator */}
-                <span className={`text-[8px] font-bold font-mono shrink-0 tabular-nums w-4 text-right ${d.score >= d.benchmark ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {d.score >= d.benchmark ? '✓' : '↑'}
-                </span>
-              </div>
               );
             })}
           </div>
 
           {/* Footer legend */}
-          <div className="flex items-center justify-between text-[9px] text-text-3 pt-1.5 border-t border-border">
+          <div className="flex items-center justify-between text-[10px] text-text-3 pt-2 border-t border-border">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />Core (6)</span>
-              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400 inline-block" />Leadership (5)</span>
-              <span className="flex items-center gap-1"><span className="w-0.5 h-3 rounded-full bg-white/70 dark:bg-white/50 inline-block border border-border" />Required</span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />Core</span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400 inline-block" />Leadership</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded-full bg-surface-2 border border-border inline-block" />Target</span>
             </div>
             <button type="button" onClick={() => onNavigate('assessments')} className="font-bold text-amber-500 hover:underline inline-flex items-center gap-0.5">
-              Matrix <ArrowUpRight size={10} />
+              Matrix <ArrowUpRight size={12} />
             </button>
           </div>
         </div>
@@ -700,4 +684,3 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
     </div>
   );
 };
-
