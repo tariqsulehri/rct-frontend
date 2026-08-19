@@ -1,5 +1,6 @@
 import React from 'react';
 import { InfoTip } from '@/components/reports/shared';
+import { ScoreDisplay } from '@/components/ui/ScoreDisplay';
 
 interface ResultSheetKpiCardsProps {
   gapResult: any;
@@ -31,17 +32,15 @@ export const ResultSheetKpiCards: React.FC<ResultSheetKpiCardsProps> = ({
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>Overall Score</p>
           <InfoTip text="Current achieved score compared with the required score." />
         </div>
-        <div className="flex items-baseline gap-1 mt-1">
-          <span className="text-2xl font-bold leading-none"
-            style={{ color: thresholdPct !== null ? (overallScorePct >= thresholdPct ? 'rgb(var(--success))' : 'rgb(var(--danger))') : 'rgb(var(--accent))' }}>
-            {overallScorePct}%
-          </span>
-          {thresholdPct !== null && (
-            <>
-              <span className="text-sm font-medium" style={{ color: 'rgb(var(--text-3))' }}>/</span>
-              <span className="text-sm font-semibold" style={{ color: 'rgb(var(--text-2))' }}>{thresholdPct}%</span>
-            </>
-          )}
+        <div className="mt-1">
+          <ScoreDisplay 
+            score={overallScorePct} 
+            threshold={thresholdPct !== null ? thresholdPct : undefined} 
+            size="sm" 
+            align="start" 
+            layout="horizontal" 
+            showLabel={false} 
+          />
         </div>
         <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-2))' }}>{thresholdPct !== null ? 'Achieved / Required' : 'Needed score: N/A'}</p>
       </div>

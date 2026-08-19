@@ -17,6 +17,7 @@ import apiClient from '@/lib/api';
 import { hasPermission, isLeaderRole } from '@/types/rbac';
 
 import { ThemeSwitcher } from '@/components/dashboard/layout/ThemeSwitcher';
+import { CalibrLogo } from '@/components/ui/CalibrLogo';
 import { UserProfileMenu } from '@/components/dashboard/layout/UserProfileMenu';
 import { AdminDashboardTab } from '@/components/dashboard/tabs/AdminDashboardTab';
 import { OverviewTab } from '@/components/dashboard/tabs/OverviewTab';
@@ -135,11 +136,7 @@ export const DashboardPage: React.FC = () => {
 
           {/* Organization logo / Brand */}
           <div className="flex items-center gap-2.5 mr-4 py-1">
-            <img
-              src="/assets/svg/calibr-lockup-horizontal-color.svg"
-              alt="Calibr Logo"
-              className="h-8 w-auto object-contain"
-            />
+            <CalibrLogo className="h-8 w-auto object-contain" />
           </div>
 
           <div className="flex-1" />

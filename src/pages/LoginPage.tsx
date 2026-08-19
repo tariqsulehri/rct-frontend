@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
+import { CalibrLogo } from '@/components/ui/CalibrLogo';
 import apiClient from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
 import { getApiErrorMessage } from '@/lib/apiError';
@@ -132,11 +133,7 @@ export const LoginPage: React.FC = () => {
 
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2 mb-8">
-          <img
-            src="/assets/svg/calibr-lockup-horizontal-color.svg"
-            alt="Calibr Logo"
-            className="h-8 w-auto object-contain"
-          />
+          <CalibrLogo className="h-8 w-auto object-contain" />
         </div>
 
         <div className="w-full max-w-sm animate-slide-up">

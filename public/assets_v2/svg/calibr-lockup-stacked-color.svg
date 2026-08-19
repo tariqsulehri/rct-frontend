@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" width="800" height="600" fill="none">
+  <g transform="translate(68 12)">
+  <circle cx="32" cy="32" r="25" stroke="#CFD9FD" stroke-opacity="1" stroke-width="7" stroke-linecap="round" stroke-dasharray="118 40" transform="rotate(-125 32 32)"></circle>
+  <circle cx="32" cy="32" r="25" stroke="#0060FF" stroke-width="7" stroke-linecap="round" stroke-dasharray="76 200" transform="rotate(-125 32 32)"></circle>
+  <circle cx="32" cy="32" r="6.5" fill="#061E81"></circle>
+  </g>
+  <text x="100" y="128" text-anchor="middle" font-family="Poppins, sans-serif" font-size="40" font-weight="600" letter-spacing="-0.8" fill="#0A2DC1">Calibr</text>
+</svg>

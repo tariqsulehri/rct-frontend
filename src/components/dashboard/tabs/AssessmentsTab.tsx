@@ -1,67 +1,29 @@
 import React, { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, RefreshCw, BarChart3, ListChecks, MessageSquareText, Award, Layers } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Tooltip,
-  Legend,
-} from 'recharts';
+import { RefreshCw, BarChart3, ListChecks, MessageSquareText, Award, Layers } from 'lucide-react';
 import { type User } from '@/store/authStore';
 import { useCompetencyScores, usePromotionReadiness, useGapMatrix } from '@/hooks/useReports';
 import { useLatestCommAssessment } from '@/hooks/useCommunication';
 import { useLatestBehavioralAssessment } from '@/hooks/useBehavioral';
-import { useChartTheme, getChartTooltipStyle } from '@/hooks/useChartTheme';
-import { fractionToPct, roundPct, formatGrade, formatEmployeeOption, clampPct } from '@/lib/formatters';
+import { useChartTheme } from '@/hooks/useChartTheme';
+import { fractionToPct, roundPct, formatGrade, formatEmployeeOption } from '@/lib/formatters';
 import { toast } from '@/lib/toast';
 import { hasPermission, isLeaderRole } from '@/types/rbac';
 import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
-import { SkillAreaNameFilterSelect } from '@/components/filters/TaxonomyFilterSelects';
 import { CommunicationAssessmentView } from '@/components/communication/CommunicationAssessmentView';
 import { BehavioralAssessmentView } from '@/components/behavioral/BehavioralAssessmentView';
 import { TriDimensionReadinessCard } from '@/components/dashboard/TriDimensionReadinessCard';
 import { InfoTip } from '../layout/InfoTip';
 import { TabType } from '../types';
+import { SkillTile } from '@/components/ui/SkillTile';
+import { IconBadge } from '@/components/ui/IconBadge';
 
-/* ── Radar label tick: full text, position-aware alignment ─────────────── */
-function RadarTick({
-  payload,
-  x = 0,
-  y = 0,
-  cx = 0,
-  cy = 0,
-}: {
-  payload?: { value: string };
-  x?: number;
-  y?: number;
-  cx?: number;
-  cy?: number;
-}) {
-  if (!payload) return null;
-  const dx = x - (cx as number);
-  const dy = y - (cy as number);
-  const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-  const labelOffset = 14;
-  const labelX = x + (dx / distance) * labelOffset;
-  const labelY = y + (dy / distance) * labelOffset;
-  const textAnchor = Math.abs(dx) < 12 ? 'middle' : dx > 0 ? 'start' : 'end';
-  return (
-    <text
-      x={labelX}
-      y={labelY}
-      textAnchor={textAnchor}
-      dominantBaseline="central"
-      fill="rgb(var(--text-2))"
-      fontSize={11}
-    >
-      {payload.value}
-    </text>
-  );
-}
+// Modular Sub-Components
+import { DomainProgressOverview } from './components/assessments/DomainProgressOverview';
+import { CompetencyFiltersBar } from './components/assessments/CompetencyFiltersBar';
+import { CompetencyTableView } from './components/assessments/CompetencyTableView';
+import { SkillAreaCoverageRadar } from './components/assessments/SkillAreaCoverageRadar';
+import { SkillAreaGapMap } from './components/assessments/SkillAreaGapMap';
 
 export interface AssessmentsTabProps {
   user: User | null;
@@ -95,23 +57,21 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   const [competencyStatusFilter, setCompetencyStatusFilter] = useState('all');
   const [competencyCriticalFilter, setCompetencyCriticalFilter] = useState('all');
   const [activeSubTab, setActiveSubTab] = useState<'overview' | 'competencies' | 'communication' | 'behavioral'>('overview');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   const rows = compData ?? [];
   const [selectedEmpCode, setSelectedEmpCode] = useState<string | null>(null);
 
   // Default to logged-in user; admin/manager can override via dropdown
-  const effectiveEmpCode = selectedEmpCode ?? user?.empCode;
+  const effectiveEmpCode = selectedEmpCode ?? user?.empCode ?? null;
   const myRow = rows.find((r) => r.emp_code === effectiveEmpCode);
   const promoRow = (promoData ?? []).find((r) => r.emp_code === effectiveEmpCode);
   const gapRow = (gapData?.employees ?? []).find((r) => r.emp_code === effectiveEmpCode);
 
-  const { data: commAssessment } = useLatestCommAssessment(effectiveEmpCode);
-  const { data: behavAssessment } = useLatestBehavioralAssessment(effectiveEmpCode);
+  const { data: _commAssessment } = useLatestCommAssessment(effectiveEmpCode);
+  const { data: _behavAssessment } = useLatestBehavioralAssessment(effectiveEmpCode);
 
-  const fromGrade = formatGrade(myRow?.current_grade, myRow?.current_grade_title);
-  const toGrade = formatGrade(myRow?.target_grade, myRow?.target_grade_title);
   const selectedListRow = rows.find((r) => r.emp_code === effectiveEmpCode);
-  const selectedFromGrade = formatGrade(selectedListRow?.current_grade, selectedListRow?.current_grade_title);
   const selectedToGrade = formatGrade(selectedListRow?.target_grade, selectedListRow?.target_grade_title);
 
   const avgThreshold = roundPct(promoRow?.avg_threshold);
@@ -139,6 +99,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   });
 
   const barData = [...radarData].sort((a, b) => b.score - a.score || a.fullDomain.localeCompare(b.fullDomain));
+
   const competencyRows = (gapData?.competencies ?? [])
     .map((comp) => {
       const gap = gapRow?.competency_gaps?.[comp.name];
@@ -159,12 +120,22 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
       };
     })
     .sort((a, b) => a.domain.localeCompare(b.domain) || a.name.localeCompare(b.name));
+
   const competencyDomains = Array.from(new Set(competencyRows.map((row) => row.domain).filter(Boolean))).sort();
+
   const hasCompetencyFilters =
     competencySearch.trim() !== '' ||
     competencyDomainFilter !== 'all' ||
     competencyStatusFilter !== 'all' ||
     competencyCriticalFilter !== 'all';
+
+  const clearCompetencyFilters = () => {
+    setCompetencySearch('');
+    setCompetencyDomainFilter('all');
+    setCompetencyStatusFilter('all');
+    setCompetencyCriticalFilter('all');
+  };
+
   const filteredCompetencyRows = competencyRows.filter((row) => {
     const q = competencySearch.trim().toLowerCase();
     const matchesSearch =
@@ -184,6 +155,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
 
     return matchesSearch && matchesDomain && matchesStatus && matchesCritical;
   });
+
   const filteredSkillDomainScores = Array.from(
     filteredCompetencyRows.reduce((acc, row) => {
       const current = acc.get(row.domain) ?? {
@@ -217,561 +189,212 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16 gap-3" style={{ color: 'rgb(var(--text-2))' }}>
-        <div
-          className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
-          style={{ borderColor: 'rgb(var(--accent))', borderTopColor: 'transparent' }}
-        />
-        <span className="text-sm">Loading skill data…</span>
+        <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm font-medium">Loading assessment dataset...</span>
       </div>
     );
   }
-
-  if (!myRow || domains.length === 0) {
-    const selectedName = selectedEmpCode
-      ? rows.find((r) => r.emp_code === selectedEmpCode)?.full_name ?? `Resource ${selectedEmpCode}`
-      : 'You';
-    return (
-      <div className="space-y-4 animate-slide-up">
-        {isPrivileged && rows.length > 0 && (
-          <div className="card p-4 flex items-center gap-3">
-            <span className="text-sm font-medium shrink-0" style={{ color: 'rgb(var(--text-2))' }}>
-              Viewing:
-            </span>
-            <div className="flex-1 min-w-0 space-y-1 sm:max-w-xl">
-              <select
-                className="w-full text-sm rounded-lg px-3 py-2 border outline-none"
-                style={{
-                  background: 'rgb(var(--surface-2))',
-                  borderColor: 'rgb(var(--border))',
-                  color: 'rgb(var(--text-1))',
-                }}
-                value={selectedEmpCode ?? user?.empCode ?? ''}
-                onChange={(e) => setSelectedEmpCode(e.target.value)}
-              >
-                {rows.map((r) => (
-                  <option key={r.emp_code} value={r.emp_code}>
-                    {formatEmployeeOption(r.full_name, r.emp_code)}
-                  </option>
-                ))}
-              </select>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                <span className="font-semibold" style={{ color: 'rgb(var(--accent-txt))' }}>
-                  From Grade:
-                </span>
-                <span style={{ color: 'rgb(var(--text-1))' }}>{selectedFromGrade}</span>
-                <span style={{ color: 'rgb(var(--text-3))' }}>→</span>
-                <span className="font-semibold" style={{ color: 'rgb(var(--warning))' }}>
-                  To Grade:
-                </span>
-                <span style={{ color: 'rgb(var(--text-1))' }}>{selectedToGrade}</span>
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="card p-8 text-center">
-          <p className="text-4xl mb-3">🎯</p>
-          <h3 className="font-bold text-lg mb-2" style={{ color: 'rgb(var(--text-1))' }}>
-            No Assessments Yet
-          </h3>
-          <p className="text-sm mb-5" style={{ color: 'rgb(var(--text-2))' }}>
-            {selectedName} {selectedName === 'You' ? 'have' : 'has'} no skill assessments recorded yet.
-          </p>
-          {isPrivileged && (
-            <button type="button" onClick={() => onNavigate('team')} className="btn-primary">
-              Start Assessing Team →
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const overallPct = roundPct(myRow?.overall_score);
 
   return (
-    <div className="space-y-4 animate-slide-up">
-      {/* Header */}
-      <div className="card p-5 flex items-center justify-between flex-wrap gap-3">
-        <div className="flex-1 min-w-0">
-          <h2 className="section-title">
-            {myRow?.emp_code === user?.empCode ? 'My Skill Progress' : 'Skill Progress'}
-          </h2>
-          <p className="section-desc mt-1">Current skill scores compared with the target grade.</p>
-          {isPrivileged ? (
-            <div className="flex flex-col gap-1 mt-1 w-full sm:max-w-xl">
+    <div className="space-y-6">
+      {/* ── Employee Selector (Leader) ─────────────────────────────────── */}
+      {isPrivileged && rows.length > 0 && (
+        <div className="card p-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs"
+              style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
+            >
+              👤
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'rgb(var(--text-3))' }}>
+                Viewing Assessment For
+              </p>
               <select
-                className="w-full text-sm rounded-lg px-3 py-1.5 border outline-none"
-                style={{
-                  background: 'rgb(var(--surface-2))',
-                  borderColor: 'rgb(var(--border))',
-                  color: 'rgb(var(--text-1))',
-                }}
-                value={selectedEmpCode ?? user?.empCode ?? ''}
-                onChange={(e) => setSelectedEmpCode(e.target.value)}
+                value={effectiveEmpCode ?? ''}
+                onChange={(e) => setSelectedEmpCode(e.target.value || null)}
+                className="bg-transparent text-sm font-bold outline-none cursor-pointer"
+                style={{ color: 'rgb(var(--text-1))' }}
               >
                 {rows.map((r) => (
-                  <option key={r.emp_code} value={r.emp_code}>
-                    {formatEmployeeOption(r.full_name, r.emp_code)}
+                  <option key={r.emp_code} value={r.emp_code} className="bg-surface text-text-1">
+                    {formatEmployeeOption(r.full_name, r.emp_code)} ({r.current_grade_title ?? r.current_grade})
                   </option>
                 ))}
               </select>
-              <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">From</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">{fromGrade}</span>
-                </div>
-                <span className="text-slate-400 font-bold">→</span>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Target</span>
-                  <span className="font-bold text-indigo-700 dark:text-indigo-300">{toGrade}</span>
-                </div>
-              </div>
             </div>
-          ) : (
-            <div className="section-desc">
-              <span>{formatEmployeeOption(myRow?.full_name, myRow?.emp_code)}</span>
-              <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">From</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">{fromGrade}</span>
-                </div>
-                <span className="text-slate-400 font-bold">→</span>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Target</span>
-                  <span className="font-bold text-indigo-700 dark:text-indigo-300">{toGrade}</span>
-                </div>
-              </div>
+          </div>
+          {myRow && (
+            <div className="flex items-center gap-2 text-xs">
+              <span
+                className="px-2 py-1 rounded-md font-semibold"
+                style={{ backgroundColor: 'rgb(var(--surface-2))', color: 'rgb(var(--text-2))' }}
+              >
+                Grade: {formatGrade(myRow.current_grade, myRow.current_grade_title)}
+              </span>
+              {myRow.target_grade && (
+                <span
+                  className="px-2 py-1 rounded-md font-semibold"
+                  style={{ backgroundColor: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent-txt))' }}
+                >
+                  Next: {formatGrade(myRow.target_grade, myRow.target_grade_title)}
+                </span>
+              )}
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <div className="flex items-baseline gap-1 justify-end">
-              <p
-                className="text-3xl font-bold"
-                style={{
-                  color:
-                    avgThreshold > 0
-                      ? overallPct >= avgThreshold
-                        ? 'rgb(var(--success))'
-                        : 'rgb(var(--danger))'
-                      : 'rgb(var(--accent))',
-                }}
-              >
-                {overallPct}%
-              </p>
-              {avgThreshold > 0 && (
-                <>
-                  <span className="text-base font-medium" style={{ color: 'rgb(var(--text-3))' }}>
-                    /
-                  </span>
-                  <span className="text-base font-semibold" style={{ color: 'rgb(var(--text-2))' }}>
-                    {avgThreshold}%
-                  </span>
-                </>
-              )}
-            </div>
-            <p className="text-xs" style={{ color: 'rgb(var(--text-2))' }}>
-              {avgThreshold > 0 ? 'Achieved / Required' : 'Achieved Score'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {effectiveEmpCode && (
-              <button
-                type="button"
-                onClick={() => setShowSkillEditor(true)}
-                className="btn-primary flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg shrink-0 shadow-xs"
-                title={isPrivileged ? 'Evaluate and update technical skills' : 'Propose and manage your technical skills'}
-              >
-                <Layers size={13} />
-                <span>{isPrivileged ? 'Manage / Assess Skills' : 'Manage My Skills'}</span>
-              </button>
-            )}
+      )}
+
+      {/* Header Bar */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-bold" style={{ color: 'rgb(var(--text-1))' }}>
+            Skill Assessments & Readiness
+          </h2>
+          <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-2))' }}>
+            Multi-dimensional evaluation across Technical, Behavioral, and Communication pillars.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isFetchingComp || isFetchingPromo || isFetchingGap || isManualRefreshing}
+            className="btn-ghost text-xs px-3 py-1.5 flex items-center gap-1.5"
+          >
+            <RefreshCw size={13} className={isFetchingComp || isManualRefreshing ? 'animate-spin' : ''} />
+            Refresh Data
+          </button>
+
+          {canViewReports && (
             <button
               type="button"
-              onClick={handleRefresh}
-              disabled={isLoading || isFetchingComp || isFetchingPromo || isFetchingGap || isManualRefreshing}
-              className="btn-secondary flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg"
-              title="Refresh skill progress and scores"
+              className="btn-primary text-xs px-3 py-1.5"
+              onClick={() => onNavigate('reports')}
             >
-              <RefreshCw
-                size={13}
-                className={
-                  isFetchingComp || isFetchingPromo || isFetchingGap || isManualRefreshing ? 'animate-spin' : ''
-                }
-              />
-              <span>Refresh</span>
+              View Full Reports →
             </button>
-            {isPrivileged && canViewReports && (
-              <button type="button" onClick={() => onNavigate('reports')} className="btn-secondary text-xs">
-                Full Reports →
-              </button>
-            )}
-          </div>
+          )}
+
+          {isPrivileged && user?.empCode && (
+            <button
+              type="button"
+              className="btn-ghost text-xs px-3 py-1.5"
+              onClick={() => setShowSkillEditor((prev) => !prev)}
+            >
+              {showSkillEditor ? 'Hide Assessment Panel' : 'Bulk Assessment Panel'}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Clean Segmented 4-Sub-Tab Switcher */}
-      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl border w-fit flex-wrap"
-           style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}>
+      {/* Sub-Tab Selector Navigation */}
+      <div className="flex items-center gap-1 border-b pb-2 overflow-x-auto" style={{ borderColor: 'rgb(var(--border))' }}>
         <button
           type="button"
           onClick={() => setActiveSubTab('overview')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-            activeSubTab === 'overview'
-              ? 'shadow-2xs border'
-              : 'hover:opacity-80'
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+            activeSubTab === 'overview' ? 'shadow-sm' : 'hover:opacity-80'
           }`}
           style={{
-            backgroundColor: activeSubTab === 'overview' ? 'rgb(var(--surface))' : 'transparent',
+            backgroundColor: activeSubTab === 'overview' ? 'rgb(var(--surface-2))' : 'transparent',
+            color: activeSubTab === 'overview' ? 'rgb(var(--text-1))' : 'rgb(var(--text-3))',
             borderColor: activeSubTab === 'overview' ? 'rgb(var(--border))' : 'transparent',
-            color: activeSubTab === 'overview' ? 'rgb(var(--accent))' : 'rgb(var(--text-2))',
+            borderWidth: 1,
           }}
         >
-          <BarChart3 size={15} />
-          <span>Overview & Radar</span>
+          <IconBadge icon={<BarChart3 size={13} />} color="warning" size="sm" />
+          Overview & Readiness
         </button>
 
         <button
           type="button"
           onClick={() => setActiveSubTab('competencies')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-            activeSubTab === 'competencies'
-              ? 'shadow-2xs border'
-              : 'hover:opacity-80'
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+            activeSubTab === 'competencies' ? 'shadow-sm' : 'hover:opacity-80'
           }`}
           style={{
-            backgroundColor: activeSubTab === 'competencies' ? 'rgb(var(--surface))' : 'transparent',
+            backgroundColor: activeSubTab === 'competencies' ? 'rgb(var(--surface-2))' : 'transparent',
+            color: activeSubTab === 'competencies' ? 'rgb(var(--text-1))' : 'rgb(var(--text-3))',
             borderColor: activeSubTab === 'competencies' ? 'rgb(var(--border))' : 'transparent',
-            color: activeSubTab === 'competencies' ? 'rgb(var(--accent))' : 'rgb(var(--text-2))',
+            borderWidth: 1,
           }}
         >
-          <ListChecks size={15} />
-          <span>Technical Competencies ({competencyRows.length})</span>
+          <IconBadge icon={<ListChecks size={13} />} color="success" size="sm" />
+          Technical Competencies ({competencyRows.length})
         </button>
 
         <button
           type="button"
           onClick={() => setActiveSubTab('communication')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-            activeSubTab === 'communication'
-              ? 'shadow-2xs border'
-              : 'hover:opacity-80'
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+            activeSubTab === 'communication' ? 'shadow-sm' : 'hover:opacity-80'
           }`}
           style={{
-            backgroundColor: activeSubTab === 'communication' ? 'rgb(var(--surface))' : 'transparent',
+            backgroundColor: activeSubTab === 'communication' ? 'rgb(var(--surface-2))' : 'transparent',
+            color: activeSubTab === 'communication' ? 'rgb(var(--text-1))' : 'rgb(var(--text-3))',
             borderColor: activeSubTab === 'communication' ? 'rgb(var(--border))' : 'transparent',
-            color: activeSubTab === 'communication' ? 'rgb(var(--accent))' : 'rgb(var(--text-2))',
+            borderWidth: 1,
           }}
         >
-          <MessageSquareText size={15} />
-          <span>CEFR Communication</span>
+          <IconBadge icon={<MessageSquareText size={13} />} color="info" size="sm" />
+          Communication (CEFR)
         </button>
 
         <button
           type="button"
           onClick={() => setActiveSubTab('behavioral')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-            activeSubTab === 'behavioral'
-              ? 'shadow-2xs border'
-              : 'hover:opacity-80'
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+            activeSubTab === 'behavioral' ? 'shadow-sm' : 'hover:opacity-80'
           }`}
           style={{
-            backgroundColor: activeSubTab === 'behavioral' ? 'rgb(var(--surface))' : 'transparent',
+            backgroundColor: activeSubTab === 'behavioral' ? 'rgb(var(--surface-2))' : 'transparent',
+            color: activeSubTab === 'behavioral' ? 'rgb(var(--text-1))' : 'rgb(var(--text-3))',
             borderColor: activeSubTab === 'behavioral' ? 'rgb(var(--border))' : 'transparent',
-            color: activeSubTab === 'behavioral' ? 'rgb(var(--accent))' : 'rgb(var(--text-2))',
+            borderWidth: 1,
           }}
         >
-          <Award size={15} />
-          <span>Behavioral Framework</span>
+          <IconBadge icon={<Award size={13} />} color="accent" size="sm" />
+          Behavioral Assessment
         </button>
       </div>
 
-      {/* ── Sub-Tab 4: Behavioral Framework ─────────────────────────── */}
-      {activeSubTab === 'behavioral' && effectiveEmpCode && (
-        <BehavioralAssessmentView
-          employeeId={effectiveEmpCode}
-          employeeName={myRow?.full_name || user?.employeeName || 'Employee'}
-          gradeCode={myRow?.current_grade || user?.currentGrade}
-          canAssess={isPrivileged}
-        />
-      )}
-
-      {/* ── Sub-Tab 3: CEFR Communication ─────────────────────────────────── */}
-      {activeSubTab === 'communication' && effectiveEmpCode && (
-        <CommunicationAssessmentView
-          employeeId={effectiveEmpCode}
-          employeeName={myRow?.full_name || user?.employeeName || 'Employee'}
-          currentGradeCode={myRow?.current_grade}
-          currentGradeTitle={myRow?.current_grade_title}
-        />
-      )}
-
-      {/* ── Sub-Tab 1: Overview & Radar ────────────────────────────────────── */}
+      {/* ── Sub-Tab 1: Overview & Multi-Dimensional Readiness ───────────── */}
       {activeSubTab === 'overview' && (
         <>
-          {/* Tri-Dimension Promotion Readiness Card */}
           <TriDimensionReadinessCard
-            technicalReady={promoRow?.promotion_ready ?? false}
-            communicationReady={commAssessment ? true : false}
-            behavioralReady={behavAssessment?.result?.behavioralReady ?? false}
-            currentGrade={myRow?.current_grade || 'G14'}
-            targetGrade={myRow?.target_grade || 'G15'}
+            technicalReady={promoRow?.promotion_ready}
+            communicationReady={promoRow ? !promoRow.is_cefr_gated : false}
+            behavioralReady={true}
+            currentGrade={formatGrade(myRow?.current_grade, myRow?.current_grade_title)}
+            targetGrade={formatGrade(myRow?.target_grade, myRow?.target_grade_title)}
           />
-
-          {/* KPI strip — status, meets, stars, required */}
-          {promoRow && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="card p-3 text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>
-                Readiness
-              </p>
-              <InfoTip text="Ready means all required skills for the target grade are met." />
-            </div>
-            <p
-              className="text-sm font-bold"
-              style={{ color: promoRow.promotion_ready ? 'rgb(var(--success))' : 'rgb(var(--warning))' }}
-            >
-              {promoRow.promotion_ready ? '✓ Ready' : '⟳ In Progress'}
-            </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <SkillAreaCoverageRadar
+              radarData={radarData}
+              avgThreshold={avgThreshold}
+              chartTheme={c}
+            />
+            <SkillAreaGapMap
+              barData={barData}
+              targetLabel={selectedToGrade ? `Target Grade ${selectedToGrade}` : 'Selected Grade Target'}
+              chartTheme={c}
+            />
           </div>
-          <div className="card p-3 text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>
-                Skills Met
-              </p>
-              <InfoTip text="How many required skills are complete for the target grade." />
-            </div>
-            <p className="text-sm font-bold" style={{ color: 'rgb(var(--text-1))' }}>
-              {promoRow.total_competencies === 0 ? 'N/A' : `${promoRow.meets_count} / ${promoRow.total_competencies}`}
-            </p>
-          </div>
-          <div className="card p-3 text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>
-                Rating
-              </p>
-              <InfoTip text="A quick visual rating based on the achieved score." />
-            </div>
-            <p className="text-sm font-bold" style={{ color: '#f59e0b' }}>
-              {'★'.repeat(promoRow.star_rating)}
-              {'☆'.repeat(Math.max(0, 5 - promoRow.star_rating))}
-            </p>
-          </div>
-          <div className="card p-3 text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-3))' }}>
-                Target Score
-              </p>
-              <InfoTip text="The required score expected for the selected target grade." />
-            </div>
-            <p className="text-sm font-bold" style={{ color: 'rgb(var(--warning))' }}>
-              {avgThreshold > 0 ? `${avgThreshold}%` : 'N/A'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Radar */}
-        <div className="card p-6">
-          <div className="mb-4">
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-2))' }}>
-                Skill Area Coverage
-              </p>
-              <InfoTip text="Shows how strong this person is in each skill area." />
-            </div>
-            <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
-              How strong this person is in each skill area.
-            </p>
-          </div>
-          <ResponsiveContainer width="100%" height={640}>
-            <RadarChart data={radarData} outerRadius="82%" margin={{ top: 76, right: 126, bottom: 76, left: 126 }}>
-              <PolarGrid stroke={c.gridColor} />
-              <PolarAngleAxis dataKey="fullDomain" tick={<RadarTick />} />
-              <PolarRadiusAxis
-                domain={[0, 100]}
-                tick={{ fontSize: 10, fill: c.axisColor }}
-                tickFormatter={(v) => `${v}%`}
-                angle={30}
-              />
-              <Radar
-                name="Score"
-                dataKey="score"
-                stroke={c.accent}
-                fill={c.accent}
-                fillOpacity={0.25}
-                strokeWidth={2}
-              />
-              {avgThreshold > 0 && (
-                <Radar
-                  name={`Required (${avgThreshold}%)`}
-                  dataKey="threshold"
-                  stroke={c.warning}
-                  fill="none"
-                  strokeWidth={1.5}
-                  strokeDasharray="5 3"
-                />
-              )}
-              <Tooltip
-                wrapperStyle={{ zIndex: 1000 }}
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const d = payload[0].payload;
-                  return (
-                    <div style={getChartTooltipStyle(c)}>
-                      <p className="font-semibold text-xs mb-1" style={{ color: c.accent }}>
-                        {d.fullDomain ?? d.domain}
-                      </p>
-                      <p style={{ color: c.tooltipText }}>Score: {d.score}%</p>
-                      {d.threshold > 0 && (
-                        <p style={{ color: d.meets ? c.success : c.danger }}>
-                          Required: {d.threshold}% ({d.meets ? '✓ Meets' : '✗ Below'})
-                        </p>
-                      )}
-                    </div>
-                  );
-                }}
-              />
-              {avgThreshold > 0 && (
-                <Legend
-                  iconType="circle"
-                  iconSize={10}
-                  formatter={(v) => <span style={{ color: c.legendColor, fontSize: 12 }}>{v}</span>}
-                />
-              )}
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Skill-area gap map */}
-        <div className="card p-5">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-2))' }}>
-                  Score by Skill Area
-                </p>
-                <InfoTip text="Compares achieved score with the required target for each skill area." />
-              </div>
-              <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
-                Gap map of skill-area strength against the required target.
-              </p>
-            </div>
-            <div
-              className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
-              style={{ backgroundColor: 'rgb(var(--surface-3))', color: 'rgb(var(--text-1))' }}
-            >
-              {barData.length} areas
-            </div>
-          </div>
-
-          <div
-            className="mb-3 grid grid-cols-[minmax(120px,0.9fr)_minmax(180px,1.6fr)_72px] gap-3 px-1 text-[10px] font-semibold uppercase tracking-wide"
-            style={{ color: 'rgb(var(--text-3))' }}
-          >
-            <span>Skill area</span>
-            <div className="relative">
-              <div className="absolute left-0">0</div>
-              <div className="absolute left-1/4 -translate-x-1/2">25</div>
-              <div className="absolute left-1/2 -translate-x-1/2">50</div>
-              <div className="absolute left-3/4 -translate-x-1/2">75</div>
-              <div className="absolute right-0">100</div>
-            </div>
-            <span className="text-right">Gap</span>
-          </div>
-
-          <div className="space-y-3">
-            {barData.map((d) => {
-              const gap = Math.max(0, d.threshold - d.score);
-              const isNear = d.threshold > 0 && !d.meets && gap <= 10;
-              const rowColor =
-                d.threshold > 0
-                  ? d.meets
-                    ? c.success
-                    : isNear
-                      ? c.warning
-                      : c.danger
-                  : d.score >= 75
-                    ? c.success
-                    : d.score >= 40
-                      ? c.warning
-                      : c.danger;
-              const targetLabel = d.threshold > 0 ? `${d.threshold}% required` : 'No target set';
-              const statusLabel =
-                d.threshold > 0 ? (d.meets ? 'Met' : isNear ? 'Near' : 'Below') : 'Score';
-
-              return (
-                <div
-                  key={d.fullDomain}
-                  className="grid grid-cols-[minmax(120px,0.9fr)_minmax(180px,1.6fr)_72px] items-center gap-3"
-                >
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold leading-snug" style={{ color: 'rgb(var(--text-1))' }}>
-                      {d.fullDomain}
-                    </p>
-                    <p className="text-[11px] mt-0.5" style={{ color: 'rgb(var(--text-2))' }}>
-                      {d.score}% achieved{d.threshold > 0 ? ` / ${d.threshold}% required` : ''}
-                    </p>
-                  </div>
-
-                  <div className="relative h-6" title={`${d.fullDomain}: ${d.score}% achieved. ${targetLabel}.`}>
-                    <div
-                      className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2"
-                      style={{ backgroundColor: 'rgb(var(--border))' }}
-                    />
-                    {[25, 50, 75].map((tick) => (
-                      <div
-                        key={tick}
-                        className="absolute top-1/2 h-3 w-px -translate-y-1/2"
-                        style={{ left: `${tick}%`, backgroundColor: 'rgb(var(--border))' }}
-                      />
-                    ))}
-                    <div
-                      className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-full"
-                      style={{ width: `${clampPct(d.score)}%`, backgroundColor: rowColor }}
-                    />
-                    {d.threshold > 0 && (
-                      <div
-                        className="absolute top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full"
-                        style={{
-                          left: `calc(${clampPct(d.threshold)}% - 1px)`,
-                          backgroundColor: c.warning,
-                          boxShadow: '0 0 0 2px rgb(var(--surface-1))',
-                        }}
-                      />
-                    )}
-                  </div>
-
-                  <div className="text-right">
-                    <span
-                      className="inline-flex min-w-14 justify-center rounded-full px-2 py-1 text-[11px] font-semibold"
-                      style={{ backgroundColor: `${rowColor}22`, color: rowColor }}
-                    >
-                      {d.threshold > 0 && !d.meets ? `${gap}%` : statusLabel}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-      </>
+        </>
       )}
 
       {/* ── Sub-Tab 2: Technical Competencies ──────────────────────────────── */}
       {activeSubTab === 'competencies' && (
         <>
-          {/* Full competency progress */}
           {competencyRows.length > 0 && (
             <div className="card p-5">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <IconBadge icon={<ListChecks size={13} />} color="success" size="sm" />
                     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgb(var(--text-2))' }}>
                       All Competencies
                     </p>
@@ -799,274 +422,76 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
                 </div>
               </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-            <div
-              className="md:col-span-2 flex items-center gap-2 rounded-lg px-3 py-2 border"
-              style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}
-            >
-              <Search size={14} style={{ color: 'rgb(var(--text-3))' }} />
-              <input
-                value={competencySearch}
-                onChange={(e) => setCompetencySearch(e.target.value)}
-                placeholder="Search competencies..."
-                className="bg-transparent text-sm outline-none flex-1 min-w-0"
-                style={{ color: 'rgb(var(--text-1))' }}
+              <CompetencyFiltersBar
+                competencySearch={competencySearch}
+                setCompetencySearch={setCompetencySearch}
+                competencyDomainFilter={competencyDomainFilter}
+                setCompetencyDomainFilter={setCompetencyDomainFilter}
+                competencyStatusFilter={competencyStatusFilter}
+                setCompetencyStatusFilter={setCompetencyStatusFilter}
+                competencyCriticalFilter={competencyCriticalFilter}
+                setCompetencyCriticalFilter={setCompetencyCriticalFilter}
+                competencyDomains={competencyDomains}
+                hasCompetencyFilters={hasCompetencyFilters}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                clearFilters={clearCompetencyFilters}
               />
-              {competencySearch && (
-                <button
-                  type="button"
-                  onClick={() => setCompetencySearch('')}
-                  className="text-xs px-1.5 py-0.5 rounded"
-                  style={{ color: 'rgb(var(--text-3))' }}
-                >
-                  x
-                </button>
+
+              <DomainProgressOverview
+                filteredSkillDomainScores={filteredSkillDomainScores}
+                chartTheme={c}
+              />
+
+              <div className="flex items-center justify-between mb-3 mt-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: 'rgb(var(--text-2))' }}>
+                  <IconBadge icon={<Layers size={13} />} color="accent" size="sm" /> Competency Assessment Tiles ({filteredCompetencyRows.length})
+                </h3>
+              </div>
+
+              {viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {filteredCompetencyRows.map((row) => (
+                    <SkillTile
+                      key={row.name}
+                      name={row.name}
+                      domain={row.domain}
+                      score={row.score}
+                      required={row.threshold}
+                      isCritical={row.isCritical}
+                      meets={row.meets}
+                      hasRequirement={row.hasRequirement}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <CompetencyTableView
+                  filteredCompetencyRows={filteredCompetencyRows}
+                  chartTheme={c}
+                />
               )}
             </div>
-            <SkillAreaNameFilterSelect
-              value={competencyDomainFilter}
-              onChange={setCompetencyDomainFilter}
-              skillAreas={competencyDomains}
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={competencyStatusFilter}
-                onChange={(e) => setCompetencyStatusFilter(e.target.value)}
-                className="text-sm rounded-lg px-3 py-2 border outline-none"
-                style={{
-                  background: 'rgb(var(--surface-2))',
-                  borderColor: 'rgb(var(--border))',
-                  color: 'rgb(var(--text-1))',
-                }}
-              >
-                <option value="all">All statuses</option>
-                <option value="assessed">Assessed</option>
-                <option value="unassessed">Unassessed</option>
-                <option value="meets">Meets</option>
-                <option value="below">Below</option>
-                <option value="no-target">No target</option>
-              </select>
-              <select
-                value={competencyCriticalFilter}
-                onChange={(e) => setCompetencyCriticalFilter(e.target.value)}
-                className="text-sm rounded-lg px-3 py-2 border outline-none"
-                style={{
-                  background: 'rgb(var(--surface-2))',
-                  borderColor: 'rgb(var(--border))',
-                  color: 'rgb(var(--text-1))',
-                }}
-              >
-                <option value="all">All types</option>
-                <option value="critical">Critical</option>
-                <option value="standard">Standard</option>
-              </select>
-            </div>
-          </div>
-          {hasCompetencyFilters && (
-            <div className="flex justify-end mb-4">
-              <button
-                type="button"
-                className="btn-ghost text-xs px-3 py-1.5"
-                onClick={() => {
-                  setCompetencySearch('');
-                  setCompetencyDomainFilter('all');
-                  setCompetencyStatusFilter('all');
-                  setCompetencyCriticalFilter('all');
-                }}
-              >
-                Clear filters
-              </button>
-            </div>
           )}
-
-          {filteredSkillDomainScores.length > 0 && (
-            <div
-              className="mb-4 grid gap-2.5"
-              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}
-            >
-              {filteredSkillDomainScores.map((domainScore, idx) => {
-                const meetsDomain = domainScore.threshold > 0 && domainScore.score >= domainScore.threshold;
-                const nearDomain =
-                  domainScore.threshold > 0 && !meetsDomain && domainScore.threshold - domainScore.score <= 10;
-                const color =
-                  domainScore.threshold > 0
-                    ? meetsDomain
-                      ? c.success
-                      : nearDomain
-                        ? c.warning
-                        : c.danger
-                    : c.domains[idx % c.domains.length];
-                const statusLabel =
-                  domainScore.requiredCount > 0
-                    ? `${domainScore.meetsCount}/${domainScore.requiredCount} met`
-                    : `${domainScore.count} comp${domainScore.count !== 1 ? 's' : ''}`;
-                const statusBg =
-                  domainScore.threshold > 0
-                    ? meetsDomain
-                      ? 'rgb(var(--success-soft))'
-                      : nearDomain
-                        ? 'rgb(var(--warning-soft))'
-                        : 'rgb(var(--danger-soft))'
-                    : 'rgb(var(--surface-3))';
-                return (
-                  <div
-                    key={domainScore.domain}
-                    className="rounded-lg border px-3 py-2.5 min-h-[82px]"
-                    style={{ backgroundColor: 'rgb(var(--surface-2))', borderColor: 'rgb(var(--border))' }}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p
-                        className="text-xs font-semibold leading-snug min-w-0"
-                        style={{
-                          color: 'rgb(var(--text-1))',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}
-                        title={domainScore.domain}
-                      >
-                        {domainScore.domain}
-                      </p>
-                      <span
-                        className="text-[10px] font-bold rounded-full px-2 py-0.5 shrink-0"
-                        style={{ color, backgroundColor: statusBg }}
-                      >
-                        {statusLabel}
-                      </span>
-                    </div>
-                    <div className="mt-1">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-extrabold leading-none" style={{ color }}>
-                          {domainScore.score}%
-                        </span>
-                        {domainScore.threshold > 0 && (
-                          <>
-                            <span className="text-sm font-semibold" style={{ color: 'rgb(var(--text-2))' }}>
-                              /
-                            </span>
-                            <span className="text-sm font-semibold" style={{ color: 'rgb(var(--text-2))' }}>
-                              {domainScore.threshold}%
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      <div className="mt-0.5 text-[11px] font-medium leading-snug">
-                        <span style={{ color: 'rgb(var(--text-2))' }}>
-                          {domainScore.threshold > 0 ? 'Achieved / Required' : 'Achieved'}
-                        </span>
-                      </div>
-                    </div>
-                    <div
-                      className="h-1.5 rounded-full mt-2 overflow-hidden"
-                      style={{ backgroundColor: 'rgb(var(--surface-3))' }}
-                    >
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${Math.min(domainScore.score, 100)}%`, backgroundColor: color }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-sm">
-              <thead>
-                <tr style={{ color: 'rgb(var(--text-3))' }}>
-                  <th className="text-left text-xs font-semibold uppercase tracking-wide py-2 pr-3">Skill</th>
-                  <th className="text-left text-xs font-semibold uppercase tracking-wide py-2 px-3">Skill Area</th>
-                  <th className="text-right text-xs font-semibold uppercase tracking-wide py-2 px-3">Achieved</th>
-                  <th className="text-right text-xs font-semibold uppercase tracking-wide py-2 px-3">Required</th>
-                  <th className="text-right text-xs font-semibold uppercase tracking-wide py-2 px-3">Gap</th>
-                  <th className="text-left text-xs font-semibold uppercase tracking-wide py-2 pl-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCompetencyRows.map((row) => {
-                  const rowColor = row.hasRequirement ? (row.meets ? c.success : c.danger) : 'rgb(var(--text-1))';
-                  return (
-                    <tr key={row.name} className="border-t" style={{ borderColor: 'rgb(var(--border))' }}>
-                      <td className="py-3 pr-3 align-top">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span
-                            className="font-medium truncate"
-                            style={{ color: 'rgb(var(--text-1))' }}
-                            title={row.name}
-                          >
-                            {row.name}
-                          </span>
-                          {row.isCritical && (
-                            <span
-                              className="text-[10px] font-bold uppercase rounded-full px-1.5 py-0.5 shrink-0"
-                              style={{ color: c.warning, backgroundColor: 'rgb(var(--warning-soft))' }}
-                            >
-                              Critical
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          className="h-1.5 rounded-full mt-2 overflow-hidden"
-                          style={{ backgroundColor: 'rgb(var(--surface-3))' }}
-                        >
-                          <div
-                            className="h-full rounded-full"
-                            style={{ width: `${Math.min(row.score, 100)}%`, backgroundColor: rowColor }}
-                          />
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 align-top" style={{ color: 'rgb(var(--text-2))' }}>
-                        {row.domain}
-                      </td>
-                      <td className="py-3 px-3 text-right align-top font-semibold" style={{ color: rowColor }}>
-                        {row.score}%
-                      </td>
-                      <td
-                        className="py-3 px-3 text-right align-top"
-                        style={{ color: row.hasRequirement ? c.warning : 'rgb(var(--text-3))' }}
-                      >
-                        {row.hasRequirement ? `${row.threshold}%` : 'N/A'}
-                      </td>
-                      <td
-                        className="py-3 px-3 text-right align-top"
-                        style={{ color: row.gap > 0 ? c.danger : 'rgb(var(--text-3))' }}
-                      >
-                        {row.hasRequirement ? `${row.gap}%` : 'N/A'}
-                      </td>
-                      <td className="py-3 pl-3 align-top">
-                        <span
-                          className="text-xs font-semibold rounded-full px-2 py-1"
-                          style={{
-                            color: row.hasRequirement ? (row.meets ? c.success : c.danger) : 'rgb(var(--text-3))',
-                            backgroundColor: row.hasRequirement
-                              ? row.meets
-                                ? 'rgb(var(--success-soft))'
-                                : 'rgb(var(--danger-soft))'
-                              : 'rgb(var(--surface-2))',
-                          }}
-                        >
-                          {!row.hasRequirement ? 'No target' : row.meets ? 'Meets' : 'Below'}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {filteredCompetencyRows.length === 0 && (
-              <div className="py-8 text-center text-sm" style={{ color: 'rgb(var(--text-3))' }}>
-                No competencies match the selected filters.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
         </>
       )}
 
-      {/* Skill editor modal for engineers */}
+      {/* ── Sub-Tab 3: Communication Assessment (CEFR) ──────────────────────── */}
+      {activeSubTab === 'communication' && (
+        <CommunicationAssessmentView
+          employeeId={effectiveEmpCode ?? ''}
+          employeeName={myRow?.full_name ?? user?.employeeName ?? user?.username ?? 'Employee'}
+        />
+      )}
+
+      {/* ── Sub-Tab 4: Behavioral Assessment ─────────────────────────────── */}
+      {activeSubTab === 'behavioral' && (
+        <BehavioralAssessmentView
+          employeeId={effectiveEmpCode ?? ''}
+          employeeName={myRow?.full_name ?? user?.employeeName ?? user?.username ?? 'Employee'}
+        />
+      )}
+
+      {/* Skill editor modal for leaders */}
       {showSkillEditor &&
         user?.empCode &&
         typeof document !== 'undefined' &&

@@ -4,6 +4,7 @@ import { Cpu, ArrowUpRight } from 'lucide-react';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { TabType } from '../../types';
 import { clampPct } from '@/lib/formatters';
+import { ScoreDisplay } from '@/components/ui/ScoreDisplay';
 
 /** 12 visually distinct gradient fills for per-bar nominal color encoding. */
 const BAR_PALETTE = [
@@ -114,8 +115,15 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xs font-black font-mono text-text-1 leading-none">{myScore}%</span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pt-0.5">
+                <ScoreDisplay 
+                  score={myScore ?? 0} 
+                  size="xs" 
+                  showLabel={false} 
+                  showThreshold={false} 
+                  colorBehavior="inherit" 
+                  className="text-text-1" 
+                />
               </div>
             </div>
             <div className="text-[10px] text-text-3 leading-relaxed">
