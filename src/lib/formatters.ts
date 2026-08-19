@@ -13,11 +13,15 @@ export function roundPctNullable(val: number | null | undefined): number | null 
 }
 
 /**
- * Explicitly converts a decimal fraction (e.g., 0.8) into a percentage (80).
+ * Explicitly converts a decimal fraction (e.g., 0.8 -> 80, 1.0 -> 100) or pre-scaled percentage into an integer percentage.
  */
-export function fractionToPct(val: number | null | undefined, maxScale: number = 1): number {
+export function fractionToPct(val: number | null | undefined): number {
   if (val == null || isNaN(val)) return 0;
-  return Math.round((val / maxScale) * 100);
+  // If val is between 0 and 1 (inclusive, e.g. 0.85 or 1.0), convert decimal fraction to percentage
+  if (val > 0 && val <= 1) {
+    return Math.round(val * 100);
+  }
+  return Math.round(val);
 }
 
 /**

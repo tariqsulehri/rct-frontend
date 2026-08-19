@@ -4,7 +4,7 @@ import { RefreshCw, BarChart3, ListChecks, MessageSquareText, Award, Layers } fr
 import { type User } from '@/store/authStore';
 import { useCompetencyScores, usePromotionReadiness, useGapMatrix } from '@/hooks/useReports';
 import { useChartTheme } from '@/hooks/useChartTheme';
-import { fractionToPct, roundPct, formatGrade, formatEmployeeOption } from '@/lib/formatters';
+import { fractionToPct, formatGrade, formatEmployeeOption } from '@/lib/formatters';
 import { toast } from '@/lib/toast';
 import { hasPermission, isLeaderRole } from '@/types/rbac';
 import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
@@ -336,17 +336,17 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
             behavioralReady={true}
             currentGrade={formatGrade(myRow?.current_grade, myRow?.current_grade_title)}
             targetGrade={formatGrade(myRow?.target_grade, myRow?.target_grade_title)}
-            technicalScore={roundPct(promoRow?.overall_score ?? 45)}
-            commBand={promoRow?.is_cefr_gated ? 'B1' : 'C1'}
+            technicalScore={fractionToPct(promoRow?.overall_score)}
+            commBand={promoRow?.cefr_level ?? (promoRow?.is_cefr_gated ? 'B1' : 'C1')}
             targetCommBand="C1"
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <TriDimensionRadar
-              techScore={roundPct(promoRow?.overall_score ?? 45)}
-              commScore={promoRow?.is_cefr_gated ? 50 : 85}
+              techScore={fractionToPct(promoRow?.overall_score)}
+              commScore={promoRow?.is_cefr_gated ? 50 : 83}
               behavioralScore={80}
-              techTarget={roundPct(promoRow?.avg_threshold ?? 100)}
+              techTarget={fractionToPct(promoRow?.avg_threshold ?? 1)}
               commTarget={83}
               behavioralTarget={80}
               chartTheme={c}
@@ -355,7 +355,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
             <PriorityGapMatrix
               topGaps={competencyRows
                 .filter((r) => r.hasRequirement && !r.meets)
-                .sort((a, b) => b.gap - a.gap || (b.isCritical ? 1 : 0) - (a.isCritical ? 1 : 0))}
+                .sort((a, b) => (b.isCritical ? 1 : 0) - (a.isCritical ? 1 : 0) || b.gap - a.gap)}
               chartTheme={c}
             />
           </div>
