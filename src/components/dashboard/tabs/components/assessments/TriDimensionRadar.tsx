@@ -22,6 +22,35 @@ export interface TriDimensionRadarProps {
   chartTheme: any;
 }
 
+/** Vector-based radial tick offset for 3-Pillar Radar labels */
+function RadarTick({ x, y, payload, cx, cy }: any) {
+  const dx = x - cx;
+  const dy = y - cy;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  // Offset label outward by 24px along its radial vector for maximum readability
+  const labelX = x + (dx / len) * 24;
+  const labelY = y + (dy / len) * 24;
+
+  let textAnchor: 'start' | 'middle' | 'end' = 'middle';
+  if (Math.abs(dx) > 15) {
+    textAnchor = dx > 0 ? 'start' : 'end';
+  }
+
+  return (
+    <text
+      x={labelX}
+      y={labelY}
+      textAnchor={textAnchor}
+      dominantBaseline="central"
+      fill="rgb(var(--text-1))"
+      fontSize={12}
+      fontWeight={800}
+    >
+      {payload.value}
+    </text>
+  );
+}
+
 export const TriDimensionRadar: React.FC<TriDimensionRadarProps> = ({
   techScore = 0,
   commScore = 0,
@@ -82,26 +111,12 @@ export const TriDimensionRadar: React.FC<TriDimensionRadarProps> = ({
       </div>
 
       {/* Radar Chart */}
-      <div className="h-[280px] w-full">
+      <div className="h-[340px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={data} outerRadius="75%">
+          <RadarChart data={data} outerRadius="72%" margin={{ top: 28, right: 48, bottom: 28, left: 48 }}>
             <PolarGrid stroke="rgb(var(--border))" strokeDasharray="3 3" />
-            <PolarAngleAxis
-              dataKey="pillar"
-              tick={({ x, y, payload }) => (
-                <text
-                  x={x}
-                  y={y}
-                  textAnchor="middle"
-                  fill="rgb(var(--text-1))"
-                  fontSize={11}
-                  fontWeight={700}
-                >
-                  {payload.value}
-                </text>
-              )}
-            />
-            <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="rgb(var(--text-3))" fontSize={9} />
+            <PolarAngleAxis dataKey="pillar" tick={<RadarTick />} />
+            <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="rgb(var(--text-3))" fontSize={10} />
 
             {/* Target Area Overlay */}
             <Radar
