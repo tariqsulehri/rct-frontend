@@ -17,11 +17,11 @@ export const TriDimensionReadinessCard: React.FC<TriDimensionReadinessCardProps>
   technicalReady = false,
   communicationReady = false,
   behavioralReady = false,
-  currentGrade = 'G14',
-  targetGrade = 'G15',
-  technicalScore = 45,
-  commBand = 'B1',
-  targetCommBand = 'C1',
+  currentGrade = 'N/A',
+  targetGrade = 'N/A',
+  technicalScore = 0,
+  commBand = 'N/A',
+  targetCommBand = 'N/A',
 }) => {
   const isOverallReady =
     technicalReady === true && communicationReady === true && behavioralReady === true;

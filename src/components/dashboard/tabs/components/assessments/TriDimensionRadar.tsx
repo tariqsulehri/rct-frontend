@@ -23,12 +23,12 @@ export interface TriDimensionRadarProps {
 }
 
 export const TriDimensionRadar: React.FC<TriDimensionRadarProps> = ({
-  techScore = 45,
-  commScore = 50,
-  behavioralScore = 80,
-  techTarget = 100,
-  commTarget = 83,
-  behavioralTarget = 80,
+  techScore = 0,
+  commScore = 0,
+  behavioralScore = 0,
+  techTarget = 0,
+  commTarget = 0,
+  behavioralTarget = 0,
   chartTheme: _c,
 }) => {
   const data = [
