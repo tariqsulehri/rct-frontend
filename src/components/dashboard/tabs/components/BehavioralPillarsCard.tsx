@@ -104,8 +104,8 @@ export const BehavioralPillarsCard: React.FC<BehavioralPillarsCardProps> = ({
       {/* Header */}
       <div className="relative flex items-center justify-between pb-2 border-b border-border">
         <div className="flex items-center gap-2">
-          <Award size={14} className="text-amber-500 shrink-0 drop-shadow-sm" />
-          <h2 className="text-xs font-black uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-b from-amber-400 to-amber-700 dark:from-amber-300 dark:to-amber-500 drop-shadow-sm">
+          <Award size={14} className="text-blue-400 shrink-0 drop-shadow-sm" />
+          <h2 className="text-xs font-black uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-b from-blue-300 to-blue-500 dark:from-blue-200 dark:to-blue-400 drop-shadow-sm">
             3. Behavioral ({totalPillars} Pillars)
           </h2>
         </div>
@@ -144,48 +144,80 @@ export const BehavioralPillarsCard: React.FC<BehavioralPillarsCardProps> = ({
             </div>
           </div>
 
-          {/* Horizontal bars */}
-          <div className="flex flex-col gap-2">
-            {chartData.map((d, i) => {
-              const barColor = BAR_PALETTE[i % BAR_PALETTE.length];
-              return (
-                <div key={i} className="flex flex-col gap-0.5">
-                  <div className="flex items-center justify-between gap-2 text-[11px]">
-                    {/* Left: color dot + name — grows to fill available space */}
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.type === 'core' ? 'bg-amber-400' : 'bg-purple-400'}`} />
-                      <span className="font-medium text-text-1 truncate" title={d.fullName}>
+          {/* Bullet Chart Horizontal layout */}
+          <div className="flex flex-col mt-2">
+            {/* Table Header */}
+            <div className="flex items-center justify-between text-[9px] font-bold text-text-3 border-b border-border/50 pb-1.5 mb-3 px-1">
+              <span className="w-[35%] uppercase">Skill Area</span>
+              <div className="flex-1 flex justify-between relative px-2">
+                <span>0</span>
+                <span>25</span>
+                <span>50</span>
+                <span>75</span>
+                <span>100</span>
+              </div>
+              <span className="w-12 text-right uppercase">Gap</span>
+            </div>
+
+            {/* Rows */}
+            <div className="flex flex-col gap-3">
+              {chartData.map((d, i) => {
+                const barColor = BAR_PALETTE[i % BAR_PALETTE.length];
+                const gap = d.score - d.benchmark;
+                return (
+                  <div key={i} className="flex items-center justify-between gap-2 group">
+                    {/* Left: Domain Name & Subtitle */}
+                    <div className="w-[35%] flex flex-col justify-center min-w-0 pr-2">
+                      <span className="font-bold text-text-1 text-[11px] truncate group-hover:text-blue-400 transition-colors" title={d.fullName}>
                         {d.fullName}
                       </span>
+                      <span className="text-[9px] text-text-3 truncate mt-0.5">
+                        {d.score}% achieved / {d.benchmark}% required
+                      </span>
                     </div>
-                    {/* Right: score% / benchmark% · level — uniform text-[10px] matching Technical & CEFR cards */}
-                    <div className="flex items-center gap-0.5 shrink-0 font-mono text-[10px] tabular-nums whitespace-nowrap text-text-2">
-                      <strong className="text-text-1">{d.score}%</strong>
-                      <span className="text-text-3 mx-0.5">/</span>
-                      <span>{d.benchmark}%</span>
-                      <span className="text-text-3 ml-1">{d.assessedCode}</span>
-                      {d.isAssessed && (
-                        <span className={`ml-0.5 font-bold ${d.score >= d.benchmark ? 'text-emerald-500' : 'text-red-400'}`}>
-                          {d.score >= d.benchmark ? '✓' : '▲'}
-                        </span>
-                      )}
+
+                    {/* Middle: Bullet Chart Track */}
+                    <div className="flex-1 relative h-6 flex items-center">
+                      {/* Background horizontal line */}
+                      <div className="absolute left-2 right-2 h-[1px] bg-border z-0"></div>
+                      
+                      {/* Vertical Grid Ticks */}
+                      <div className="absolute inset-0 flex justify-between items-center px-2 z-0 pointer-events-none">
+                        <div className="h-2.5 w-px bg-border"></div>
+                        <div className="h-2.5 w-px bg-border"></div>
+                        <div className="h-2.5 w-px bg-border"></div>
+                        <div className="h-2.5 w-px bg-border"></div>
+                        <div className="h-2.5 w-px bg-border"></div>
+                      </div>
+                      
+                      {/* Padding wrapper to ensure fill/markers align with the 0-100 ticks */}
+                      <div className="absolute inset-0 px-2 flex items-center z-10">
+                        <div className="w-full relative h-full flex items-center">
+                          {/* Achieved Fill */}
+                          <div 
+                            className="absolute left-0 h-1.5 rounded-full shadow-sm transition-all duration-700"
+                            style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
+                          ></div>
+
+                          {/* Required Marker (thick vertical line) */}
+                          <div 
+                            className="absolute w-[3px] h-3.5 bg-text-1 rounded-sm -translate-x-1/2 shadow-sm z-20"
+                            style={{ left: `${d.benchmark}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Gap Badge */}
+                    <div className="w-12 flex justify-end shrink-0 pl-2">
+                      <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${gap >= 0 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/15 text-red-600 dark:text-red-400'}`}>
+                        {gap > 0 ? `+${gap}%` : `${gap}%`}
+                      </span>
                     </div>
                   </div>
-                  <div className="relative h-3 rounded-full bg-surface-2 border border-border shadow-inner overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-700 relative overflow-hidden"
-                      style={{ 
-                        width: `${Math.min(d.score, 100)}%`, 
-                        background: barColor,
-                        boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3), inset 0 -1px 2px rgba(0,0,0,0.25)'
-                      }}
-                    >
-                      <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent rounded-t-full" />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
 
