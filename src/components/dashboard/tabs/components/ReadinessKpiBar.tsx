@@ -75,7 +75,7 @@ export const ReadinessKpiBar: React.FC<ReadinessKpiBarProps> = ({
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
 
       {/* KPI 1 — Overall Promotion Readiness */}
-      <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-border bg-surface shadow-sm dark:shadow-lg backdrop-blur-xl flex flex-col gap-1.5 group hover:border-accent/40 transition-colors">
+      <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-slate-200/80 dark:border-white/10 bg-gradient-to-b from-white to-slate-50/50 dark:from-surface dark:to-surface-2 shadow-[0_8px_20px_-6px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.4)] ring-1 ring-inset ring-white/60 dark:ring-white/5 backdrop-blur-xl flex flex-col gap-1.5 group hover:border-accent/40 transition-all duration-300 hover:-translate-y-0.5">
         <div className="absolute -top-4 -right-4 w-14 h-14 rounded-full bg-accent/10 blur-xl group-hover:bg-accent/20 transition-colors" />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
@@ -102,7 +102,7 @@ export const ReadinessKpiBar: React.FC<ReadinessKpiBarProps> = ({
       </div>
 
       {/* KPI 2 — Technical Score vs Required */}
-      <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-border bg-surface shadow-sm dark:shadow-lg backdrop-blur-xl flex flex-col gap-1.5 group hover:border-indigo-500/40 transition-colors">
+      <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-slate-200/80 dark:border-white/10 bg-gradient-to-b from-white to-slate-50/50 dark:from-surface dark:to-surface-2 shadow-[0_8px_20px_-6px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.4)] ring-1 ring-inset ring-white/60 dark:ring-white/5 backdrop-blur-xl flex flex-col gap-1.5 group hover:border-indigo-500/40 transition-all duration-300 hover:-translate-y-0.5">
         <div className="absolute -top-4 -right-4 w-14 h-14 rounded-full bg-indigo-500/10 blur-xl group-hover:bg-indigo-500/20 transition-colors" />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
@@ -134,7 +134,7 @@ export const ReadinessKpiBar: React.FC<ReadinessKpiBarProps> = ({
       </div>
 
       {/* KPI 3 — CEFR Communication */}
-      <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-border bg-surface shadow-sm dark:shadow-lg backdrop-blur-xl flex flex-col gap-1.5 group hover:border-cyan-500/40 transition-colors">
+      <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-slate-200/80 dark:border-white/10 bg-gradient-to-b from-white to-slate-50/50 dark:from-surface dark:to-surface-2 shadow-[0_8px_20px_-6px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.4)] ring-1 ring-inset ring-white/60 dark:ring-white/5 backdrop-blur-xl flex flex-col gap-1.5 group hover:border-cyan-500/40 transition-all duration-300 hover:-translate-y-0.5">
         <div className="absolute -top-4 -right-4 w-14 h-14 rounded-full bg-cyan-500/10 blur-xl group-hover:bg-cyan-500/20 transition-colors" />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
@@ -161,7 +161,7 @@ export const ReadinessKpiBar: React.FC<ReadinessKpiBarProps> = ({
       </div>
 
       {/* KPI 4 — Behavioral Level */}
-      <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-border bg-surface shadow-sm dark:shadow-lg backdrop-blur-xl flex flex-col gap-1.5 group hover:border-amber-500/40 transition-colors">
+      <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-slate-200/80 dark:border-white/10 bg-gradient-to-b from-white to-slate-50/50 dark:from-surface dark:to-surface-2 shadow-[0_8px_20px_-6px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.4)] ring-1 ring-inset ring-white/60 dark:ring-white/5 backdrop-blur-xl flex flex-col gap-1.5 group hover:border-amber-500/40 transition-all duration-300 hover:-translate-y-0.5">
         <div className="absolute -top-4 -right-4 w-14 h-14 rounded-full bg-amber-500/10 blur-xl group-hover:bg-amber-500/20 transition-colors" />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
@@ -188,7 +188,7 @@ export const ReadinessKpiBar: React.FC<ReadinessKpiBarProps> = ({
       </div>
 
       {/* KPI 5 — Skills Gate Count */}
-      <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-border bg-surface shadow-sm dark:shadow-lg backdrop-blur-xl flex flex-col gap-1.5 group hover:border-accent/40 transition-colors">
+      <div className="relative overflow-hidden rounded-2xl px-3.5 py-3 border border-slate-200/80 dark:border-white/10 bg-gradient-to-b from-white to-slate-50/50 dark:from-surface dark:to-surface-2 shadow-[0_8px_20px_-6px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.4)] ring-1 ring-inset ring-white/60 dark:ring-white/5 backdrop-blur-xl flex flex-col gap-1.5 group hover:border-accent/40 transition-all duration-300 hover:-translate-y-0.5">
         <div className="absolute -top-4 -right-4 w-14 h-14 rounded-full bg-accent/10 blur-xl group-hover:bg-accent/20 transition-colors" />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
