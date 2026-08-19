@@ -116,7 +116,7 @@ export const BehavioralPillarsCard: React.FC<BehavioralPillarsCardProps> = ({
         {/* Left Column: Bars */}
         <div className="flex flex-col gap-4 md:col-span-7">
           {/* Donut summary */}
-          <div className="flex items-center gap-3 bg-surface-2 p-2.5 rounded-xl border border-border">
+          <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50/50 to-slate-50/50 dark:from-blue-900/10 dark:to-slate-800/20 p-2.5 rounded-xl border border-blue-100 dark:border-blue-900/30 shadow-sm">
             <div className="relative w-14 h-14 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -148,7 +148,7 @@ export const BehavioralPillarsCard: React.FC<BehavioralPillarsCardProps> = ({
           <div className="flex flex-col mt-2">
             {/* Table Header */}
             <div className="flex items-center justify-between text-[9px] font-bold text-text-3 border-b border-border/50 pb-1.5 mb-3 px-1">
-              <span className="w-[35%] uppercase">Skill Area</span>
+              <span className="w-[28%] uppercase">Skill Area</span>
               <div className="flex-1 flex justify-between relative px-2">
                 <span>0</span>
                 <span>25</span>
@@ -167,7 +167,7 @@ export const BehavioralPillarsCard: React.FC<BehavioralPillarsCardProps> = ({
                 return (
                   <div key={i} className="flex items-center justify-between gap-2 group">
                     {/* Left: Domain Name & Subtitle */}
-                    <div className="w-[35%] flex flex-col justify-center min-w-0 pr-2">
+                    <div className="w-[28%] flex flex-col justify-center min-w-0 pr-1">
                       <span className="font-bold text-text-1 text-[11px] truncate group-hover:text-blue-400 transition-colors" title={d.fullName}>
                         {d.fullName}
                       </span>
@@ -195,13 +195,13 @@ export const BehavioralPillarsCard: React.FC<BehavioralPillarsCardProps> = ({
                         <div className="w-full relative h-full flex items-center">
                           {/* Achieved Fill */}
                           <div 
-                            className="absolute left-0 h-2.5 rounded-full shadow-sm transition-all duration-700"
+                            className="absolute left-0 h-3.5 rounded-full shadow-sm transition-all duration-700"
                             style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
                           ></div>
 
                           {/* Required Marker (thick vertical line) */}
                           <div 
-                            className="absolute w-[3px] h-5 bg-text-1 rounded-sm -translate-x-1/2 shadow-sm z-20"
+                            className="absolute w-[3px] h-6 bg-text-1 rounded-sm -translate-x-1/2 shadow-sm z-20"
                             style={{ left: `${d.benchmark}%` }}
                           ></div>
                         </div>
