@@ -13,6 +13,7 @@ import {
   Target,
   CheckCircle2,
 } from 'lucide-react';
+import { clampPct } from '@/lib/formatters';
 import { type User } from '@/store/authStore';
 import {
   useAiDashboard,
@@ -967,7 +968,7 @@ export const AIInsightsTab: React.FC<AIInsightsTabProps> = ({ user, onNavigate }
                   <div
                     className="h-full rounded-full"
                     style={{
-                      width: `${Math.min(100, Number.parseInt(String(kpi.value), 10) || 18)}%`,
+                      width: `${clampPct(Number.parseInt(String(kpi.value), 10) || 18)}%`,
                       backgroundColor: kpi.color,
                     }}
                   />

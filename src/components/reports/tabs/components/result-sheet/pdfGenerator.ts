@@ -1,4 +1,4 @@
-import { toPct } from '@/lib/formatters';
+import { toPct, clampPct } from '@/lib/formatters';
 
 const esc = (value: string) =>
   value
@@ -51,7 +51,7 @@ export const generateResultSheetPdf = (data: {
         .map(d => `
           <div class="bar-row">
             <div class="bar-head"><span>${esc(d.domain)}</span><span>${d.score}%</span></div>
-            <div class="bar-track"><div class="bar-fill domain" style="width:${Math.min(100, d.score)}%"></div></div>
+            <div class="bar-track"><div class="bar-fill domain" style="width:${clampPct(d.score)}%"></div></div>
           </div>
         `)
         .join('')
@@ -65,7 +65,7 @@ export const generateResultSheetPdf = (data: {
           return `
             <div class="bar-row">
               <div class="bar-head"><span>${esc(g.competency_name)}</span><span>${gapPct}% gap</span></div>
-              <div class="bar-track"><div class="bar-fill gap" style="width:${Math.min(100, gapPct)}%"></div></div>
+              <div class="bar-track"><div class="bar-fill gap" style="width:${clampPct(gapPct)}%"></div></div>
               <div class="bar-sub">${Math.round(g.score * 100)}% current vs ${Math.round(g.threshold * 100)}% target</div>
             </div>
           `;

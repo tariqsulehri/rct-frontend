@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '@/lib/api';
+import { clampPct } from '@/lib/formatters';
 import {
   Users,
   Award,
@@ -200,7 +201,7 @@ export const ExecutiveSummaryTab: React.FC<{ reportFilters?: ReportFilters }> = 
                         <div className="w-24 bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden relative">
                           <div
                             className="bg-indigo-600 h-full rounded-full"
-                            style={{ width: `${Math.min(100, dept.avgTechScore)}%` }}
+                            style={{ width: `${clampPct(dept.avgTechScore)}%` }}
                           />
                         </div>
                         <span className="font-bold text-slate-800 dark:text-slate-200">
@@ -213,7 +214,7 @@ export const ExecutiveSummaryTab: React.FC<{ reportFilters?: ReportFilters }> = 
                         <div className="w-24 bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
                           <div
                             className="bg-sky-500 h-full rounded-full"
-                            style={{ width: `${Math.min(100, dept.cefrReadyRate)}%` }}
+                            style={{ width: `${clampPct(dept.cefrReadyRate)}%` }}
                           />
                         </div>
                         <span className="font-bold text-slate-800 dark:text-slate-200">

@@ -1,4 +1,5 @@
 import React from 'react';
+import { clampPct } from '@/lib/formatters';
 
 interface ActionableGapsTableProps {
   gapChartData: { fullSkill: string; score: number; target: number; gap: number }[];
@@ -40,14 +41,13 @@ export const ActionableGapsTable: React.FC<ActionableGapsTableProps> = ({ gapCha
 
               {/* Dual Track Bar */}
               <div className="relative w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                {/* Target Indicator Fill */}
                 <div
                   className="absolute top-0 bottom-0 left-0 bg-indigo-200 dark:bg-indigo-900/60 rounded-full"
-                  style={{ width: `${Math.min(100, g.target)}%` }}
+                  style={{ width: `${clampPct(g.target)}%` }}
                 />
                 <div
                   className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-amber-500 to-orange-400 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, g.score)}%` }}
+                  style={{ width: `${clampPct(g.score)}%` }}
                 />
               </div>
             </div>

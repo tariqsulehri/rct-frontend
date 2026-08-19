@@ -22,6 +22,15 @@ export function toPctNullable(val: number | null | undefined): number | null {
 }
 
 /**
+ * Safely clamps a percentage value between 0 and 100.
+ * Useful for CSS width properties to prevent overflow.
+ */
+export function clampPct(val: number): number {
+  if (isNaN(val)) return 0;
+  return Math.max(0, Math.min(100, val));
+}
+
+/**
  * Formats a raw score into a display string (e.g. "73%") with a fallback.
  */
 export function formatPct(val: number | null | undefined, fallback = 'N/A'): string {

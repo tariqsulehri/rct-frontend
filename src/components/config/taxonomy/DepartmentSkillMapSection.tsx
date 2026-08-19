@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { clampPct } from '@/lib/formatters';
 import { Save, Search } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { CategoryFilterSelect, SkillAreaFilterSelect } from '@/components/filters/TaxonomyFilterSelects';
@@ -416,7 +417,7 @@ export const CompetencyThresholdMatrix: React.FC = () => {
     }
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return;
-    const clamped = Math.max(0, Math.min(100, numeric));
+    const clamped = clampPct(numeric);
     setDraft((prev) => ({ ...prev, [`${competencyId}:${gradeId}`]: String(clamped) }));
   };
 

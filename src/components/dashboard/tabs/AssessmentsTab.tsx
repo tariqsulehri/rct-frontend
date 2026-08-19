@@ -16,7 +16,7 @@ import { useCompetencyScores, usePromotionReadiness, useGapMatrix } from '@/hook
 import { useLatestCommAssessment } from '@/hooks/useCommunication';
 import { useLatestBehavioralAssessment } from '@/hooks/useBehavioral';
 import { useChartTheme, getChartTooltipStyle } from '@/hooks/useChartTheme';
-import { toPct, formatGrade, formatEmployeeOption } from '@/lib/formatters';
+import { toPct, formatGrade, formatEmployeeOption, clampPct } from '@/lib/formatters';
 import { toast } from '@/lib/toast';
 import { hasPermission, isLeaderRole } from '@/types/rbac';
 import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
@@ -732,13 +732,13 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
                     ))}
                     <div
                       className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-full"
-                      style={{ width: `${Math.min(100, Math.max(0, d.score))}%`, backgroundColor: rowColor }}
+                      style={{ width: `${clampPct(d.score)}%`, backgroundColor: rowColor }}
                     />
                     {d.threshold > 0 && (
                       <div
                         className="absolute top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full"
                         style={{
-                          left: `calc(${Math.min(100, Math.max(0, d.threshold))}% - 1px)`,
+                          left: `calc(${clampPct(d.threshold)}% - 1px)`,
                           backgroundColor: c.warning,
                           boxShadow: '0 0 0 2px rgb(var(--surface-1))',
                         }}

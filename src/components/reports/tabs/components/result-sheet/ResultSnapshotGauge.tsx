@@ -1,4 +1,5 @@
 import React from 'react';
+import { clampPct } from '@/lib/formatters';
 
 interface ResultSnapshotGaugeProps {
   overallScorePct: number;
@@ -33,12 +34,12 @@ export const ResultSnapshotGauge: React.FC<ResultSnapshotGaugeProps> = ({
         <div className="relative w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all duration-500"
-            style={{ width: `${Math.min(100, overallScorePct)}%` }}
+            style={{ width: `${clampPct(overallScorePct)}%` }}
           />
           {thresholdPct !== null && (
             <div
               className="absolute top-0 bottom-0 w-0.5 bg-amber-500 z-10"
-              style={{ left: `${Math.min(100, thresholdPct)}%` }}
+              style={{ left: `${clampPct(thresholdPct)}%` }}
               title={`Target Required Score: ${thresholdPct}%`}
             />
           )}
@@ -65,7 +66,7 @@ export const ResultSnapshotGauge: React.FC<ResultSnapshotGaugeProps> = ({
         <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
-            style={{ width: `${Math.min(100, meetsCheckedPct)}%` }}
+            style={{ width: `${clampPct(meetsCheckedPct)}%` }}
           />
         </div>
       </div>

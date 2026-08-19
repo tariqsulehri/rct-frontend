@@ -1,4 +1,5 @@
 import React from 'react';
+import { clampPct } from '@/lib/formatters';
 
 interface SkillAreaScoresListProps {
   domainChartData: { fullDomain: string; score: number }[];
@@ -44,7 +45,7 @@ export const SkillAreaScoresList: React.FC<SkillAreaScoresListProps> = ({
                         ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
                         : 'bg-gradient-to-r from-indigo-500 to-sky-400'
                     }`}
-                    style={{ width: `${Math.min(100, d.score)}%` }}
+                    style={{ width: `${clampPct(d.score)}%` }}
                   />
                 </div>
               </div>
