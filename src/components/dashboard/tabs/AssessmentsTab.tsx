@@ -3,8 +3,6 @@ import { createPortal } from 'react-dom';
 import { RefreshCw, BarChart3, ListChecks, MessageSquareText, Award, Layers } from 'lucide-react';
 import { type User } from '@/store/authStore';
 import { useCompetencyScores, usePromotionReadiness, useGapMatrix } from '@/hooks/useReports';
-import { useLatestCommAssessment } from '@/hooks/useCommunication';
-import { useLatestBehavioralAssessment } from '@/hooks/useBehavioral';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { fractionToPct, roundPct, formatGrade, formatEmployeeOption } from '@/lib/formatters';
 import { toast } from '@/lib/toast';
@@ -22,8 +20,8 @@ import { IconBadge } from '@/components/ui/IconBadge';
 import { DomainProgressOverview } from './components/assessments/DomainProgressOverview';
 import { CompetencyFiltersBar } from './components/assessments/CompetencyFiltersBar';
 import { CompetencyTableView } from './components/assessments/CompetencyTableView';
-import { SkillAreaCoverageRadar } from './components/assessments/SkillAreaCoverageRadar';
-import { SkillAreaGapMap } from './components/assessments/SkillAreaGapMap';
+import { TriDimensionRadar } from './components/assessments/TriDimensionRadar';
+import { PriorityGapMatrix } from './components/assessments/PriorityGapMatrix';
 
 export interface AssessmentsTabProps {
   user: User | null;
@@ -67,38 +65,6 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   const myRow = rows.find((r) => r.emp_code === effectiveEmpCode);
   const promoRow = (promoData ?? []).find((r) => r.emp_code === effectiveEmpCode);
   const gapRow = (gapData?.employees ?? []).find((r) => r.emp_code === effectiveEmpCode);
-
-  const { data: _commAssessment } = useLatestCommAssessment(effectiveEmpCode);
-  const { data: _behavAssessment } = useLatestBehavioralAssessment(effectiveEmpCode);
-
-  const selectedListRow = rows.find((r) => r.emp_code === effectiveEmpCode);
-  const selectedToGrade = formatGrade(selectedListRow?.target_grade, selectedListRow?.target_grade_title);
-
-  const avgThreshold = roundPct(promoRow?.avg_threshold);
-
-  const domains = Array.from(
-    new Set([
-      ...Object.keys(myRow?.domain_scores ?? {}),
-      ...Object.keys(gapRow?.domain_gaps ?? {}),
-      ...(gapData?.domains ?? []),
-    ])
-  );
-
-  const radarData = domains.map((d, i) => {
-    const domGap = gapRow?.domain_gaps[d];
-    const score = fractionToPct(domGap?.score);
-    const threshold = domGap && domGap.threshold > 0 ? fractionToPct(domGap.threshold) : avgThreshold;
-    return {
-      domain: d.length > 14 ? d.slice(0, 14) + '…' : d,
-      fullDomain: d,
-      score,
-      threshold,
-      meets: threshold > 0 && score >= threshold,
-      fill: c.domains[i % c.domains.length],
-    };
-  });
-
-  const barData = [...radarData].sort((a, b) => b.score - a.score || a.fullDomain.localeCompare(b.fullDomain));
 
   const competencyRows = (gapData?.competencies ?? [])
     .map((comp) => {
@@ -370,16 +336,26 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
             behavioralReady={true}
             currentGrade={formatGrade(myRow?.current_grade, myRow?.current_grade_title)}
             targetGrade={formatGrade(myRow?.target_grade, myRow?.target_grade_title)}
+            technicalScore={roundPct(promoRow?.overall_score ?? 45)}
+            commBand={promoRow?.is_cefr_gated ? 'B1' : 'C1'}
+            targetCommBand="C1"
           />
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <SkillAreaCoverageRadar
-              radarData={radarData}
-              avgThreshold={avgThreshold}
+            <TriDimensionRadar
+              techScore={roundPct(promoRow?.overall_score ?? 45)}
+              commScore={promoRow?.is_cefr_gated ? 50 : 85}
+              behavioralScore={80}
+              techTarget={roundPct(promoRow?.avg_threshold ?? 100)}
+              commTarget={83}
+              behavioralTarget={80}
               chartTheme={c}
             />
-            <SkillAreaGapMap
-              barData={barData}
-              targetLabel={selectedToGrade ? `Target Grade ${selectedToGrade}` : 'Selected Grade Target'}
+
+            <PriorityGapMatrix
+              topGaps={competencyRows
+                .filter((r) => r.hasRequirement && !r.meets)
+                .sort((a, b) => b.gap - a.gap || (b.isCritical ? 1 : 0) - (a.isCritical ? 1 : 0))}
               chartTheme={c}
             />
           </div>

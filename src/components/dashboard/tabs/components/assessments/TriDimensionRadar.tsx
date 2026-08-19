@@ -1,0 +1,152 @@
+import React from 'react';
+import {
+  ResponsiveContainer,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  Tooltip,
+} from 'recharts';
+import { Compass } from 'lucide-react';
+import { InfoTip } from '@/components/ui/InfoTip';
+import { IconBadge } from '@/components/ui/IconBadge';
+
+export interface TriDimensionRadarProps {
+  techScore?: number;
+  commScore?: number;
+  behavioralScore?: number;
+  techTarget?: number;
+  commTarget?: number;
+  behavioralTarget?: number;
+  chartTheme: any;
+}
+
+export const TriDimensionRadar: React.FC<TriDimensionRadarProps> = ({
+  techScore = 45,
+  commScore = 50,
+  behavioralScore = 80,
+  techTarget = 100,
+  commTarget = 83,
+  behavioralTarget = 80,
+  chartTheme: _c,
+}) => {
+  const data = [
+    {
+      pillar: 'Technical Index',
+      achieved: techScore,
+      target: techTarget,
+    },
+    {
+      pillar: 'CEFR Communication',
+      achieved: commScore,
+      target: commTarget,
+    },
+    {
+      pillar: 'Behavioral Engine',
+      achieved: behavioralScore,
+      target: behavioralTarget,
+    },
+  ];
+
+  return (
+    <div
+      className="card p-5 space-y-4 flex flex-col justify-between"
+      style={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))' }}
+    >
+      {/* Card Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <IconBadge icon={<Compass size={14} />} color="accent" size="sm" />
+            <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'rgb(var(--text-1))' }}>
+              3-Pillar Symmetry Radar
+            </h3>
+            <InfoTip text="Normalized multi-dimensional balance chart comparing Technical, CEFR Communication, and Behavioral pillars against target requirements." />
+          </div>
+          <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-3))' }}>
+            Cross-dimensional balance analysis.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 text-xs font-bold shrink-0">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'rgb(var(--accent))' }} />
+            <span style={{ color: 'rgb(var(--text-2))' }}>Achieved</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-transparent" />
+            <span style={{ color: 'rgb(var(--text-2))' }}>Target</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Radar Chart */}
+      <div className="h-[280px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart data={data} outerRadius="75%">
+            <PolarGrid stroke="rgb(var(--border))" strokeDasharray="3 3" />
+            <PolarAngleAxis
+              dataKey="pillar"
+              tick={({ x, y, payload }) => (
+                <text
+                  x={x}
+                  y={y}
+                  textAnchor="middle"
+                  fill="rgb(var(--text-1))"
+                  fontSize={11}
+                  fontWeight={700}
+                >
+                  {payload.value}
+                </text>
+              )}
+            />
+            <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="rgb(var(--text-3))" fontSize={9} />
+
+            {/* Target Area Overlay */}
+            <Radar
+              name="Required Target"
+              dataKey="target"
+              stroke="#fbbf24"
+              fill="#fbbf24"
+              fillOpacity={0.1}
+              strokeWidth={2}
+              strokeDasharray="4 4"
+            />
+
+            {/* Achieved Area */}
+            <Radar
+              name="Candidate Score"
+              dataKey="achieved"
+              stroke="rgb(var(--accent))"
+              fill="rgb(var(--accent))"
+              fillOpacity={0.4}
+              strokeWidth={2.5}
+            />
+
+            <Tooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0].payload;
+                return (
+                  <div
+                    className="p-3 rounded-xl border shadow-lg text-xs space-y-1"
+                    style={{
+                      backgroundColor: 'rgb(var(--surface-2))',
+                      borderColor: 'rgb(var(--border))',
+                      color: 'rgb(var(--text-1))',
+                    }}
+                  >
+                    <p className="font-extrabold text-sm text-indigo-400">{d.pillar}</p>
+                    <p>Achieved Score: <strong className="text-emerald-400">{d.achieved}%</strong></p>
+                    <p>Required Target: <strong className="text-amber-400">{d.target}%</strong></p>
+                  </div>
+                );
+              }}
+            />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
