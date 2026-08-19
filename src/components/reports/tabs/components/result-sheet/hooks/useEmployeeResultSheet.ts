@@ -1,9 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useGapAnalysis, usePromotionReadiness, useCompetencyScores } from '@/hooks/useReports';
-import { useLatestCommAssessment, useCommConfig } from '@/hooks/useCommunication';
-import { useLatestBehavioralAssessment, useBehavioralConfig } from '@/hooks/useBehavioral';
-import { fractionToPct, roundPct, calculateReadinessScore } from '@/lib/formatters';
-import { getCommWeightPct, getBehavWeightPct, mapScoreToBehavCode } from '@/lib/assessmentHelpers';
+import { useEmployeeReadinessMetrics } from '@/hooks/useEmployeeReadinessMetrics';
+import { fractionToPct } from '@/lib/formatters';
 import type { ReportFilters } from '@/components/reports/reportFilters';
 import type { GapResult } from '@/components/reports/shared';
 
@@ -13,10 +11,6 @@ export const useEmployeeResultSheet = (reportFilters: ReportFilters) => {
   const { data: gapData, isLoading: gapLoading, isError: gapError } = useGapAnalysis(selectedId);
   const { data: promoData, isLoading: promoLoading } = usePromotionReadiness();
   const { data: compData, isLoading: compLoading } = useCompetencyScores();
-  const { data: commData } = useLatestCommAssessment(selectedId);
-  const { data: commConfig } = useCommConfig();
-  const { data: behavData } = useLatestBehavioralAssessment(selectedId);
-  const { data: behavConfig } = useBehavioralConfig();
 
   const personOptions = useMemo(() => {
     const people = new Map<string, { emp_code: string; full_name: string; department?: string; current_grade?: string; target_grade?: string }>();
@@ -77,37 +71,22 @@ export const useEmployeeResultSheet = (reportFilters: ReportFilters) => {
   }, [compLoading, personOptions, promoLoading, selectedId]);
 
   const gapResult = gapData as GapResult | undefined;
-  const promoRow = (promoData ?? []).find(r => r.emp_code === selectedId);
-  const compRow = (compData ?? []).find(r => r.emp_code === selectedId);
+  const promoRow = (promoData ?? []).find(r => String(r.emp_code) === String(selectedId));
+  const compRow = (compData ?? []).find(r => String(r.emp_code) === String(selectedId));
 
-  // Technical
-  const isTechReady = Boolean(promoRow?.promotion_ready);
-  const techScore = promoRow?.overall_score ?? gapResult?.overall_score ?? 0;
-  const techReq = promoRow?.avg_threshold ?? 1;
+  const metrics = useEmployeeReadinessMetrics(selectedId);
 
-  // Communication (CEFR)
-  const cefrDefaultLevel = commConfig?.policy?.defaultLevelIfEmpty ?? 'A1';
-  const commLevel = commData?.evaluation?.overallCefr ?? commData?.overallCefr ?? cefrDefaultLevel;
-  const commExpected = commData?.evaluation?.expectedCefr ?? cefrDefaultLevel;
-  const commScorePct = fractionToPct(commData?.evaluation?.overallScore) || getCommWeightPct(commLevel, commConfig);
-  const commReqPct = fractionToPct(commData?.evaluation?.expectedScore) || getCommWeightPct(commExpected, commConfig);
-  const isCommReady = commScorePct >= commReqPct && commScorePct > 0;
+  const isTechReady = metrics.isTechReady;
+  const techScore = metrics.techScore;
+  const techReq = metrics.techTarget;
 
-  // Behavioral
-  const behavLevel = behavData?.result?.overallProficiency ?? behavConfig?.levels?.[0]?.code ?? 'L1';
-  const behavBenchmark = behavData?.result?.overallExpectedCw != null
-    ? mapScoreToBehavCode(behavData.result.overallExpectedCw, behavConfig) || 'L1'
-    : 'L1';
-  const behavScorePct = roundPct(behavData?.result?.overallCw) || getBehavWeightPct(behavLevel, behavConfig);
-  const behavReqPct = roundPct(behavData?.result?.overallExpectedCw) || getBehavWeightPct(behavBenchmark, behavConfig);
-  const isBehavReady = behavScorePct >= behavReqPct && behavScorePct > 0;
+  const commLevel = metrics.commLevel;
+  const commExpected = metrics.commTargetLevel;
+  const isCommReady = metrics.isCommReady;
 
-  // Final Readiness Score
-  const readinessScore = calculateReadinessScore(
-    fractionToPct(techScore), fractionToPct(techReq),
-    commScorePct, commReqPct,
-    behavScorePct, behavReqPct
-  );
+  const isBehavReady = metrics.isBehavReady;
+
+  const readinessScore = metrics.overallReadinessScore;
 
   let combinedStatusText = 'NOT READY';
   let combinedBadgeStyle = { backgroundColor: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)' };

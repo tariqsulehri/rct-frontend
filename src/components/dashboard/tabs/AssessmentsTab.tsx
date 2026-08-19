@@ -3,11 +3,9 @@ import { createPortal } from 'react-dom';
 import { RefreshCw, BarChart3, ListChecks, MessageSquareText, Award, Layers } from 'lucide-react';
 import { type User } from '@/store/authStore';
 import { useCompetencyScores, usePromotionReadiness, useGapMatrix } from '@/hooks/useReports';
-import { useLatestCommAssessment, useCommConfig } from '@/hooks/useCommunication';
-import { useLatestBehavioralAssessment, useBehavioralConfig } from '@/hooks/useBehavioral';
+import { useEmployeeReadinessMetrics } from '@/hooks/useEmployeeReadinessMetrics';
 import { useChartTheme } from '@/hooks/useChartTheme';
-import { fractionToPct, roundPct, formatGrade, formatEmployeeOption } from '@/lib/formatters';
-import { getCommWeightPct, getBehavWeightPct } from '@/lib/assessmentHelpers';
+import { fractionToPct, formatGrade, formatEmployeeOption } from '@/lib/formatters';
 import { toast } from '@/lib/toast';
 import { hasPermission, isLeaderRole } from '@/types/rbac';
 import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
@@ -69,21 +67,8 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   const promoRow = (promoData ?? []).find((r) => String(r.emp_code) === String(effectiveEmpCode));
   const gapRow = (gapData?.employees ?? []).find((r) => String(r.emp_code) === String(effectiveEmpCode));
 
-  const { data: commAss } = useLatestCommAssessment(effectiveEmpCode);
-  const { data: commConfig } = useCommConfig();
-  const { data: behavAss } = useLatestBehavioralAssessment(effectiveEmpCode);
-  const { data: behavConfig } = useBehavioralConfig();
-
-  // Dynamic Communication (CEFR) score & target
-  const commLevel = commAss?.evaluation?.overallCefr ?? commAss?.overallCefr ?? (promoRow?.cefr_level || 'A1');
-  const commTargetLevel = commAss?.evaluation?.expectedCefr ?? 'C1';
-  const commScorePct = fractionToPct(commAss?.evaluation?.overallScore) || getCommWeightPct(commLevel, commConfig);
-  const commTargetPct = fractionToPct(commAss?.evaluation?.expectedScore) || getCommWeightPct(commTargetLevel, commConfig);
-
-  // Dynamic Behavioral Engine score & target
-  const behavLevel = behavAss?.result?.overallProficiency ?? 'L1';
-  const behavScorePct = roundPct(behavAss?.result?.overallCw) || getBehavWeightPct(behavLevel, behavConfig);
-  const behavTargetPct = roundPct(behavAss?.result?.overallExpectedCw) || 80;
+  // Single Source of Truth 3-Pillar Readiness Metrics Hook
+  const metrics = useEmployeeReadinessMetrics(effectiveEmpCode);
 
   const competencyRows = (gapData?.competencies ?? [])
     .map((comp) => {
@@ -350,24 +335,26 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
       {activeSubTab === 'overview' && (
         <>
           <TriDimensionReadinessCard
-            technicalReady={promoRow?.promotion_ready}
-            communicationReady={commAss ? commScorePct >= commTargetPct : (promoRow ? !promoRow.is_cefr_gated : false)}
-            behavioralReady={behavAss ? behavScorePct >= behavTargetPct : true}
+            technicalReady={metrics.isTechReady}
+            communicationReady={metrics.isCommReady}
+            behavioralReady={metrics.isBehavReady}
             currentGrade={formatGrade(myRow?.current_grade, myRow?.current_grade_title)}
             targetGrade={formatGrade(myRow?.target_grade, myRow?.target_grade_title)}
-            technicalScore={fractionToPct(promoRow?.overall_score)}
-            commBand={commLevel}
-            targetCommBand={commTargetLevel}
+            technicalScore={metrics.techScore}
+            commBand={metrics.commLevel}
+            targetCommBand={metrics.commTargetLevel}
+            behavLevel={metrics.behavLevel}
+            targetBehavLevel={metrics.behavTargetLevel}
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <TriDimensionRadar
-              techScore={fractionToPct(promoRow?.overall_score)}
-              commScore={commScorePct}
-              behavioralScore={behavScorePct}
-              techTarget={fractionToPct(promoRow?.avg_threshold ?? 1)}
-              commTarget={commTargetPct}
-              behavioralTarget={behavTargetPct}
+              techScore={metrics.techScore}
+              commScore={metrics.commScorePct}
+              behavioralScore={metrics.behavScorePct}
+              techTarget={metrics.techTarget}
+              commTarget={metrics.commReqPct}
+              behavioralTarget={metrics.behavReqPct}
               chartTheme={c}
             />
 

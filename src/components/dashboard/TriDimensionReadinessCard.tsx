@@ -11,6 +11,8 @@ export interface TriDimensionReadinessCardProps {
   technicalScore?: number;
   commBand?: string;
   targetCommBand?: string;
+  behavLevel?: string;
+  targetBehavLevel?: string;
 }
 
 export const TriDimensionReadinessCard: React.FC<TriDimensionReadinessCardProps> = ({
@@ -22,6 +24,8 @@ export const TriDimensionReadinessCard: React.FC<TriDimensionReadinessCardProps>
   technicalScore = 0,
   commBand = 'N/A',
   targetCommBand = 'N/A',
+  behavLevel = 'L1',
+  targetBehavLevel = 'L1',
 }) => {
   const isOverallReady =
     technicalReady === true && communicationReady === true && behavioralReady === true;
@@ -216,7 +220,7 @@ export const TriDimensionReadinessCard: React.FC<TriDimensionReadinessCardProps>
               )}
             </div>
             <span className="text-xs font-bold" style={{ color: 'rgb(var(--text-2))' }}>
-              Level L3
+              {behavLevel} / {targetBehavLevel} req
             </span>
           </div>
 
