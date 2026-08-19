@@ -227,7 +227,7 @@ export const CefrLanguageCard: React.FC<CefrLanguageCardProps> = ({
                   const adjustedY = y + dy;
 
                   const words = payload.value.split(' ');
-                  let lines = [];
+                  const lines = [];
                   if (words.length > 2) {
                     const mid = Math.ceil(words.length / 2);
                     lines.push(words.slice(0, mid).join(' '));
