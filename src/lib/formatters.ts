@@ -6,7 +6,7 @@
 
 /**
  * Normalizes a score value to a 0–100 percentage integer (always returns 0..100).
- * Handles both decimal fraction scale (0.0 to 1.0) and pre-scaled percentage scale (0.0 to 100.0).
+ * @deprecated Use `fractionToPct` (for 0-1 scale) or `roundPct` (for 0-100 scale) instead.
  */
 export function toPct(val: number | null | undefined): number {
   if (val == null || isNaN(val)) return 0;
@@ -15,10 +15,27 @@ export function toPct(val: number | null | undefined): number {
 
 /**
  * Normalizes a score value to a 0–100 percentage integer or null if value is empty/invalid.
+ * @deprecated Use `fractionToPct` or `roundPct` instead.
  */
 export function toPctNullable(val: number | null | undefined): number | null {
   if (val == null || isNaN(val)) return null;
   return Math.round(val > 1 ? val : val * 100);
+}
+
+/**
+ * Explicitly converts a decimal fraction (e.g., 0.8) into a percentage (80).
+ */
+export function fractionToPct(val: number | null | undefined, maxScale: number = 1): number {
+  if (val == null || isNaN(val)) return 0;
+  return Math.round((val / maxScale) * 100);
+}
+
+/**
+ * Explicitly rounds a pre-scaled percentage (e.g., 80.5) to an integer (81).
+ */
+export function roundPct(val: number | null | undefined): number {
+  if (val == null || isNaN(val)) return 0;
+  return Math.round(val);
 }
 
 /**
@@ -72,17 +89,18 @@ export function getReadinessStatus(ready?: boolean): { label: string; badgeClass
 }
 
 /**
- * Calculates the final normalized readiness percentage using the 40/30/30 weighting rule.
- * 40% Technical, 30% Communication, 30% Behavioral.
+ * Calculates the final normalized readiness percentage using configured weights.
+ * Defaults to 50% Technical, 30% Communication, 20% Behavioral (from backend schema).
  * Validates inputs and clamps the max value to 100.
  */
 export function calculateReadinessScore(
   techScore: number, techReq: number,
   commScorePct: number, commReqPct: number,
-  behavScorePct: number, behavReqPct: number
+  behavScorePct: number, behavReqPct: number,
+  weights = { tech: 50, comm: 30, behav: 20 }
 ): number {
-  const techFactor = techReq > 0 ? (techScore / techReq) * 40 : 0;
-  const commFactor = commReqPct > 0 ? (commScorePct / commReqPct) * 30 : 0;
-  const behavFactor = behavReqPct > 0 ? (behavScorePct / behavReqPct) * 30 : 0;
+  const techFactor = techReq > 0 ? (techScore / techReq) * weights.tech : 0;
+  const commFactor = commReqPct > 0 ? (commScorePct / commReqPct) * weights.comm : 0;
+  const behavFactor = behavReqPct > 0 ? (behavScorePct / behavReqPct) * weights.behav : 0;
   return Math.min(100, Math.round(techFactor + commFactor + behavFactor));
 }

@@ -61,6 +61,7 @@ export const ReadinessKpiBar: React.FC<ReadinessKpiBarProps> = ({
   commLevel,
   commBenchmark,
   commScorePct,
+  commReqPct,
   commReady,
   behavLevel,
   behavBenchmark,
@@ -157,7 +158,7 @@ export const ReadinessKpiBar: React.FC<ReadinessKpiBarProps> = ({
             style={{ width: `${commScorePct}%` }}
           />
         </div>
-        <span className="text-[9px] text-text-3">Score: {commScorePct}% · Benchmark: {commReady ? commScorePct : 0}%</span>
+        <span className="text-[9px] text-text-3">Score: {commScorePct}% · Benchmark: {commReqPct}%</span>
       </div>
 
       {/* KPI 4 — Behavioral Level */}

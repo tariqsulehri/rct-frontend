@@ -4,7 +4,7 @@ import { useGapMatrix } from '@/hooks/useReports';
 import { useLatestCommAssessment, useCommConfig } from '@/hooks/useCommunication';
 import { useLatestBehavioralAssessment, useBehavioralConfig } from '@/hooks/useBehavioral';
 import { useConfigSkillDomains, useAppraisalPeriods } from '@/hooks/useConfig';
-import { calculateReadinessScore, toPct, calculateTargetGrade } from '@/lib/formatters';
+import { calculateReadinessScore, fractionToPct, roundPct, calculateTargetGrade } from '@/lib/formatters';
 import {
   getCommWeightPct,
   getBehavWeightPct,
@@ -40,7 +40,7 @@ export interface ResourceOverviewDashboardProps {
  *
  * Utilities:
  *  - src/lib/assessmentHelpers.ts — getCommWeightPct, getBehavWeightPct, mapScoreToBehavCode
- *  - src/lib/formatters.ts        — toPct, calculateReadinessScore, formatGrade
+ *  - src/lib/formatters.ts        — fractionToPct, calculateReadinessScore, formatGrade
  */
 export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps> = ({
   user,
@@ -81,8 +81,8 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
 
     return Object.entries(domainGaps).map(([domain, val]) => ({
       fullLabel: domain,
-      score: toPct(val.score),
-      benchmark: toPct(val.threshold || 1),
+      score: fractionToPct(val.score),
+      benchmark: fractionToPct(val.threshold || 1),
     }));
   }, [gapMatrixData, globalDomains, user?.empCode]);
 
@@ -96,8 +96,8 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
       return { myScore: 0, myRequired: 0, myMeets: 0, myTotal: total, technicalReady: false };
     }
     
-    const avgScore = toPct(myEmp.overall_score);
-    const avgReq = toPct(myEmp.overall_threshold);
+    const avgScore = fractionToPct(myEmp.overall_score);
+    const avgReq = fractionToPct(myEmp.overall_threshold);
     const meets = myEmp.meets_count || 0;
 
     return { myScore: avgScore, myRequired: avgReq, myMeets: meets, myTotal: total, technicalReady: myEmp.promotion_ready };
@@ -116,9 +116,9 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
     || cefrDefaultLevel
     || 'A1';
 
-  // toPct handles null, undefined, NaN and both 0-1 / 0-100 scales — avoids manual Math.round(x * 100)
-  const commScorePct = toPct(commAss?.evaluation?.overallScore) || getCommWeightPct(commLevel, commConfig);
-  const commReqPct   = toPct(commAss?.evaluation?.expectedScore) || getCommWeightPct(commBenchmark, commConfig);
+  // fractionToPct safely handles 0-1 conversions to integer percentages
+  const commScorePct = fractionToPct(commAss?.evaluation?.overallScore) || getCommWeightPct(commLevel, commConfig);
+  const commReqPct   = fractionToPct(commAss?.evaluation?.expectedScore) || getCommWeightPct(commBenchmark, commConfig);
 
   const commReady = commScorePct >= commReqPct && commScorePct > 0;
 
@@ -150,9 +150,9 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
       : null
   ) || (behavConfig?.levels?.[0]?.code as BehavioralLevelCode) || 'L1';
 
-  // toPct is the SSOT for 0-1 → 0-100 conversion; avoids duplicated Math.round(x * 100)
-  const behavScorePct = toPct(behavAss?.result?.overallCw) || getBehavWeightPct(behavLevel, behavConfig);
-  const behavReqPct   = toPct(behavAss?.result?.overallExpectedCw) || getBehavWeightPct(behavBenchmark, behavConfig);
+  // SSOT for 0-100 -> 0-100 rounding
+  const behavScorePct = roundPct(behavAss?.result?.overallCw) || getBehavWeightPct(behavLevel, behavConfig);
+  const behavReqPct   = roundPct(behavAss?.result?.overallExpectedCw) || getBehavWeightPct(behavBenchmark, behavConfig);
 
   const behavReady = behavScorePct >= behavReqPct && behavScorePct > 0;
 

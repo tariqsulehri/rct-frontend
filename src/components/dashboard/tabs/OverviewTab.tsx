@@ -8,9 +8,9 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { type User } from '@/store/authStore';
-import { usePromotionReadiness, useCompetencyScores, useGapMatrix } from '@/hooks/useReports';
+import { usePromotionReadiness, useGapMatrix } from '@/hooks/useReports';
 import { hasPermission, isLeaderRole, type PermissionCode, type RoleCode } from '@/types/rbac';
-import { toPctNullable } from '@/lib/formatters';
+import { toPctNullable, fractionToPct } from '@/lib/formatters';
 import { InfoTip } from '../layout/InfoTip';
 import { TeamHealthCharts } from './TeamHealthCharts';
 import { ResourceOverviewDashboard } from './ResourceOverviewDashboard';
@@ -24,7 +24,7 @@ export interface OverviewTabProps {
 export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) => {
   const isLeader = isLeaderRole(user?.role);
   const { data: overviewPromoData } = usePromotionReadiness();
-  const { data: overviewCompData } = useCompetencyScores();
+
   const { data: overviewGapData } = useGapMatrix();
 
   // For individual resources / engineers, render the Pro-Level Resource Competence Dashboard
@@ -53,10 +53,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
   const needsAttention = leaderRows.filter((r) => !r.promotion_ready && r.total_competencies > 0).length;
   const leaderGap = leaderScore !== null && leaderRequired !== null ? leaderScore - leaderRequired : null;
 
-  const myCompRow = (overviewCompData ?? []).find((r) => r.emp_code === user?.empCode);
   const myGapRow = (overviewGapData?.employees ?? []).find((r) => r.emp_code === user?.empCode);
-  const myScore = myCompRow ? toPctNullable(myCompRow.overall_score) : null;
-  const myRequired = myGapRow && myGapRow.overall_threshold > 0 ? toPctNullable(myGapRow.overall_threshold) : null;
+  const myScore = myGapRow ? fractionToPct(myGapRow.overall_score) : null;
+  const myRequired = myGapRow && myGapRow.overall_threshold > 0 ? fractionToPct(myGapRow.overall_threshold) : null;
   const myTotal = myGapRow?.total_with_threshold ?? 0;
   const myMeets = myGapRow?.meets_count ?? 0;
   const myGap = myScore !== null && myRequired !== null ? myScore - myRequired : null;

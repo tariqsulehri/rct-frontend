@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useGapAnalysis, usePromotionReadiness, useCompetencyScores } from '@/hooks/useReports';
-import { useLatestCommAssessment } from '@/hooks/useCommunication';
-import { toPct, toPctNullable } from '@/lib/formatters';
+import { useLatestCommAssessment, useCommConfig } from '@/hooks/useCommunication';
+import { useLatestBehavioralAssessment, useBehavioralConfig } from '@/hooks/useBehavioral';
+import { fractionToPct, roundPct, calculateReadinessScore } from '@/lib/formatters';
+import { getCommWeightPct, getBehavWeightPct, mapScoreToBehavCode } from '@/lib/assessmentHelpers';
 import type { ReportFilters } from '@/components/reports/reportFilters';
 import type { GapResult } from '@/components/reports/shared';
 
@@ -12,6 +14,9 @@ export const useEmployeeResultSheet = (reportFilters: ReportFilters) => {
   const { data: promoData, isLoading: promoLoading } = usePromotionReadiness();
   const { data: compData, isLoading: compLoading } = useCompetencyScores();
   const { data: commData } = useLatestCommAssessment(selectedId);
+  const { data: commConfig } = useCommConfig();
+  const { data: behavData } = useLatestBehavioralAssessment(selectedId);
+  const { data: behavConfig } = useBehavioralConfig();
 
   const personOptions = useMemo(() => {
     const people = new Map<string, { emp_code: string; full_name: string; department?: string; current_grade?: string; target_grade?: string }>();
@@ -75,31 +80,55 @@ export const useEmployeeResultSheet = (reportFilters: ReportFilters) => {
   const promoRow = (promoData ?? []).find(r => r.emp_code === selectedId);
   const compRow = (compData ?? []).find(r => r.emp_code === selectedId);
 
+  // Technical
   const isTechReady = Boolean(promoRow?.promotion_ready);
-  const commLevel = commData?.evaluation?.overallCefr ?? (commData?.ratings?.length ? 'B2' : 'B1');
-  const commExpected = commData?.evaluation?.expectedCefr ?? 'B2';
-  const isCommReady = Boolean(
-    commData?.evaluation?.communicationReady ??
-    (commData?.status === 'approved' && commLevel >= commExpected)
+  const techScore = promoRow?.overall_score ?? gapResult?.overall_score ?? 0;
+  const techReq = promoRow?.avg_threshold ?? 1;
+
+  // Communication (CEFR)
+  const cefrDefaultLevel = commConfig?.policy?.defaultLevelIfEmpty ?? 'A1';
+  const commLevel = commData?.evaluation?.overallCefr ?? commData?.overallCefr ?? cefrDefaultLevel;
+  const commExpected = commData?.evaluation?.expectedCefr ?? cefrDefaultLevel;
+  const commScorePct = fractionToPct(commData?.evaluation?.overallScore) || getCommWeightPct(commLevel, commConfig);
+  const commReqPct = fractionToPct(commData?.evaluation?.expectedScore) || getCommWeightPct(commExpected, commConfig);
+  const isCommReady = commScorePct >= commReqPct && commScorePct > 0;
+
+  // Behavioral
+  const behavLevel = behavData?.result?.overallProficiency ?? behavConfig?.levels?.[0]?.code ?? 'L1';
+  const behavBenchmark = behavData?.result?.overallExpectedCw != null
+    ? mapScoreToBehavCode(behavData.result.overallExpectedCw, behavConfig) || 'L1'
+    : 'L1';
+  const behavScorePct = roundPct(behavData?.result?.overallCw) || getBehavWeightPct(behavLevel, behavConfig);
+  const behavReqPct = roundPct(behavData?.result?.overallExpectedCw) || getBehavWeightPct(behavBenchmark, behavConfig);
+  const isBehavReady = behavScorePct >= behavReqPct && behavScorePct > 0;
+
+  // Final Readiness Score
+  const readinessScore = calculateReadinessScore(
+    fractionToPct(techScore), fractionToPct(techReq),
+    commScorePct, commReqPct,
+    behavScorePct, behavReqPct
   );
 
   let combinedStatusText = 'NOT READY';
   let combinedBadgeStyle = { backgroundColor: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)' };
 
-  if (isTechReady && isCommReady) {
+  if (isTechReady && isCommReady && isBehavReady) {
     combinedStatusText = 'PROMOTION READY';
     combinedBadgeStyle = { backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.25)' };
-  } else if (isTechReady && !isCommReady) {
+  } else if (isTechReady && isBehavReady && !isCommReady) {
     combinedStatusText = 'CEFR GATED';
     combinedBadgeStyle = { backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.25)' };
-  } else if (!isTechReady && isCommReady) {
+  } else if (isTechReady && isCommReady && !isBehavReady) {
+    combinedStatusText = 'BEHAVIORAL GAP';
+    combinedBadgeStyle = { backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.25)' };
+  } else if (!isTechReady) {
     combinedStatusText = 'TECH GAP';
     combinedBadgeStyle = { backgroundColor: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)' };
   }
 
   const domainRows = Object.entries(compRow?.domain_scores ?? {})
     .filter(([domain]) => reportFilters.skillArea === 'all' || domain === reportFilters.skillArea)
-    .map(([domain, score]) => ({ domain, score: Math.round(score * 100) }))
+    .map(([domain, score]) => ({ domain, score: fractionToPct(score) }))
     .sort((a, b) => b.score - a.score);
 
   const visibleGaps = (gapResult?.gaps ?? [])
@@ -109,13 +138,13 @@ export const useEmployeeResultSheet = (reportFilters: ReportFilters) => {
     .filter((g: any) => g.gap > 0)
     .sort((a: any, b: any) => b.gap - a.gap);
 
-  const overallScorePct = toPct(promoRow?.overall_score ?? gapResult?.overall_score ?? 0);
+  const overallScorePct = fractionToPct(techScore);
   const meetsCheckedPct = promoRow && promoRow.total_competencies > 0
-    ? Math.round((promoRow.meets_count / promoRow.total_competencies) * 100)
+    ? fractionToPct(promoRow.meets_count / promoRow.total_competencies)
     : gapResult && gapResult.total_competencies > 0
-      ? Math.round((gapResult.meets_count / gapResult.total_competencies) * 100)
+      ? fractionToPct(gapResult.meets_count / gapResult.total_competencies)
       : 0;
-  const thresholdPct = toPctNullable(promoRow?.avg_threshold);
+  const thresholdPct = fractionToPct(techReq);
 
   const domainChartData = domainRows.slice(0, 10).map((d) => ({
     domain: d.domain.length > 14 ? `${d.domain.slice(0, 14)}…` : d.domain,
@@ -126,9 +155,9 @@ export const useEmployeeResultSheet = (reportFilters: ReportFilters) => {
   const gapChartData = topGaps.slice(0, 8).map((g: any) => ({
     skill: g.competency_name.length > 16 ? `${g.competency_name.slice(0, 16)}…` : g.competency_name,
     fullSkill: g.competency_name,
-    score: Math.round(g.score * 100),
-    target: Math.round(g.threshold * 100),
-    gap: Math.round(g.gap * 100),
+    score: fractionToPct(g.score),
+    target: fractionToPct(g.threshold),
+    gap: fractionToPct(g.gap),
   }));
 
   return {
@@ -145,6 +174,7 @@ export const useEmployeeResultSheet = (reportFilters: ReportFilters) => {
     isCommReady,
     commLevel,
     commExpected,
+    readinessScore,
     combinedStatusText,
     combinedBadgeStyle,
     overallScorePct,

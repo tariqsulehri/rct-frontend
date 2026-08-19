@@ -3,6 +3,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarA
 import { Cpu, ArrowUpRight } from 'lucide-react';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { TabType } from '../../types';
+import { clampPct } from '@/lib/formatters';
 
 /** 12 visually distinct gradient fills for per-bar nominal color encoding. */
 const BAR_PALETTE = [
@@ -176,7 +177,7 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
                           {/* Achieved Fill */}
                           <div 
                             className="absolute left-0 h-3.5 rounded-full shadow-sm transition-all duration-700"
-                            style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
+                            style={{ width: `${clampPct(d.score)}%`, background: barColor }}
                           ></div>
 
                           {/* Required Marker (thick vertical line) */}
