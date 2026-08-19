@@ -175,13 +175,13 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
                         <div className="w-full relative h-full flex items-center">
                           {/* Achieved Fill */}
                           <div 
-                            className="absolute left-0 h-1.5 rounded-full shadow-sm transition-all duration-700"
+                            className="absolute left-0 h-2.5 rounded-full shadow-sm transition-all duration-700"
                             style={{ width: `${Math.min(d.score, 100)}%`, background: barColor }}
                           ></div>
 
                           {/* Required Marker (thick vertical line) */}
                           <div 
-                            className="absolute w-[3px] h-3.5 bg-text-1 rounded-sm -translate-x-1/2 shadow-sm z-20"
+                            className="absolute w-[3px] h-5 bg-text-1 rounded-sm -translate-x-1/2 shadow-sm z-20"
                             style={{ left: `${d.benchmark}%` }}
                           ></div>
                         </div>
