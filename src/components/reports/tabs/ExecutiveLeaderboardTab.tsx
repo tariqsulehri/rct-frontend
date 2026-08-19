@@ -4,7 +4,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { usePromotionReadiness } from '@/hooks/useReports';
-import { toPct } from '@/lib/formatters';
+import { roundPct } from '@/lib/formatters';
 import type { PromotionRow } from '@/hooks/useReports';
 import apiClient from '@/lib/api';
 import { Empty, Loading, ViewToggle, type View } from '../shared';
@@ -76,7 +76,7 @@ export const ExecutiveLeaderboardTab: React.FC<{ reportFilters?: ReportFilters }
   // Calculate score helper
   const topPerformers = allEmployees
     .filter((e) => e.total_competencies > 0)
-    .sort((a, b) => toPct(b.overall_score) - toPct(a.overall_score))
+    .sort((a, b) => roundPct(b.overall_score) - roundPct(a.overall_score))
     .slice(0, 5);
 
   // Ready for Promotion Candidates
@@ -89,8 +89,8 @@ export const ExecutiveLeaderboardTab: React.FC<{ reportFilters?: ReportFilters }
   const deptSummary = (summaryData?.departmentBreakdown ?? [])
     .map((d: DeptBreakdownItem) => ({
       ...d,
-      techPct: toPct(d.avgTechScore),
-      cefrPct: toPct(d.cefrReadyRate),
+      techPct: roundPct(d.avgTechScore),
+      cefrPct: roundPct(d.cefrReadyRate),
     }))
     .sort((a: { techPct: number }, b: { techPct: number }) => b.techPct - a.techPct);
 

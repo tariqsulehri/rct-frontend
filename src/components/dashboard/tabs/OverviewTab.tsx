@@ -10,7 +10,7 @@ import {
 import { type User } from '@/store/authStore';
 import { usePromotionReadiness, useGapMatrix } from '@/hooks/useReports';
 import { hasPermission, isLeaderRole, type PermissionCode, type RoleCode } from '@/types/rbac';
-import { toPctNullable, fractionToPct } from '@/lib/formatters';
+import { roundPctNullable, fractionToPct } from '@/lib/formatters';
 import { InfoTip } from '../layout/InfoTip';
 import { TeamHealthCharts } from './TeamHealthCharts';
 import { ResourceOverviewDashboard } from './ResourceOverviewDashboard';
@@ -42,12 +42,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
   const rawLeaderScore = assessedLeaderRows.length
     ? assessedLeaderRows.reduce((sum, r) => sum + r.overall_score, 0) / assessedLeaderRows.length
     : null;
-  const leaderScore = toPctNullable(rawLeaderScore);
+  const leaderScore = roundPctNullable(rawLeaderScore);
 
   const rawLeaderRequired = thresholdLeaderRows.length
     ? thresholdLeaderRows.reduce((sum, r) => sum + r.avg_threshold, 0) / thresholdLeaderRows.length
     : null;
-  const leaderRequired = toPctNullable(rawLeaderRequired);
+  const leaderRequired = roundPctNullable(rawLeaderRequired);
 
   const readyCount = leaderRows.filter((r) => r.promotion_ready).length;
   const needsAttention = leaderRows.filter((r) => !r.promotion_ready && r.total_competencies > 0).length;

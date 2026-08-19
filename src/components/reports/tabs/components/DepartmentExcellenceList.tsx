@@ -1,6 +1,6 @@
 import React from 'react';
 import { Building2 } from 'lucide-react';
-import { toPct } from '@/lib/formatters';
+import { roundPct } from '@/lib/formatters';
 
 interface DeptBreakdownItem {
   department: string;
@@ -24,9 +24,9 @@ export const DepartmentExcellenceList: React.FC<DepartmentExcellenceListProps> =
         </h3>
         <div className="space-y-3">
           {deptSummary.map((d, i) => {
-            const techPct = toPct(d.avgTechScore);
-            const expectedTech = toPct(d.expectedTechScore);
-            const cefrPct = toPct(d.cefrReadyRate);
+            const techPct = roundPct(d.avgTechScore);
+            const expectedTech = roundPct(d.expectedTechScore);
+            const cefrPct = roundPct(d.cefrReadyRate);
 
             return (
               <div key={d.department} className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">

@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/authStore";
 import { BulkAssessmentTable } from "@/components/BulkAssessmentTable";
 import { usePromotionReadiness, PromotionRow } from "@/hooks/useReports";
 import { toast } from "@/lib/toast";
-import { toPctNullable } from "@/lib/formatters";
+import { roundPctNullable } from "@/lib/formatters";
 import { CefrAssessmentModal } from "@/components/communication/CefrAssessmentModal";
 import { BehavioralAssessmentView } from "@/components/behavioral/BehavioralAssessmentView";
 
@@ -97,12 +97,12 @@ export const TeamRoster: React.FC = () => {
   const rawAvgScore = assessedPromotions.length > 0
     ? assessedPromotions.reduce((sum, row) => sum + row.overall_score, 0) / assessedPromotions.length
     : null;
-  const avgScore = toPctNullable(rawAvgScore);
+  const avgScore = roundPctNullable(rawAvgScore);
 
   const rawAvgRequired = requiredRows.length > 0
     ? requiredRows.reduce((sum, row) => sum + row.avg_threshold, 0) / requiredRows.length
     : null;
-  const avgRequired = toPctNullable(rawAvgRequired) ?? 0;
+  const avgRequired = roundPctNullable(rawAvgRequired) ?? 0;
   const readyCount = filteredPromotions.filter((row) => row.promotion_ready).length;
   const meetsCount = filteredPromotions.reduce((sum, row) => sum + row.meets_count, 0);
   const totalCompetencies = filteredPromotions.reduce((sum, row) => sum + row.total_competencies, 0);
@@ -325,8 +325,8 @@ export const TeamRoster: React.FC = () => {
             <tbody>
               {filteredRoster.map((member) => {
                 const promotion = promoByEmployeeId.get(member.id);
-                const achieved = promotion ? toPctNullable(promotion.overall_score) : null;
-                const required = promotion && promotion.avg_threshold > 0 ? toPctNullable(promotion.avg_threshold) : null;
+                const achieved = promotion ? roundPctNullable(promotion.overall_score) : null;
+                const required = promotion && promotion.avg_threshold > 0 ? roundPctNullable(promotion.avg_threshold) : null;
                 const gap = achieved !== null && required !== null ? achieved - required : null;
                 const skillsMet = promotion && promotion.total_competencies > 0
                   ? `${promotion.meets_count} / ${promotion.total_competencies}`

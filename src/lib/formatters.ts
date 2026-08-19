@@ -5,21 +5,11 @@
  */
 
 /**
- * Normalizes a score value to a 0–100 percentage integer (always returns 0..100).
- * @deprecated Use `fractionToPct` (for 0-1 scale) or `roundPct` (for 0-100 scale) instead.
+ * Safely rounds a pre-scaled percentage (e.g., 80.5) to an integer (81) or returns null.
  */
-export function toPct(val: number | null | undefined): number {
-  if (val == null || isNaN(val)) return 0;
-  return Math.round(val > 1 ? val : val * 100);
-}
-
-/**
- * Normalizes a score value to a 0–100 percentage integer or null if value is empty/invalid.
- * @deprecated Use `fractionToPct` or `roundPct` instead.
- */
-export function toPctNullable(val: number | null | undefined): number | null {
+export function roundPctNullable(val: number | null | undefined): number | null {
   if (val == null || isNaN(val)) return null;
-  return Math.round(val > 1 ? val : val * 100);
+  return Math.round(val);
 }
 
 /**
@@ -51,7 +41,7 @@ export function clampPct(val: number): number {
  * Formats a raw score into a display string (e.g. "73%") with a fallback.
  */
 export function formatPct(val: number | null | undefined, fallback = 'N/A'): string {
-  const pct = toPctNullable(val);
+  const pct = roundPctNullable(val);
   return pct === null ? fallback : `${pct}%`;
 }
 

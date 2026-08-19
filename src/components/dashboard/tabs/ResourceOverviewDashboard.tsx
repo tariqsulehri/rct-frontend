@@ -82,7 +82,7 @@ export const ResourceOverviewDashboard: React.FC<ResourceOverviewDashboardProps>
     return Object.entries(domainGaps).map(([domain, val]) => ({
       fullLabel: domain,
       score: fractionToPct(val.score),
-      benchmark: fractionToPct(val.threshold || 1),
+      benchmark: fractionToPct(val.threshold ?? 0),
     }));
   }, [gapMatrixData, globalDomains, user?.empCode]);
 

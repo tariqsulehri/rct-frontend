@@ -16,7 +16,7 @@ import { useCompetencyScores, usePromotionReadiness, useGapMatrix } from '@/hook
 import { useLatestCommAssessment } from '@/hooks/useCommunication';
 import { useLatestBehavioralAssessment } from '@/hooks/useBehavioral';
 import { useChartTheme, getChartTooltipStyle } from '@/hooks/useChartTheme';
-import { toPct, formatGrade, formatEmployeeOption, clampPct } from '@/lib/formatters';
+import { fractionToPct, roundPct, formatGrade, formatEmployeeOption, clampPct } from '@/lib/formatters';
 import { toast } from '@/lib/toast';
 import { hasPermission, isLeaderRole } from '@/types/rbac';
 import { BulkAssessmentTable } from '@/components/BulkAssessmentTable';
@@ -114,7 +114,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   const selectedFromGrade = formatGrade(selectedListRow?.current_grade, selectedListRow?.current_grade_title);
   const selectedToGrade = formatGrade(selectedListRow?.target_grade, selectedListRow?.target_grade_title);
 
-  const avgThreshold = toPct(promoRow?.avg_threshold);
+  const avgThreshold = roundPct(promoRow?.avg_threshold);
 
   const domains = Array.from(
     new Set([
@@ -126,8 +126,8 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
 
   const radarData = domains.map((d, i) => {
     const domGap = gapRow?.domain_gaps[d];
-    const score = toPct(domGap?.score);
-    const threshold = domGap && domGap.threshold > 0 ? toPct(domGap.threshold) : avgThreshold;
+    const score = fractionToPct(domGap?.score);
+    const threshold = domGap && domGap.threshold > 0 ? fractionToPct(domGap.threshold) : avgThreshold;
     return {
       domain: d.length > 14 ? d.slice(0, 14) + '…' : d,
       fullDomain: d,
@@ -142,8 +142,8 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
   const competencyRows = (gapData?.competencies ?? [])
     .map((comp) => {
       const gap = gapRow?.competency_gaps?.[comp.name];
-      const score = toPct(gap?.score);
-      const threshold = toPct(gap?.threshold);
+      const score = fractionToPct(gap?.score);
+      const threshold = fractionToPct(gap?.threshold);
       const gapPct = Math.max(0, threshold - score);
       const meets = threshold > 0 && score >= threshold;
 
@@ -286,7 +286,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ user, onNavigate
     );
   }
 
-  const overallPct = toPct(myRow?.overall_score);
+  const overallPct = roundPct(myRow?.overall_score);
 
   return (
     <div className="space-y-4 animate-slide-up">

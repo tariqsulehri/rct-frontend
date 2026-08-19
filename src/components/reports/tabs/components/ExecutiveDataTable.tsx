@@ -1,7 +1,7 @@
 import React from 'react';
 import type { PromotionRow } from '@/hooks/useReports';
 import { DataTable, TR, Stars } from '../../shared';
-import { toPct } from '@/lib/formatters';
+import { roundPct } from '@/lib/formatters';
 
 interface ExecutiveDataTableProps {
   filteredEmployees: PromotionRow[];
@@ -11,8 +11,8 @@ export const ExecutiveDataTable: React.FC<ExecutiveDataTableProps> = ({ filtered
   return (
     <DataTable headers={['Rank', 'Name', 'Code', 'Department', 'Grade', 'Tech Score', 'Target', 'Star Rating', 'CEFR Level', 'Status']}>
       {filteredEmployees.map((r, i) => {
-        const score = toPct(r.overall_score);
-        const target = toPct(r.avg_threshold);
+        const score = roundPct(r.overall_score);
+        const target = roundPct(r.avg_threshold);
         const isReady = r.promotion_ready && !r.is_cefr_gated;
         const isGated = r.promotion_ready && r.is_cefr_gated;
 

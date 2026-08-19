@@ -5,7 +5,7 @@
  * dashboard cards and any other consumer components. All inline functions
  * previously embedded in ResourceOverviewDashboard are centralised here.
  *
- * @see src/lib/formatters.ts  — for toPct / toPctNullable / calculateReadinessScore
+ * @see src/lib/formatters.ts  — for fractionToPct / roundPct / calculateReadinessScore
  */
 
 import type { CefrEngineConfig, CefrLevelCode } from '@/types/communication';

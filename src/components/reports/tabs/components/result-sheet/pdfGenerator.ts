@@ -1,4 +1,4 @@
-import { toPct, clampPct } from '@/lib/formatters';
+import { roundPct, fractionToPct, clampPct } from '@/lib/formatters';
 
 const esc = (value: string) =>
   value
@@ -42,7 +42,9 @@ export const generateResultSheetPdf = (data: {
   const department = esc(gapResult.employee.department || '');
   const gradeText = esc(`${gapResult.employee.current_grade} -> ${gapResult.employee.target_grade}`);
   const generatedOn = esc(new Date().toLocaleString());
-  const overallScore = toPct(promoRow?.overall_score ?? gapResult.overall_score);
+  const overallScore = promoRow
+    ? roundPct(promoRow.overall_score)
+    : fractionToPct(gapResult.overall_score);
   const meetsText = gapResult.total_competencies === 0 ? 'N/A' : `${gapResult.meets_count}/${gapResult.total_competencies}`;
 
   const domainBarsHtml = domainRows.length > 0

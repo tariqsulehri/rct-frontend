@@ -1,7 +1,7 @@
 import React from 'react';
 import { Trophy, CheckCircle2, Lock } from 'lucide-react';
 import type { PromotionRow } from '@/hooks/useReports';
-import { toPct } from '@/lib/formatters';
+import { roundPct } from '@/lib/formatters';
 import { Stars } from '../../shared';
 
 interface TopPerformersListProps {
@@ -29,8 +29,8 @@ export const TopPerformersList: React.FC<TopPerformersListProps> = ({ topPerform
 
       <div className="space-y-2.5">
         {topPerformers.map((emp, index) => {
-          const score = toPct(emp.overall_score);
-          const target = toPct(emp.avg_threshold);
+          const score = roundPct(emp.overall_score);
+          const target = roundPct(emp.avg_threshold);
           const isReady = emp.promotion_ready && !emp.is_cefr_gated;
           const isGated = emp.promotion_ready && emp.is_cefr_gated;
 

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  toPct,
-  toPctNullable,
+  fractionToPct,
+  roundPct,
+  roundPctNullable,
   formatPct,
   formatGrade,
   formatEmployeeOption,
@@ -9,49 +10,52 @@ import {
 } from './formatters';
 
 describe('formatters utility (single source of truth)', () => {
-  describe('toPct & toPctNullable', () => {
+  describe('fractionToPct & roundPct & roundPctNullable', () => {
     it('normalizes fraction scores (0.0 to 1.0) to 0-100 percentage integer', () => {
-      expect(toPct(0.734)).toBe(73);
-      expect(toPct(0.88)).toBe(88);
-      expect(toPct(1.0)).toBe(100);
-      expect(toPct(0)).toBe(0);
+      expect(fractionToPct(0.734)).toBe(73);
+      expect(fractionToPct(0.88)).toBe(88);
+      expect(fractionToPct(1.0)).toBe(100);
+      expect(fractionToPct(0)).toBe(0);
     });
 
-    it('normalizes pre-scaled percentage scores (1.0 to 100.0) without double scaling', () => {
-      expect(toPct(73.4)).toBe(73);
-      expect(toPct(88.0)).toBe(88);
-      expect(toPct(100)).toBe(100);
-      expect(toPct(58.57)).toBe(59);
+    it('rounds pre-scaled percentage scores (0.0 to 100.0)', () => {
+      expect(roundPct(73.4)).toBe(73);
+      expect(roundPct(88.0)).toBe(88);
+      expect(roundPct(100)).toBe(100);
+      expect(roundPct(58.57)).toBe(59);
     });
 
-    it('correctly calculates team roster score averages without 5857% double-scaling', () => {
-      // Simulates 30 employees with average overall_score of 58.57 (pre-scaled) and avg_threshold of 0.72 (fractional)
+    it('correctly calculates team roster score averages', () => {
       const scores = Array(30).fill(58.57);
-      const thresholds = Array(30).fill(0.72);
+      const thresholds = Array(30).fill(72.0);
 
       const rawAvgScore = scores.reduce((sum, s) => sum + s, 0) / scores.length;
       const rawAvgThresh = thresholds.reduce((sum, t) => sum + t, 0) / thresholds.length;
 
-      expect(toPctNullable(rawAvgScore)).toBe(59);
-      expect(toPctNullable(rawAvgThresh)).toBe(72);
-      expect((toPctNullable(rawAvgScore) ?? 0) - (toPctNullable(rawAvgThresh) ?? 0)).toBe(-13);
+      expect(roundPctNullable(rawAvgScore)).toBe(59);
+      expect(roundPctNullable(rawAvgThresh)).toBe(72);
+      expect((roundPctNullable(rawAvgScore) ?? 0) - (roundPctNullable(rawAvgThresh) ?? 0)).toBe(-13);
     });
 
     it('handles null, undefined, and NaN gracefully', () => {
-      expect(toPct(null)).toBe(0);
-      expect(toPct(undefined)).toBe(0);
-      expect(toPct(NaN)).toBe(0);
+      expect(fractionToPct(null)).toBe(0);
+      expect(fractionToPct(undefined)).toBe(0);
+      expect(fractionToPct(NaN)).toBe(0);
 
-      expect(toPctNullable(null)).toBeNull();
-      expect(toPctNullable(undefined)).toBeNull();
-      expect(toPctNullable(NaN)).toBeNull();
+      expect(roundPct(null)).toBe(0);
+      expect(roundPct(undefined)).toBe(0);
+      expect(roundPct(NaN)).toBe(0);
+
+      expect(roundPctNullable(null)).toBeNull();
+      expect(roundPctNullable(undefined)).toBeNull();
+      expect(roundPctNullable(NaN)).toBeNull();
     });
   });
 
   describe('formatPct', () => {
     it('formats percentages to string output with fallback', () => {
-      expect(formatPct(0.734)).toBe('73%');
       expect(formatPct(73.4)).toBe('73%');
+      expect(formatPct(88.0)).toBe('88%');
       expect(formatPct(null)).toBe('N/A');
       expect(formatPct(undefined, '—')).toBe('—');
     });
