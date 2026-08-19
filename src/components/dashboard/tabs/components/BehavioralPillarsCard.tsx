@@ -147,8 +147,8 @@ export const BehavioralPillarsCard: React.FC<BehavioralPillarsCardProps> = ({
           {/* Bullet Chart Horizontal layout */}
           <div className="flex flex-col mt-2">
             {/* Table Header */}
-            <div className="flex items-center justify-between text-[9px] font-bold text-text-3 border-b border-border/50 pb-1.5 mb-3 px-1">
-              <span className="w-[28%] uppercase">Skill Area</span>
+            <div className="flex items-center justify-between text-[10px] font-bold text-text-3 border-b border-border/50 pb-1.5 mb-3 px-1">
+              <span className="w-[28%] uppercase tracking-wide">Skill Area</span>
               <div className="flex-1 flex justify-between relative px-2">
                 <span>0</span>
                 <span>25</span>
@@ -168,10 +168,10 @@ export const BehavioralPillarsCard: React.FC<BehavioralPillarsCardProps> = ({
                   <div key={i} className="flex items-center justify-between gap-2 group">
                     {/* Left: Domain Name & Subtitle */}
                     <div className="w-[28%] flex flex-col justify-center min-w-0 pr-1">
-                      <span className="font-bold text-text-1 text-[11px] truncate group-hover:text-blue-400 transition-colors" title={d.fullName}>
+                      <span className="font-semibold text-text-1 text-xs truncate group-hover:text-amber-500 transition-colors" title={d.fullName}>
                         {d.fullName}
                       </span>
-                      <span className="text-[9px] text-text-3 truncate mt-0.5">
+                      <span className="text-[10px] text-text-3 truncate mt-0.5">
                         {d.score}% achieved / {d.benchmark}% required
                       </span>
                     </div>
