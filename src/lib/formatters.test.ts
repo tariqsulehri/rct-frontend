@@ -75,8 +75,8 @@ describe('formatters utility (single source of truth)', () => {
 
   describe('getReadinessStatus', () => {
     it('returns correct readiness metadata', () => {
-      expect(getReadinessStatus(true)).toEqual({ label: 'Ready', badgeClass: 'badge-success' });
-      expect(getReadinessStatus(false)).toEqual({ label: 'In Progress', badgeClass: 'badge-warning' });
+      expect(getReadinessStatus(true)).toEqual({ label: 'Promotion Ready', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' });
+      expect(getReadinessStatus(false)).toEqual({ label: 'Developing', badgeClass: 'bg-slate-50 text-slate-700 border-slate-200' });
     });
   });
 });

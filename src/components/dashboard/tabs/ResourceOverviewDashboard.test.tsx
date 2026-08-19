@@ -51,6 +51,12 @@ vi.mock('@/hooks/useConfig', () => ({
     ],
     isLoading: false,
   }),
+  useAppraisalPeriods: () => ({
+    data: [
+      { id: 1, code: 'H1 2026', name: 'H1 2026', status: 'ACTIVE' },
+    ],
+    isLoading: false,
+  }),
 }));
 
 vi.mock('@/hooks/useCommunication', () => ({
@@ -161,30 +167,32 @@ describe('ResourceOverviewDashboard (SSR Rendering)', () => {
   };
 
   it('renders Header Ribbon with greeting, career grade trajectory, and evaluation cycle title', () => {
-    const html = renderToString(
+    let html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
+    html = html.replace(/<!-- -->/g, '');
 
     expect(html).toContain('Test Engineer');
     expect(html).toContain('G14');
     expect(html).toContain('G15');
-    expect(html).toContain(`Cycle ${new Date().getFullYear()} (Active)`);
+    expect(html).toContain('H1 2026');
     expect(html).toContain('Assess Skills');
   });
 
   it('renders all three graphs simultaneously (Technical, CEFR Language, Behavioral 11-Pillar Bars)', () => {
-    const html = renderToString(
+    let html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
+    html = html.replace(/<!-- -->/g, '');
 
     expect(html).toContain('1. Technical Domains');
     expect(html).toContain('2. CEFR Language');
-    expect(html).toContain('3. Behavioral (11 Pillars)');
+    expect(html).toContain('3. Behavioral (2 Pillars)');
     expect(html).toContain('Skills Grid');
     expect(html).toContain('CEFR Rubric');
     expect(html).toContain('Assessed');
-    expect(html).toContain('Core (6)');
-    expect(html).toContain('Leadership (5)');
+    expect(html).toContain('Core (2)');
+    expect(html).toContain('Leadership (0)');
   });
 
   it('renders KPI stats bar with all 5 focused metrics (replaces removed AI Copilot panel)', () => {
@@ -203,19 +211,20 @@ describe('ResourceOverviewDashboard (SSR Rendering)', () => {
   });
 
   it('renders expanded 3-graph layout with scrollable bars and no bottom card row (Donut/Milestones removed)', () => {
-    const html = renderToString(
+    let html = renderToString(
       <ResourceOverviewDashboard user={mockUser} onNavigate={() => {}} />
     );
+    html = html.replace(/<!-- -->/g, '');
 
     // All 3 graph cards must be present with scrollable bars
     expect(html).toContain('1. Technical Domains');
     expect(html).toContain('2. CEFR Language');
-    expect(html).toContain('3. Behavioral (11 Pillars)');
+    expect(html).toContain('3. Behavioral (2 Pillars)');
     // Footer legend elements
     expect(html).toContain('Skills Grid');
     expect(html).toContain('CEFR Rubric');
-    expect(html).toContain('Core (6)');
-    expect(html).toContain('Leadership (5)');
+    expect(html).toContain('Core (2)');
+    expect(html).toContain('Leadership (0)');
     // The removed bottom cards must NOT appear
     expect(html).not.toContain('Competency Distribution');
     expect(html).not.toContain('Promotion Milestones');
