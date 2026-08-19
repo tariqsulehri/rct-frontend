@@ -209,7 +209,25 @@ export const CefrLanguageCard: React.FC<CefrLanguageCardProps> = ({
                   );
                 }}
               />
-              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+              <PolarRadiusAxis 
+                angle={90} 
+                domain={[0, 100]} 
+                tickCount={5}
+                tick={({ payload, x, y }: any) => (
+                  <text 
+                    x={x} 
+                    y={y} 
+                    dy={-4}
+                    textAnchor="middle" 
+                    fill={chartTheme.isDark ? '#a1a1aa' : '#71717a'} 
+                    fontSize={9} 
+                    fontWeight={700}
+                  >
+                    {payload.value}%
+                  </text>
+                )}
+                axisLine={false} 
+              />
               
               <Radar
                 name="Required"
@@ -218,6 +236,7 @@ export const CefrLanguageCard: React.FC<CefrLanguageCardProps> = ({
                 strokeWidth={2.5}
                 strokeDasharray="4 4"
                 fill="none"
+                dot={{ r: 3, fill: chartTheme.isDark ? '#a1a1aa' : '#71717a' }}
               />
               <Radar
                 name="Assessed"
@@ -226,6 +245,8 @@ export const CefrLanguageCard: React.FC<CefrLanguageCardProps> = ({
                 fill="url(#colorCefr)"
                 fillOpacity={1}
                 strokeWidth={3}
+                dot={{ r: 4, fill: '#0891b2', strokeWidth: 1.5, stroke: chartTheme.isDark ? '#18181b' : '#ffffff' }}
+                activeDot={{ r: 6, fill: '#0891b2', strokeWidth: 0 }}
               />
             </RadarChart>
           </ResponsiveContainer>

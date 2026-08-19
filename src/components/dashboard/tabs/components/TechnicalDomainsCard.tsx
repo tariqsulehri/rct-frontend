@@ -162,8 +162,8 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
               <RadarChart data={chartData} cx="50%" cy="50%" outerRadius="65%">
               <defs>
                 <linearGradient id="colorTechnical" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.85}/>
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0.25}/>
+                  <stop offset="5%" stopColor="#2563eb" stopOpacity={0.85}/>
+                  <stop offset="95%" stopColor="#60a5fa" stopOpacity={0.25}/>
                 </linearGradient>
               </defs>
               <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3', stroke: chartTheme.isDark ? '#71717a' : '#a1a1aa' }} />
@@ -194,7 +194,7 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
                       x={adjustedX} 
                       y={adjustedY} 
                       textAnchor={textAnchor} 
-                      fill={chartTheme.isDark ? '#818cf8' : '#4f46e5'} 
+                      fill={chartTheme.isDark ? '#60a5fa' : '#2563eb'} 
                       fontSize={9} 
                       fontWeight={800}
                     >
@@ -207,7 +207,25 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
                   );
                 }}
               />
-              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+              <PolarRadiusAxis 
+                angle={90} 
+                domain={[0, 100]} 
+                tickCount={5}
+                tick={({ payload, x, y }: any) => (
+                  <text 
+                    x={x} 
+                    y={y} 
+                    dy={-4}
+                    textAnchor="middle" 
+                    fill={chartTheme.isDark ? '#a1a1aa' : '#71717a'} 
+                    fontSize={9} 
+                    fontWeight={700}
+                  >
+                    {payload.value}%
+                  </text>
+                )}
+                axisLine={false} 
+              />
               
               <Radar
                 name="Required"
@@ -216,14 +234,17 @@ export const TechnicalDomainsCard: React.FC<TechnicalDomainsCardProps> = ({
                 strokeWidth={2.5}
                 strokeDasharray="4 4"
                 fill="none"
+                dot={{ r: 3, fill: chartTheme.isDark ? '#a1a1aa' : '#71717a' }}
               />
               <Radar
                 name="Achieved"
                 dataKey="score"
-                stroke="#4f46e5"
+                stroke="#2563eb"
                 fill="url(#colorTechnical)"
                 fillOpacity={1}
                 strokeWidth={3}
+                dot={{ r: 4, fill: '#2563eb', strokeWidth: 1.5, stroke: chartTheme.isDark ? '#18181b' : '#ffffff' }}
+                activeDot={{ r: 6, fill: '#2563eb', strokeWidth: 0 }}
               />
             </RadarChart>
           </ResponsiveContainer>
